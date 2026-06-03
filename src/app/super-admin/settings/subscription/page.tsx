@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 function SubscriptionIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -21,7 +25,25 @@ function SubscriptionIcon() {
   );
 }
 
+function SubscriptionToggle({ defaultChecked = true }: { defaultChecked?: boolean }) {
+  const [enabled, setEnabled] = useState(defaultChecked);
+
+  return (
+    <button
+      type="button"
+      className={`subscription-settings-toggle${enabled ? " subscription-settings-toggle-active" : ""}`}
+      aria-pressed={enabled}
+      onClick={() => setEnabled((current) => !current)}
+    >
+      <span />
+    </button>
+  );
+}
+
 export default function SubscriptionSettingsPage() {
+  const [saveLabel, setSaveLabel] = useState("Save Change");
+  const [resetLabel, setResetLabel] = useState("Reset");
+
   return (
     <section className="subscription-settings-page">
       <article className="subscription-settings-hero">
@@ -74,13 +96,7 @@ export default function SubscriptionSettingsPage() {
                 <strong>Will it auto-shut down after the trial ends?</strong>
                 <p>It will be so crowded when the trial is over.</p>
               </div>
-              <button
-                type="button"
-                className="subscription-settings-toggle subscription-settings-toggle-active"
-                aria-pressed="true"
-              >
-                <span />
-              </button>
+              <SubscriptionToggle />
             </div>
           </div>
         </article>
@@ -93,13 +109,7 @@ export default function SubscriptionSettingsPage() {
                 <strong>Auto support when the term expires</strong>
                 <p>The shopkeeper will receive automatic support once the term expires.</p>
               </div>
-              <button
-                type="button"
-                className="subscription-settings-toggle subscription-settings-toggle-active"
-                aria-pressed="true"
-              >
-                <span />
-              </button>
+              <SubscriptionToggle />
             </div>
 
             <label className="subscription-settings-field">
@@ -115,13 +125,7 @@ export default function SubscriptionSettingsPage() {
                 <strong>Auto Brocade when the grace period ends</strong>
                 <p>Auto Brocade when the grace period ends</p>
               </div>
-              <button
-                type="button"
-                className="subscription-settings-toggle subscription-settings-toggle-active"
-                aria-pressed="true"
-              >
-                <span />
-              </button>
+              <SubscriptionToggle />
             </div>
           </div>
         </article>
@@ -136,13 +140,7 @@ export default function SubscriptionSettingsPage() {
                 <strong>Turn on late fees</strong>
                 <p>Late fees will apply if you do not renew on time.</p>
               </div>
-              <button
-                type="button"
-                className="subscription-settings-toggle subscription-settings-toggle-active"
-                aria-pressed="true"
-              >
-                <span />
-              </button>
+              <SubscriptionToggle />
             </div>
 
             <div className="subscription-settings-two-column">
@@ -175,13 +173,7 @@ export default function SubscriptionSettingsPage() {
                 <strong>Send renewal reminder</strong>
                 <p>A reminder will be sent to the shopkeeper before the expiration date.</p>
               </div>
-              <button
-                type="button"
-                className="subscription-settings-toggle subscription-settings-toggle-active"
-                aria-pressed="true"
-              >
-                <span />
-              </button>
+              <SubscriptionToggle />
             </div>
 
             <label className="subscription-settings-field">
@@ -196,11 +188,25 @@ export default function SubscriptionSettingsPage() {
       </div>
 
       <div className="subscription-settings-actions">
-        <button type="button" className="subscription-settings-secondary-button">
-          Reset
+        <button
+          type="button"
+          className="subscription-settings-secondary-button"
+          onClick={() => {
+            setResetLabel("Reset Done");
+            window.setTimeout(() => setResetLabel("Reset"), 1200);
+          }}
+        >
+          {resetLabel}
         </button>
-        <button type="button" className="subscription-settings-primary-button">
-          Save Change
+        <button
+          type="button"
+          className="subscription-settings-primary-button"
+          onClick={() => {
+            setSaveLabel("Saved");
+            window.setTimeout(() => setSaveLabel("Save Change"), 1200);
+          }}
+        >
+          {saveLabel}
         </button>
       </div>
     </section>

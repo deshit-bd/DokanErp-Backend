@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 const featureRows = [
   { id: "gateway", name: "Nagad", description: "Nagad Get inspired by payment gateways", icon: "chart", enabled: true },
   { id: "sales", name: "Nagad", description: "Nagad Get inspired by payment gateways", icon: "cart", enabled: true },
@@ -79,19 +83,51 @@ function FeatureRowIcon({ type }: { type: string }) {
   }
 }
 
-function ToggleButton({ enabled }: { enabled: boolean }) {
+function FeatureToggleRow({
+  feature,
+}: {
+  feature: (typeof featureRows)[number];
+}) {
+  const [isEnabled, setIsEnabled] = useState(feature.enabled);
+
   return (
-    <button
-      type="button"
-      className={`feature-toggle-switch${enabled ? " feature-toggle-switch-active" : ""}`}
-      aria-pressed={enabled}
-    >
-      <span />
-    </button>
+    <div className="feature-toggle-table-row">
+      <div className="feature-toggle-product">
+        <div className={`feature-toggle-product-icon feature-toggle-product-icon-${feature.icon}`}>
+          <FeatureRowIcon type={feature.icon} />
+        </div>
+        <div className="feature-toggle-product-copy">
+          <strong>{feature.name}</strong>
+          <span>{feature.description}</span>
+        </div>
+      </div>
+
+      <span>
+        <em className="feature-toggle-badge feature-toggle-badge-category">Active</em>
+      </span>
+
+      <span>
+        <em className="feature-toggle-badge feature-toggle-badge-status">{isEnabled ? "Active" : "Inactive"}</em>
+      </span>
+
+      <span>
+        <button
+          type="button"
+          className={`feature-toggle-switch${isEnabled ? " feature-toggle-switch-active" : ""}`}
+          aria-pressed={isEnabled}
+          onClick={() => setIsEnabled((current) => !current)}
+        >
+          <span />
+        </button>
+      </span>
+    </div>
   );
 }
 
 export default function FeatureToggleSettingsPage() {
+  const [saveLabel, setSaveLabel] = useState("Save");
+  const [viewLabel, setViewLabel] = useState("View all");
+
   return (
     <section className="feature-toggle-page">
       <article className="feature-toggle-hero">
@@ -123,8 +159,15 @@ export default function FeatureToggleSettingsPage() {
               <option>All categories</option>
             </select>
 
-            <button type="button" className="feature-toggle-save-button">
-              Save
+            <button
+              type="button"
+              className="feature-toggle-save-button"
+              onClick={() => {
+                setSaveLabel("Saved");
+                window.setTimeout(() => setSaveLabel("Save"), 1200);
+              }}
+            >
+              {saveLabel}
             </button>
           </div>
         </div>
@@ -138,35 +181,20 @@ export default function FeatureToggleSettingsPage() {
           </div>
 
           {featureRows.map((feature) => (
-            <div className="feature-toggle-table-row" key={feature.id}>
-              <div className="feature-toggle-product">
-                <div className={`feature-toggle-product-icon feature-toggle-product-icon-${feature.icon}`}>
-                  <FeatureRowIcon type={feature.icon} />
-                </div>
-                <div className="feature-toggle-product-copy">
-                  <strong>{feature.name}</strong>
-                  <span>{feature.description}</span>
-                </div>
-              </div>
-
-              <span>
-                <em className="feature-toggle-badge feature-toggle-badge-category">Active</em>
-              </span>
-
-              <span>
-                <em className="feature-toggle-badge feature-toggle-badge-status">Active</em>
-              </span>
-
-              <span>
-                <ToggleButton enabled={feature.enabled} />
-              </span>
-            </div>
+            <FeatureToggleRow feature={feature} key={feature.id} />
           ))}
         </div>
 
         <div className="feature-toggle-footer">
-          <button type="button" className="feature-toggle-view-button">
-            View all
+          <button
+            type="button"
+            className="feature-toggle-view-button"
+            onClick={() => {
+              setViewLabel("Opened");
+              window.setTimeout(() => setViewLabel("View all"), 1200);
+            }}
+          >
+            {viewLabel}
           </button>
         </div>
       </section>

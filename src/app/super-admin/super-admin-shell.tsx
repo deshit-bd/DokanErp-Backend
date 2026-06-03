@@ -1,12 +1,30 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "Dashboard", href: "/super-admin/dashboard", icon: "home" },
   { label: "Inventory Management", href: "/super-admin/inventory", icon: "box" },
+  {
+    label: "Master Data",
+    href: "/super-admin/master-data",
+    icon: "database",
+    children: [
+      { label: "Master Data Dashboard", href: "/super-admin/master-data" },
+      { label: "Product Category", href: "/super-admin/master-data/product-category" },
+      { label: "Product Catalog", href: "/super-admin/master-data/category" },
+      { label: "Brand", href: "/super-admin/master-data/brand" },
+      { label: "Unit", href: "/super-admin/master-data/unity" },
+      { label: "Barcode Database", href: "/super-admin/master-data/barcode-database" },
+      { label: "Import / Export", href: "/super-admin/master-data/import-export" },
+      { label: "Money Box", href: "/super-admin/master-data/money-box" },
+      { label: "Supplier Data", href: "/super-admin/master-data/supplier-data" },
+      { label: "Bank Account", href: "/super-admin/master-data/bank-account" },
+      { label: "Product Template", href: "/super-admin/master-data/product-template" },
+    ],
+  },
   { label: "Subscription & Plans", href: "/super-admin/subscriptions", icon: "card" },
   { label: "User Management", href: "/super-admin/users", icon: "users" },
   { label: "Reports & Analytics", href: "/super-admin/reports", icon: "chart" },
@@ -18,6 +36,17 @@ const navItems = [
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
   inventory: "Inventory Management",
+  "master-data": "Master Data",
+  "product-category": "Product Category",
+  category: "Category",
+  brand: "Brand",
+  unity: "Unity",
+  "barcode-database": "Barcode Database",
+  "import-export": "Import / Export",
+  "money-box": "Money Box",
+  "supplier-data": "Supplier Data",
+  "bank-account": "Bank Account",
+  "product-template": "Product Template",
   subscriptions: "Subscription & Plans",
   users: "User Management",
   reports: "Reports & Analytics",
@@ -82,6 +111,14 @@ function SidebarIcon({ type }: { type: string }) {
           <path {...commonProps} d="M8 8.5h8" />
           <path {...commonProps} d="M8 12h8" />
           <path {...commonProps} d="M8 15.5h5" />
+        </svg>
+      );
+    case "database":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <ellipse {...commonProps} cx="12" cy="6.5" rx="6.5" ry="2.8" />
+          <path {...commonProps} d="M5.5 6.5v5c0 1.5 2.9 2.8 6.5 2.8s6.5-1.3 6.5-2.8v-5" />
+          <path {...commonProps} d="M5.5 11.5v5c0 1.5 2.9 2.8 6.5 2.8s6.5-1.3 6.5-2.8v-5" />
         </svg>
       );
     case "users":
@@ -152,6 +189,7 @@ function BellIcon() {
 
 export default function SuperAdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
   const pathSegments = pathname.split("/").filter(Boolean).slice(1);
   const visibleSegments = pathSegments.filter((segment) => segment !== "dashboard");
   const pageTitle = formatSegment(visibleSegments[visibleSegments.length - 1] ?? "dashboard");
@@ -169,6 +207,55 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
 
         <nav className="admin-sidebar-nav" aria-label="Super admin navigation">
           {navItems.map((item) => {
+            if (item.children) {
+              const isActive =
+                pathname === item.href || item.children.some((child) => pathname === child.href || pathname.startsWith(`${child.href}/`));
+
+              return (
+                <div className="admin-sidebar-group" key={item.label}>
+                  <button
+                    type="button"
+                    className={`admin-sidebar-link admin-sidebar-link-group${isActive ? " admin-sidebar-link-active" : ""}`}
+                    onClick={() => setIsMasterDataOpen((current) => !current)}
+                    aria-expanded={isMasterDataOpen}
+                  >
+                    <span className="admin-sidebar-link-icon">
+                      <SidebarIcon type={item.icon} />
+                    </span>
+                    <span className="admin-sidebar-link-text">{item.label}</span>
+                    <span
+                      className={`admin-sidebar-link-arrow admin-sidebar-link-arrow-open${
+                        isMasterDataOpen ? " admin-sidebar-link-arrow-expanded" : ""
+                      }`}
+                    >
+                      <ChevronRight />
+                    </span>
+                  </button>
+
+                  {isMasterDataOpen ? (
+                    <div className="admin-sidebar-subnav">
+                      {item.children.map((child) => {
+                        const isChildActive =
+                          child.href === item.href
+                            ? pathname === child.href
+                            : pathname === child.href || pathname.startsWith(`${child.href}/`);
+
+                        return (
+                          <Link
+                            className={`admin-sidebar-sublink${isChildActive ? " admin-sidebar-sublink-active" : ""}`}
+                            href={child.href}
+                            key={child.href}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
@@ -202,16 +289,17 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
           <div className="admin-topbar-copy">
             <h1>{pageTitle}</h1>
             <div className="admin-breadcrumb">
-              <Link href="/super-admin/dashboard">Dashboard</Link>
               {visibleSegments.map((segment, index) => {
                 const href = `/super-admin/${visibleSegments.slice(0, index + 1).join("/")}`;
                 const isLast = index === visibleSegments.length - 1;
 
                 return (
                   <span className="admin-breadcrumb-group" key={href}>
-                    <span className="admin-breadcrumb-separator">
-                      <ChevronRight />
-                    </span>
+                    {index > 0 ? (
+                      <span className="admin-breadcrumb-separator">
+                        <ChevronRight />
+                      </span>
+                    ) : null}
                     {isLast ? <span>{formatSegment(segment)}</span> : <Link href={href}>{formatSegment(segment)}</Link>}
                   </span>
                 );

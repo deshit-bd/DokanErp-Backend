@@ -1,0 +1,7 @@
+{
+  "/super-admin/settings/feature-toggle/page": "app/super-admin/settings/feature-toggle/page.js",
+  "/super-admin/master-data/page": "app/super-admin/master-data/page.js",
+  "/super-admin/master-data/product-category/page": "app/super-admin/master-data/product-category/page.js",
+  "/super-admin/master-data/supplier-data/page": "app/super-admin/master-data/supplier-data/page.js",
+  "/super-admin/master-data/[slug]/page": "app/super-admin/master-data/[slug]/page.js"
+}
