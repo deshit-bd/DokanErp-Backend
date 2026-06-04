@@ -14,9 +14,9 @@ const navItems = [
     children: [
       { label: "Master Data Dashboard", href: "/super-admin/master-data" },
       { label: "Product Category", href: "/super-admin/master-data/product-category" },
-      { label: "Product Catalog", href: "/super-admin/master-data/category" },
+      { label: "Product Catalog", href: "/super-admin/master-data/product-catalog" },
       { label: "Brand", href: "/super-admin/master-data/brand" },
-      { label: "Unit", href: "/super-admin/master-data/unity" },
+      { label: "Unit", href: "/super-admin/master-data/unit" },
       { label: "Barcode Database", href: "/super-admin/master-data/barcode-database" },
       { label: "Import / Export", href: "/super-admin/master-data/import-export" },
       { label: "Money Box", href: "/super-admin/master-data/money-box" },
@@ -27,7 +27,15 @@ const navItems = [
   },
   { label: "Subscription & Plans", href: "/super-admin/subscriptions", icon: "card" },
   { label: "User Management", href: "/super-admin/users", icon: "users" },
-  { label: "Reports & Analytics", href: "/super-admin/reports", icon: "chart" },
+  {
+    label: "Reports & Analytics",
+    href: "/super-admin/reports",
+    icon: "chart",
+    children: [
+      { label: "Reports Dashboard", href: "/super-admin/reports" },
+      { label: "Purchase Report", href: "/super-admin/reports/purchase-report" },
+    ],
+  },
   { label: "Sales Management", href: "/super-admin/sales", icon: "cart" },
   { label: "System Settings", href: "/super-admin/settings", icon: "settings" },
   { label: "Support Center", href: "/super-admin/support", icon: "headset" },
@@ -36,11 +44,11 @@ const navItems = [
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
   inventory: "Inventory Management",
-  "master-data": "Master Data",
+  "master-data": "Master Data Dashboard",
   "product-category": "Product Category",
-  category: "Category",
+  "product-catalog": "Product Catalog",
   brand: "Brand",
-  unity: "Unity",
+  unit: "Unit",
   "barcode-database": "Barcode Database",
   "import-export": "Import / Export",
   "money-box": "Money Box",
@@ -50,6 +58,7 @@ const routeLabels: Record<string, string> = {
   subscriptions: "Subscription & Plans",
   users: "User Management",
   reports: "Reports & Analytics",
+  "purchase-report": "Purchase Report",
   sales: "Sales Management",
   settings: "System Settings",
   support: "Support Center",
@@ -75,6 +84,18 @@ const routeLabels: Record<string, string> = {
 
 function formatSegment(segment: string) {
   return routeLabels[segment] ?? segment.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatBreadcrumbSegment(segment: string, index: number, total: number) {
+  if (segment === "master-data-parent") {
+    return "Master Data";
+  }
+
+  if (segment === "master-data") {
+    return index === total - 1 ? "Master Data Dashboard" : "Master Data";
+  }
+
+  return formatSegment(segment);
 }
 
 function SidebarIcon({ type }: { type: string }) {
@@ -190,9 +211,14 @@ function BellIcon() {
 export default function SuperAdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
   const pathSegments = pathname.split("/").filter(Boolean).slice(1);
-  const visibleSegments = pathSegments.filter((segment) => segment !== "dashboard");
-  const pageTitle = formatSegment(visibleSegments[visibleSegments.length - 1] ?? "dashboard");
+  const contentSegments = pathSegments.filter((segment) => segment !== "dashboard");
+  const breadcrumbSegments =
+    contentSegments.length === 1 && contentSegments[0] === "master-data"
+      ? ["master-data-parent", "master-data"]
+      : contentSegments;
+  const pageTitle = formatSegment(contentSegments[contentSegments.length - 1] ?? "dashboard");
 
   return (
     <div className="admin-shell">
@@ -210,14 +236,19 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
             if (item.children) {
               const isActive =
                 pathname === item.href || item.children.some((child) => pathname === child.href || pathname.startsWith(`${child.href}/`));
+              const isOpen = item.href === "/super-admin/master-data" ? isMasterDataOpen : isReportsOpen;
+              const toggleGroup =
+                item.href === "/super-admin/master-data"
+                  ? () => setIsMasterDataOpen((current) => !current)
+                  : () => setIsReportsOpen((current) => !current);
 
               return (
                 <div className="admin-sidebar-group" key={item.label}>
                   <button
                     type="button"
                     className={`admin-sidebar-link admin-sidebar-link-group${isActive ? " admin-sidebar-link-active" : ""}`}
-                    onClick={() => setIsMasterDataOpen((current) => !current)}
-                    aria-expanded={isMasterDataOpen}
+                    onClick={toggleGroup}
+                    aria-expanded={isOpen}
                   >
                     <span className="admin-sidebar-link-icon">
                       <SidebarIcon type={item.icon} />
@@ -225,14 +256,14 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
                     <span className="admin-sidebar-link-text">{item.label}</span>
                     <span
                       className={`admin-sidebar-link-arrow admin-sidebar-link-arrow-open${
-                        isMasterDataOpen ? " admin-sidebar-link-arrow-expanded" : ""
+                        isOpen ? " admin-sidebar-link-arrow-expanded" : ""
                       }`}
                     >
                       <ChevronRight />
                     </span>
                   </button>
 
-                  {isMasterDataOpen ? (
+                  {isOpen ? (
                     <div className="admin-sidebar-subnav">
                       {item.children.map((child) => {
                         const isChildActive =
@@ -289,9 +320,10 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
           <div className="admin-topbar-copy">
             <h1>{pageTitle}</h1>
             <div className="admin-breadcrumb">
-              {visibleSegments.map((segment, index) => {
-                const href = `/super-admin/${visibleSegments.slice(0, index + 1).join("/")}`;
-                const isLast = index === visibleSegments.length - 1;
+              {breadcrumbSegments.map((segment, index) => {
+                const href =
+                  segment === "master-data-parent" ? "/super-admin/master-data" : `/super-admin/${contentSegments.slice(0, index + 1).join("/")}`;
+                const isLast = index === breadcrumbSegments.length - 1;
 
                 return (
                   <span className="admin-breadcrumb-group" key={href}>
@@ -300,7 +332,11 @@ export default function SuperAdminShell({ children }: { children: ReactNode }) {
                         <ChevronRight />
                       </span>
                     ) : null}
-                    {isLast ? <span>{formatSegment(segment)}</span> : <Link href={href}>{formatSegment(segment)}</Link>}
+                    {isLast ? (
+                      <span>{formatBreadcrumbSegment(segment, index, breadcrumbSegments.length)}</span>
+                    ) : (
+                      <Link href={href}>{formatBreadcrumbSegment(segment, index, breadcrumbSegments.length)}</Link>
+                    )}
                   </span>
                 );
               })}

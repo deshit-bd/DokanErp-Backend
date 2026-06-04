@@ -11,85 +11,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/super-admin/layout.js"
     ],
-    "/super-admin/settings/page": [
+    "/super-admin/master-data/supplier-data/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/page.js"
-    ],
-    "/super-admin/settings/activity-log/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/activity-log/page.js"
-    ],
-    "/super-admin/settings/shop-registration/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/shop-registration/page.js"
-    ],
-    "/super-admin/settings/general/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/general/page.js"
-    ],
-    "/super-admin/settings/payment-gateway/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/payment-gateway/page.js"
-    ],
-    "/super-admin/settings/subscription/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/subscription/page.js"
-    ],
-    "/super-admin/settings/sms-otp/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/sms-otp/page.js"
-    ],
-    "/super-admin/settings/notifications/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/notifications/page.js"
-    ],
-    "/super-admin/settings/feature-toggle/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/feature-toggle/page.js"
-    ],
-    "/super-admin/settings/inventory-rules/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/inventory-rules/page.js"
-    ],
-    "/super-admin/settings/security/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/security/page.js"
-    ],
-    "/super-admin/settings/backup/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/backup/page.js"
-    ],
-    "/super-admin/settings/theme/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/theme/page.js"
-    ],
-    "/super-admin/settings/pin/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/pin/page.js"
-    ],
-    "/super-admin/settings/subscription-rules/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/settings/subscription-rules/page.js"
-    ],
-    "/super-admin/master-data/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/master-data/page.js"
+      "static/chunks/app/super-admin/master-data/supplier-data/page.js"
     ],
     "/super-admin/master-data/[slug]/page": [
       "static/chunks/webpack.js",
@@ -101,10 +26,35 @@
       "static/chunks/main-app.js",
       "static/chunks/app/super-admin/master-data/product-category/page.js"
     ],
-    "/super-admin/master-data/supplier-data/page": [
+    "/super-admin/settings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/super-admin/master-data/supplier-data/page.js"
+      "static/chunks/app/super-admin/settings/page.js"
+    ],
+    "/super-admin/settings/inventory-rules/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/settings/inventory-rules/page.js"
+    ],
+    "/super-admin/master-data/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/master-data/page.js"
+    ],
+    "/super-admin/subscriptions/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/subscriptions/page.js"
+    ],
+    "/super-admin/dashboard/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/dashboard/page.js"
+    ],
+    "/super-admin/reports/purchase-report/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/reports/purchase-report/page.js"
     ]
   }
 }

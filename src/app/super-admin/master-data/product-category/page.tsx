@@ -1,42 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import { FiCheckCircle, FiFolderMinus, FiGrid, FiPauseCircle } from "react-icons/fi";
 
 const categoryStats = [
-  { label: "Total Category", value: "24", note: "All Category", accent: "indigo" as const },
-  { label: "Active Category", value: "20", note: "Active", accent: "green" as const },
-  { label: "Inactive Category", value: "3", note: "Temporary Close", accent: "amber" as const },
-  { label: "Cancel Category", value: "1", note: "Cancelled", accent: "red" as const },
+  { label: "Total Categories", value: "24", note: "All Categories", accent: "indigo" as const, icon: FiGrid },
+  { label: "Active Categories", value: "20", note: "Active Categories", accent: "green" as const, icon: FiCheckCircle },
+  { label: "Inactive Categories", value: "3", note: "Inactive Categories", accent: "amber" as const, icon: FiPauseCircle },
+  { label: "Empty Categories", value: "1", note: "No Products Assigned", accent: "red" as const, icon: FiFolderMinus },
 ];
 
 const categoryRows = [
-  { id: 1, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 2, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 3, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 4, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 5, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 6, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 7, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 8, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 9, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
-  { id: 10, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Inactive" },
-  { id: 11, name: "Health Support", description: "description", donors: "244", donation: "12,34,654", status: "Active" },
+  { id: 1, name: "Beverages", description: "Soft drinks, juices, and bottled water", products: "244", status: "Active", createdDate: "31 May 2024", updatedDate: "02 Jun 2024" },
+  { id: 2, name: "Snacks", description: "Chips, biscuits, and packaged snacks", products: "132", status: "Active", createdDate: "30 May 2024", updatedDate: "01 Jun 2024" },
+  { id: 3, name: "Dairy", description: "Milk, yogurt, butter, and cheese", products: "86", status: "Active", createdDate: "29 May 2024", updatedDate: "31 May 2024" },
+  { id: 4, name: "Frozen Foods", description: "Frozen meat, vegetables, and ready meals", products: "58", status: "Active", createdDate: "28 May 2024", updatedDate: "30 May 2024" },
+  { id: 5, name: "Personal Care", description: "Soap, shampoo, and hygiene essentials", products: "176", status: "Active", createdDate: "27 May 2024", updatedDate: "29 May 2024" },
+  { id: 6, name: "Household", description: "Cleaning supplies and home essentials", products: "121", status: "Active", createdDate: "26 May 2024", updatedDate: "28 May 2024" },
+  { id: 7, name: "Baby Care", description: "Baby food, diapers, and accessories", products: "74", status: "Active", createdDate: "25 May 2024", updatedDate: "27 May 2024" },
+  { id: 8, name: "Stationery", description: "Pens, notebooks, and office materials", products: "34", status: "Active", createdDate: "24 May 2024", updatedDate: "26 May 2024" },
+  { id: 9, name: "Pet Supplies", description: "Food, treats, and pet care products", products: "19", status: "Active", createdDate: "23 May 2024", updatedDate: "25 May 2024" },
+  { id: 10, name: "Seasonal Items", description: "Occasional and holiday-based products", products: "0", status: "Inactive", createdDate: "22 May 2024", updatedDate: "24 May 2024" },
+  { id: 11, name: "Bakery", description: "Bread, buns, and baked snacks", products: "63", status: "Active", createdDate: "21 May 2024", updatedDate: "23 May 2024" },
 ];
 
-function ProductCategoryStatIcon({ accent }: { accent: "indigo" | "green" | "amber" | "red" }) {
+function ProductCategoryStatIcon({
+  accent,
+  icon: Icon,
+}: {
+  accent: "indigo" | "green" | "amber" | "red";
+  icon: typeof FiGrid;
+}) {
   return (
     <span className={`master-category-stat-icon master-category-stat-icon-${accent}`} aria-hidden="true">
-      <svg viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path
-          d="m8.6 12.1 2.1 2.1 4.7-4.9"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <Icon />
     </span>
   );
 }
@@ -101,6 +98,9 @@ const iconColors = ["green", "blue", "orange", "violet", "pink", "sky", "amber",
 
 export default function ProductCategoryPage() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const editingCategory = categoryRows.find((row) => row.id === editingCategoryId) ?? null;
 
   return (
     <>
@@ -108,7 +108,7 @@ export default function ProductCategoryPage() {
         <div className="master-category-stats">
           {categoryStats.map((item) => (
             <article className="master-category-stat-card" key={item.label}>
-              <ProductCategoryStatIcon accent={item.accent} />
+              <ProductCategoryStatIcon accent={item.accent} icon={item.icon} />
               <div className="master-category-stat-copy">
                 <strong>{item.label}</strong>
                 <span>{item.value}</span>
@@ -121,11 +121,11 @@ export default function ProductCategoryPage() {
         <section className="master-category-table-card">
           <div className="master-category-toolbar">
             <label className="master-category-search">
-              <input type="text" placeholder="Search Supplier or Brand name..." />
+              <input type="text" placeholder="Search category name..." />
             </label>
 
-            <select className="master-category-select" defaultValue="All categories">
-              <option>All categories</option>
+            <select className="master-category-select" defaultValue="All Status">
+              <option>All Status</option>
             </select>
 
             <button type="button" className="master-category-outline-button">
@@ -139,7 +139,10 @@ export default function ProductCategoryPage() {
             <button
               type="button"
               className="master-category-primary-button"
-              onClick={() => setIsCategoryModalOpen(true)}
+              onClick={() => {
+                setEditingCategoryId(null);
+                setIsCategoryModalOpen(true);
+              }}
             >
               Add New Category +
             </button>
@@ -150,10 +153,10 @@ export default function ProductCategoryPage() {
               <span>#</span>
               <span>Category Name</span>
               <span>Description</span>
-              <span>Number of Donners</span>
-              <span>Total Donation</span>
+              <span>Products</span>
               <span>Status</span>
-              <span>Action</span>
+              <span>Created Date</span>
+              <span>Actions</span>
             </div>
 
             {categoryRows.map((row) => (
@@ -166,8 +169,7 @@ export default function ProductCategoryPage() {
                   <span>{row.name}</span>
                 </span>
                 <span>{row.description}</span>
-                <span>{row.donors}</span>
-                <span>{row.donation}</span>
+                <span>{row.products}</span>
                 <span>
                   <em
                     className={`master-category-status-badge${
@@ -177,13 +179,53 @@ export default function ProductCategoryPage() {
                     {row.status}
                   </em>
                 </span>
+                <span>{row.createdDate}</span>
                 <span className="master-category-actions">
-                  <button type="button" className="master-category-icon-button master-category-icon-button-edit">
+                  <button
+                    type="button"
+                    className="master-category-icon-button master-category-icon-button-edit"
+                    onClick={() => {
+                      setEditingCategoryId(row.id);
+                      setOpenActionMenuId(null);
+                      setIsCategoryModalOpen(true);
+                    }}
+                  >
                     <MasterCategoryActionIcon type="edit" />
                   </button>
-                  <button type="button" className="master-category-icon-button master-category-icon-button-more">
-                    <MasterCategoryActionIcon type="more" />
-                  </button>
+                  <span className="master-category-action-menu">
+                    <button
+                      type="button"
+                      className="master-category-icon-button master-category-icon-button-more"
+                      onClick={() =>
+                        setOpenActionMenuId((current) => (current === row.id ? null : row.id))
+                      }
+                      aria-haspopup="menu"
+                      aria-expanded={openActionMenuId === row.id}
+                    >
+                      <MasterCategoryActionIcon type="more" />
+                    </button>
+
+                    {openActionMenuId === row.id ? (
+                      <div className="master-category-action-dropdown" role="menu">
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          View Details
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          Duplicate Category
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          Archive Category
+                        </button>
+                        <button
+                          type="button"
+                          className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                          role="menuitem"
+                        >
+                          Delete Category
+                        </button>
+                      </div>
+                    ) : null}
+                  </span>
                 </span>
               </div>
             ))}
@@ -219,12 +261,15 @@ export default function ProductCategoryPage() {
           >
             <div className="payment-modal-header category-modal-header">
               <div>
-                <h3 id="category-modal-title">Add New Category</h3>
+                <h3 id="category-modal-title">{editingCategory ? "Edit Category" : "Add New Category"}</h3>
               </div>
               <button
                 type="button"
                 className="payment-modal-close"
-                onClick={() => setIsCategoryModalOpen(false)}
+                onClick={() => {
+                  setIsCategoryModalOpen(false);
+                  setEditingCategoryId(null);
+                }}
                 aria-label="Close modal"
               >
                 ×
@@ -234,16 +279,16 @@ export default function ProductCategoryPage() {
             <form className="category-modal-form">
               <label className="master-category-form-field">
                 <span>Category Name *</span>
-                <input type="text" placeholder="Write the category name" />
+                <input type="text" placeholder="Write the category name" defaultValue={editingCategory?.name ?? ""} />
               </label>
 
               <label className="master-category-form-field">
-                <span>Comment</span>
-                <textarea placeholder="Write your comment" />
+                <span>Description</span>
+                <textarea placeholder="Write category description" defaultValue={editingCategory?.description ?? ""} />
               </label>
 
               <div className="master-category-form-field">
-                <span>Select Icon *</span>
+                <span>Category Icon (Optional)</span>
                 <div className="master-category-icon-grid">
                   {iconColors.map((color, index) => (
                     <button
@@ -259,27 +304,37 @@ export default function ProductCategoryPage() {
 
               <label className="master-category-form-field">
                 <span>Status *</span>
-                <select defaultValue="Active">
+                <select defaultValue={editingCategory?.status ?? "Active"}>
                   <option>Active</option>
                   <option>Inactive</option>
                 </select>
               </label>
 
-              <label className="master-category-form-field">
-                <span>Sending Order *</span>
-                <input type="text" placeholder="Sending order" />
-                <small>Sending order</small>
-              </label>
+              {editingCategory ? (
+                <div className="category-modal-meta">
+                  <strong>Optional Read-Only Information</strong>
+                  <div className="category-modal-meta-grid">
+                    <span>Created: {editingCategory.createdDate}</span>
+                    <span>Last Updated: {editingCategory.updatedDate}</span>
+                    <span>Products: {editingCategory.products}</span>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="master-category-form-actions">
                 <button
                   type="button"
                   className="master-category-reset-button"
-                  onClick={() => setIsCategoryModalOpen(false)}
+                  onClick={() => {
+                    setIsCategoryModalOpen(false);
+                    setEditingCategoryId(null);
+                  }}
                 >
-                  Reset
+                  Cancel
                 </button>
-                <button type="button" className="master-category-save-button">Save Change</button>
+                <button type="button" className="master-category-save-button">
+                  {editingCategory ? "Update Category" : "Save Category"}
+                </button>
               </div>
             </form>
           </div>

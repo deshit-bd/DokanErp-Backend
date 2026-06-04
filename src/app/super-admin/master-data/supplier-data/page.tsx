@@ -3,10 +3,10 @@
 import { useState } from "react";
 
 const supplierStats = [
-  { label: "Total Suppler", value: "4516", note: "All Suppler", accent: "indigo" as const, type: "users" as const },
-  { label: "Active Suppler", value: "4500", note: "Active Suppler", accent: "green" as const, type: "check" as const },
-  { label: "Unused Suppler", value: "16", note: "All Unused Suppler", accent: "amber" as const, type: "close" as const },
-  { label: "Block Suppler", value: "12,684", note: "All Block", accent: "blue" as const, type: "shield" as const },
+  { label: "Total Suppliers", value: "4,516", note: "All Suppliers", accent: "indigo" as const, type: "users" as const },
+  { label: "Active Suppliers", value: "4,500", note: "Active Suppliers", accent: "green" as const, type: "check" as const },
+  { label: "Inactive Suppliers", value: "12", note: "All Inactive Suppliers", accent: "amber" as const, type: "close" as const },
+  { label: "Blocked Suppliers", value: "4", note: "All Blocked", accent: "blue" as const, type: "shield" as const },
 ];
 
 const supplierRows = Array.from({ length: 11 }, (_, index) => ({
@@ -168,6 +168,7 @@ function SupplierActionIcon({ type }: { type: "edit" | "more" }) {
 
 export default function SupplierDataPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openSupplierActionMenuId, setOpenSupplierActionMenuId] = useState<number | null>(null);
 
   return (
     <>
@@ -188,23 +189,22 @@ export default function SupplierDataPage() {
         <section className="master-category-table-card">
           <div className="master-category-toolbar supplier-data-toolbar">
             <label className="master-category-search">
-              <input type="text" placeholder="Search Supplier or Brand name..." />
+              <input type="text" placeholder="Search supplier name, code or store..." />
             </label>
 
-            <select className="master-category-select" defaultValue="All categories">
-              <option>All categories</option>
+            <select className="master-category-select" defaultValue="All Status">
+              <option>All Status</option>
+              <option>Active</option>
+              <option>Inactive</option>
+              <option>Blocked</option>
             </select>
 
             <button type="button" className="master-category-outline-button">
-              Filter
-            </button>
-
-            <button type="button" className="master-category-outline-button">
-              Refresh
+              Clear Filters
             </button>
 
             <button type="button" className="master-category-primary-button" onClick={() => setIsModalOpen(true)}>
-              Add New Suppler +
+              Add Supplier
             </button>
           </div>
 
@@ -237,9 +237,39 @@ export default function SupplierDataPage() {
                   <button type="button" className="master-category-icon-button master-category-icon-button-edit">
                     <SupplierActionIcon type="edit" />
                   </button>
-                  <button type="button" className="master-category-icon-button master-category-icon-button-more">
-                    <SupplierActionIcon type="more" />
-                  </button>
+                  <span className="master-category-action-menu">
+                    <button
+                      type="button"
+                      className="master-category-icon-button master-category-icon-button-more"
+                      onClick={() =>
+                        setOpenSupplierActionMenuId((current) => (current === row.id ? null : row.id))
+                      }
+                      aria-haspopup="menu"
+                      aria-expanded={openSupplierActionMenuId === row.id}
+                    >
+                      <SupplierActionIcon type="more" />
+                    </button>
+                    {openSupplierActionMenuId === row.id ? (
+                      <div className="master-category-action-dropdown" role="menu">
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          View Supplier
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          Supplier Transactions
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          Block Supplier
+                        </button>
+                        <button
+                          type="button"
+                          className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                          role="menuitem"
+                        >
+                          Delete Supplier
+                        </button>
+                      </div>
+                    ) : null}
+                  </span>
                 </span>
               </div>
             ))}
@@ -319,16 +349,17 @@ export default function SupplierDataPage() {
               </label>
 
               <label className="payment-modal-field">
-                <span>Condition</span>
+                <span>Status</span>
                 <select defaultValue="Active">
                   <option>Active</option>
                   <option>Inactive</option>
+                  <option>Blocked</option>
                 </select>
               </label>
 
               <label className="payment-modal-field payment-modal-field-full">
-                <span>Comment</span>
-                <textarea placeholder="Write your comment" />
+                <span>Notes</span>
+                <textarea placeholder="Write your notes" />
               </label>
 
               <div className="payment-modal-actions supplier-modal-actions">
