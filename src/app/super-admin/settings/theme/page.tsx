@@ -1,5 +1,5 @@
-import { ThemeSettingsSection } from "../settings-sections";
+import { redirect } from "next/navigation";
 
-export default function ThemeSettingsPage() {
-  return <ThemeSettingsSection heroLinkHref="/super-admin/settings/theme" />;
+export default function ThemeSettingsRedirectPage() {
+  redirect("/super-admin/settings/system-setting");
 }

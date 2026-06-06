@@ -146,10 +146,28 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/super-admin/reports/profit-loss-report/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/reports/profit-loss-report">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/reports/profit-loss-report/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/super-admin/reports/purchase-report/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/super-admin/reports/purchase-report">> = Specific
   const handler = {} as typeof import("../../src/app/super-admin/reports/purchase-report/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/super-admin/reports/sales-report/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/reports/sales-report">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/reports/sales-report/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -290,6 +308,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/super-admin/settings/system-setting/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/settings/system-setting">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/settings/system-setting/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/super-admin/settings/tax-vat/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/super-admin/settings/tax-vat">> = Specific
@@ -308,10 +335,55 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/super-admin/shop-management/accounts/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/shop-management/accounts">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/shop-management/accounts/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/super-admin/shop-management/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/shop-management">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/shop-management/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/super-admin/shop-management/shops/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/shop-management/shops">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/shop-management/shops/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/super-admin/shop-management/subscriptions/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/shop-management/subscriptions">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/shop-management/subscriptions/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/super-admin/subscriptions/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/super-admin/subscriptions">> = Specific
   const handler = {} as typeof import("../../src/app/super-admin/subscriptions/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/super-admin/users/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/super-admin/users">> = Specific
+  const handler = {} as typeof import("../../src/app/super-admin/users/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

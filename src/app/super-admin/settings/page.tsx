@@ -65,11 +65,11 @@ const settingGroups = [
     href: "/super-admin/settings/backup",
   },
   {
-    title: "Theme Settings",
+    title: "System Setting",
     description: "Change everything here, from colors to fonts and logos, to your liking.",
     accent: "yellow",
     icon: "brush",
-    href: "/super-admin/settings/theme",
+    href: "/super-admin/settings/system-setting",
   },
   {
     title: "Pin Settings",
@@ -77,13 +77,6 @@ const settingGroups = [
     accent: "lime",
     icon: "lock",
     href: "/super-admin/settings/pin",
-  },
-  {
-    title: "Branding Settings",
-    description: "Set logo, primary color, theme & custom domain branding options.",
-    accent: "brown",
-    icon: "tag",
-    href: "/super-admin/settings/branding",
   },
   {
     title: "Subscription Rule Settings",
@@ -98,13 +91,6 @@ const settingGroups = [
     accent: "teal",
     icon: "users",
     href: "/super-admin/settings/roles-permissions",
-  },
-  {
-    title: "System Language Settings",
-    description: "Configure default system language & multi-language support options.",
-    accent: "emerald",
-    icon: "globe",
-    href: "/super-admin/settings/language",
   },
   {
     title: "Tax & VAT Settings",

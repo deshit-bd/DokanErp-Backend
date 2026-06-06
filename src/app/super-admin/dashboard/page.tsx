@@ -1,39 +1,45 @@
 const stats = [
   {
-    label: "Total Shop",
-    value: "120",
-    sublabel: "All Brand",
+    label: "Total Shops",
+    value: "1,254",
+    sublabel: "All registered shops",
     accent: "indigo",
     icon: "shop",
   },
   {
-    label: "Total User",
-    value: "14544",
-    sublabel: "Total Brand",
+    label: "Active Users",
+    value: "11,624",
+    sublabel: "Currently active accounts",
     accent: "green",
-    icon: "check",
+    icon: "users",
   },
   {
-    label: "Total Product",
-    value: "112",
-    sublabel: "Total Brand",
+    label: "Total Sales",
+    value: "৳12.5M",
+    sublabel: "Gross sales this period",
     accent: "green",
-    icon: "check",
+    icon: "coin",
   },
   {
-    label: "Todays Sale",
-    value: "$7524",
-    sublabel: "Total Brand",
+    label: "Total Purchases",
+    value: "৳8.2M",
+    sublabel: "Total purchase volume",
     accent: "orange",
-    icon: "close",
+    icon: "receipt",
   },
   {
-    label: "Revenue",
-    meta: "(This Month)",
-    value: "$223",
-    sublabel: "Total Brand",
+    label: "Subscription Revenue",
+    value: "৳124,300",
+    sublabel: "Billable account income",
     accent: "red",
     icon: "alert",
+  },
+  {
+    label: "Active Plans",
+    value: "328",
+    sublabel: "Running subscriptions",
+    accent: "green",
+    icon: "card",
   },
 ];
 
@@ -48,13 +54,9 @@ const timelineLabels = [
 ];
 
 const categoryBreakdown = [
-  { label: "Food", value: "2,456 (36.9%)", accent: "green" },
-  { label: "Drinks", value: "1,456 (36.9%)", accent: "blue" },
-  { label: "Household products", value: "2,456 (36.9%)", accent: "pink" },
-  { label: "Fast Food", value: "2,456 (36.9%)", accent: "violet" },
-  { label: "Baby Product", value: "2,456 (36.9%)", accent: "yellow" },
-  { label: "Dry Food", value: "2,456 (36.9%)", accent: "gray" },
-  { label: "Others", value: "2,456 (36.9%)", accent: "sky" },
+  { label: "Food", value: "৳4.6M", accent: "green" },
+  { label: "Drinks", value: "৳2.9M", accent: "blue" },
+  { label: "Household", value: "৳2.1M", accent: "violet" },
 ];
 
 const recentShops = [
@@ -73,11 +75,12 @@ const recentActivities = [
   { id: "activity-user-2", title: "Create a user account", location: "Dhaka, Bangladesh", date: "30 may, 2024", accent: "pink", icon: "userplus" },
 ];
 
-const systemStatus = [
-  { title: "Server Status", location: "Dhaka, Bangladesh", status: "Active", accent: "green", icon: "trend" },
-  { title: "Database Status", location: "Dhaka, Bangladesh", status: "Active", accent: "orange", icon: "coin" },
-  { title: "Rahman Store", location: "Dhaka, Bangladesh", status: "Success will(10:AM)", accent: "red", icon: "mute" },
-  { title: "Rahman Store", location: "Dhaka, Bangladesh", status: "Active", accent: "orange", icon: "messagebox" },
+const systemHealth = [
+  { title: "Server", detail: "Application and API services", status: "Healthy", accent: "green", icon: "trend" },
+  { title: "Database", detail: "Primary cluster responding", status: "Healthy", accent: "green", icon: "coin" },
+  { title: "Storage", detail: "321.6GB of 1TB used", status: "32%", accent: "violet", icon: "note" },
+  { title: "Queue", detail: "Jobs processing normally", status: "Healthy", accent: "blue", icon: "messagebox" },
+  { title: "Backup", detail: "Last run: Today 02:30 AM", status: "Completed", accent: "green", icon: "check" },
 ];
 
 function DashboardStatIcon({ type }: { type: string }) {
@@ -106,6 +109,30 @@ function DashboardStatIcon({ type }: { type: string }) {
           <path {...commonProps} d="m8.5 12 2.3 2.3 4.7-4.8" />
         </svg>
       );
+    case "users":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path {...commonProps} d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+          <path {...commonProps} d="M15.5 10a2.5 2.5 0 1 0 0-5" />
+          <path {...commonProps} d="M4.5 19a4.5 4.5 0 0 1 9 0" />
+          <path {...commonProps} d="M14 17a3.5 3.5 0 0 1 5.5-2.8" />
+        </svg>
+      );
+    case "coin":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <circle {...commonProps} cx="12" cy="12" r="7.5" />
+          <path {...commonProps} d="M10 9.5h3a1.5 1.5 0 1 1 0 3h-2a1.5 1.5 0 1 0 0 3h3" />
+        </svg>
+      );
+    case "receipt":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path {...commonProps} d="M8 4.5h8l3 3V19l-2-1.5L15 19l-2-1.5L11 19 9 17.5 7 19V4.5Z" />
+          <path {...commonProps} d="M9 10h6" />
+          <path {...commonProps} d="M9 13.5h6" />
+        </svg>
+      );
     case "close":
       return (
         <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -119,6 +146,15 @@ function DashboardStatIcon({ type }: { type: string }) {
           <path {...commonProps} d="M12 3.5 19 8v8l-7 4.5L5 16V8l7-4.5Z" />
           <path {...commonProps} d="M12 8v5" />
           <path {...commonProps} d="M12 16h.01" />
+        </svg>
+      );
+    case "card":
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <rect {...commonProps} x="4" y="3.5" width="16" height="17" rx="2.5" />
+          <path {...commonProps} d="M8 8.5h8" />
+          <path {...commonProps} d="M8 12h8" />
+          <path {...commonProps} d="M8 15.5h5" />
         </svg>
       );
     default:
@@ -207,7 +243,7 @@ function DashboardListIcon({ type }: { type: string }) {
 export default function SuperAdminDashboardPage() {
   return (
     <section className="admin-dashboard">
-      <div className="admin-dashboard-stats">
+      <div className="admin-dashboard-stats super-admin-dashboard-stats">
         {stats.map((stat) => (
           <article className="admin-stat-card" key={stat.label}>
             <div className={`admin-stat-icon admin-stat-icon-${stat.accent}`}>
@@ -216,7 +252,6 @@ export default function SuperAdminDashboardPage() {
             <div className="admin-stat-content">
               <div className="admin-stat-heading">
                 <span>{stat.label}</span>
-                {stat.meta ? <small>{stat.meta}</small> : null}
               </div>
               <strong>{stat.value}</strong>
               <p>{stat.sublabel}</p>
@@ -228,20 +263,18 @@ export default function SuperAdminDashboardPage() {
       <div className="admin-dashboard-analytics">
         <section className="admin-analytics-card admin-analytics-card-wide">
           <div className="admin-analytics-header">
-            <h2>Sale and Revenue</h2>
-            <div className="admin-analytics-legend">
-              <span className="admin-legend-item">
-                <i className="admin-legend-dot admin-legend-dot-green" />
-                Sales
-              </span>
-              <span className="admin-legend-item">
-                <i className="admin-legend-dot admin-legend-dot-blue" />
-                Order
-              </span>
-              <button className="admin-filter-chip" type="button">
-                Daily
-                <span className="admin-filter-caret">⌄</span>
-              </button>
+            <div className="admin-analytics-copy">
+              <h2>Sales Trend</h2>
+              <div className="admin-analytics-legend">
+                <span className="admin-legend-item">
+                  <i className="admin-legend-dot admin-legend-dot-green" />
+                  Sales
+                </span>
+                <span className="admin-legend-item">
+                  <i className="admin-legend-dot admin-legend-dot-blue" />
+                  Orders
+                </span>
+              </div>
             </div>
           </div>
 
@@ -306,34 +339,32 @@ export default function SuperAdminDashboardPage() {
             </div>
           </div>
 
-          <div className="admin-chart-summary">
-            <article className="admin-summary-card">
-              <span>Total Sale</span>
-              <strong>$5468468</strong>
-              <div className="admin-summary-meta">
-                <small>Last Month: $1235465</small>
-                <em>↑ 24%</em>
-              </div>
+          <div className="admin-chart-metrics">
+            <article className="admin-chart-metric">
+              <span>Total Sales</span>
+              <strong>৳12.5M</strong>
             </article>
-            <article className="admin-summary-card">
-              <span>Total Order</span>
-              <strong>$5468468</strong>
-              <div className="admin-summary-meta">
-                <small>Last Month: $1235465</small>
-                <em>↑ 20.4%</em>
-              </div>
+            <article className="admin-chart-metric">
+              <span>Orders</span>
+              <strong>45,231</strong>
+            </article>
+            <article className="admin-chart-metric">
+              <span>Avg Order</span>
+              <strong>৳275</strong>
             </article>
           </div>
         </section>
 
         <section className="admin-analytics-card admin-analytics-card-side">
           <div className="admin-analytics-header">
-            <h2>Sale and Revenue</h2>
+            <div className="admin-analytics-copy">
+              <h2>Sales By Category</h2>
+            </div>
           </div>
 
           <div className="admin-donut-layout">
             <div className="admin-donut-legend">
-              {categoryBreakdown.slice(0, 4).map((item) => (
+              {categoryBreakdown.map((item) => (
                 <div className="admin-donut-legend-item" key={item.label}>
                   <i className={`admin-legend-dot admin-legend-dot-${item.accent}`} />
                   <div>
@@ -347,28 +378,23 @@ export default function SuperAdminDashboardPage() {
             <div className="admin-donut-chart">
               <div className="admin-donut-ring">
                 <div className="admin-donut-center">
-                  <span>Total Product</span>
-                  <strong>2,124</strong>
+                  <span>Total Category Sales</span>
+                  <strong>৳9.6M</strong>
                 </div>
               </div>
             </div>
-
-            <div className="admin-donut-legend">
-              {categoryBreakdown.slice(4).map((item) => (
-                <div className="admin-donut-legend-item" key={item.label}>
-                  <i className={`admin-legend-dot admin-legend-dot-${item.accent}`} />
-                  <div>
-                    <strong>{item.label}</strong>
-                    <span>{item.value}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
-          <button className="admin-details-button" type="button">
-            See Details <span>→</span>
-          </button>
+          <div className="admin-category-summary">
+            <article className="admin-category-summary-item">
+              <span>Total Category Sales</span>
+              <strong>৳9.6M</strong>
+            </article>
+            <article className="admin-category-summary-item">
+              <span>Top Category</span>
+              <strong>Food</strong>
+            </article>
+          </div>
         </section>
       </div>
 
@@ -430,39 +456,24 @@ export default function SuperAdminDashboardPage() {
 
         <section className="admin-list-card">
           <div className="admin-list-header">
-            <h2>Recently Added Shop</h2>
+            <h2>System Health</h2>
           </div>
 
           <div className="admin-list-body">
-            {systemStatus.map((item) => (
+            {systemHealth.map((item) => (
               <article className="admin-list-item" key={`${item.title}-${item.status}-${item.icon}`}>
                 <div className={`admin-list-icon admin-list-icon-${item.accent}`}>
                   <DashboardListIcon type={item.icon} />
                 </div>
                 <div className="admin-list-copy">
                   <strong>{item.title}</strong>
-                  <span>{item.location}</span>
+                  <span>{item.detail}</span>
                 </div>
                 <div className="admin-list-meta">
-                  <em>{item.status}</em>
+                  <em className={`admin-list-status admin-list-status-${item.accent}`}>{item.status}</em>
                 </div>
               </article>
             ))}
-
-            <div className="admin-storage-card">
-              <div className="admin-list-item admin-list-item-storage">
-                <div className="admin-list-icon admin-list-icon-violet">
-                  <DashboardListIcon type="note" />
-                </div>
-                <div className="admin-list-copy">
-                  <strong>Total Storage Used</strong>
-                </div>
-                <div className="admin-storage-meta">321.6GB / 1TB (32%)</div>
-              </div>
-              <div className="admin-storage-bar">
-                <span />
-              </div>
-            </div>
           </div>
 
           <button className="admin-details-button" type="button">

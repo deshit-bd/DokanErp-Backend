@@ -3667,7 +3667,7 @@ export function ThemeSettingsSection({
         </div>
 
         <div className="theme-settings-hero-copy">
-          <h2>Theme setting</h2>
+          <h2>System setting</h2>
           <p>Change everything here, from colors to fonts and logos, to your liking.</p>
           <SectionAnchorAction href={heroLinkHref} label="Configure Settings" />
         </div>
@@ -3700,13 +3700,32 @@ export function ThemeSettingsSection({
 
             <article className="theme-config-row">
               <div className="theme-config-row-copy">
-                <strong>Font Family</strong>
+                <strong>Font Customize</strong>
                 <span>Select the default font family used across your interface.</span>
               </div>
 
               <label className="theme-config-select">
                 <select defaultValue="DM Sans">
                   <option>DM Sans</option>
+                  <option>Inter</option>
+                  <option>Poppins</option>
+                  <option>Nunito Sans</option>
+                </select>
+              </label>
+            </article>
+
+            <article className="theme-config-row">
+              <div className="theme-config-row-copy">
+                <strong>Language Customize</strong>
+                <span>Choose the default language shown across the admin interface.</span>
+              </div>
+
+              <label className="theme-config-select">
+                <select defaultValue="English">
+                  <option>English</option>
+                  <option>Bangla</option>
+                  <option>Arabic</option>
+                  <option>Hindi</option>
                 </select>
               </label>
             </article>
@@ -3774,31 +3793,77 @@ export function ThemeSettingsSection({
           </div>
 
           <div className="theme-preview-shell">
-            <div className="theme-preview-toolbar">
-              <button type="button" className="theme-preview-toolbar-button">
-                <ThemePreviewIcon type="export" />
-                Export
-              </button>
-              <button type="button" className="theme-preview-toolbar-button theme-preview-toolbar-button-primary">
-                Add New Product
-                <ThemePreviewIcon type="plus" />
-              </button>
-            </div>
+            <div className="theme-preview-stack">
+              <section className="theme-preview-section">
+                <div className="theme-preview-section-header">Sidebar Preview</div>
+                <div className="theme-preview-sidebar">
+                  <div className="theme-preview-sidebar-brand">MUDI ERP</div>
+                  <div className="theme-preview-sidebar-item theme-preview-sidebar-item-active">Dashboard</div>
+                  <div className="theme-preview-sidebar-item">Reports &amp; Analytics</div>
+                  <div className="theme-preview-sidebar-item">Setting</div>
+                </div>
+              </section>
 
-            <div className="theme-preview-stats">
-              {themePreviewStats.map((item) => (
-                <article className="theme-preview-stat-card" key={item.id}>
-                  <div className={`theme-preview-stat-icon theme-preview-stat-icon-${item.accent}`}>
-                    <ThemePreviewIcon type={item.icon} />
-                  </div>
+              <section className="theme-preview-section">
+                <div className="theme-preview-section-header">KPI Cards Preview</div>
+                <div className="theme-preview-kpi-grid">
+                  {themePreviewStats.slice(0, 4).map((item) => (
+                    <article className="theme-preview-kpi-card" key={item.id}>
+                      <div className={`theme-preview-stat-icon theme-preview-stat-icon-${item.accent}`}>
+                        <ThemePreviewIcon type={item.icon} />
+                      </div>
+                      <div className="theme-preview-stat-copy">
+                        <span>{item.title}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
 
-                  <div className="theme-preview-stat-copy">
-                    <span>{item.title}</span>
-                    <strong>{item.value}</strong>
-                    <small>{item.note}</small>
+              <section className="theme-preview-section">
+                <div className="theme-preview-section-header">Button Preview</div>
+                <div className="theme-preview-button-row">
+                  <button type="button" className="theme-preview-toolbar-button">
+                    <ThemePreviewIcon type="export" />
+                    Export
+                  </button>
+                  <button type="button" className="theme-preview-toolbar-button theme-preview-toolbar-button-primary">
+                    Add New Product
+                    <ThemePreviewIcon type="plus" />
+                  </button>
+                </div>
+              </section>
+
+              <section className="theme-preview-section">
+                <div className="theme-preview-section-header">Badge Preview</div>
+                <div className="theme-preview-badge-row">
+                  <span className="theme-preview-badge theme-preview-badge-success">Active</span>
+                  <span className="theme-preview-badge theme-preview-badge-warning">Pending</span>
+                  <span className="theme-preview-badge theme-preview-badge-danger">Inactive</span>
+                </div>
+              </section>
+
+              <section className="theme-preview-section">
+                <div className="theme-preview-section-header">Table Preview</div>
+                <div className="theme-preview-table">
+                  <div className="theme-preview-table-head">
+                    <span>Product</span>
+                    <span>Status</span>
+                    <span>Action</span>
                   </div>
-                </article>
-              ))}
+                  <div className="theme-preview-table-row">
+                    <span>Miniket Rice 25KG</span>
+                    <span className="theme-preview-table-status">Active</span>
+                    <span>Edit</span>
+                  </div>
+                  <div className="theme-preview-table-row">
+                    <span>Soybean Oil 5L</span>
+                    <span className="theme-preview-table-status">Pending</span>
+                    <span>View</span>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
         </section>

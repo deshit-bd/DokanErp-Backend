@@ -1,8 +1,7 @@
 {
-  "/super-admin/master-data/[slug]/page": "app/super-admin/master-data/[slug]/page.js",
-  "/super-admin/master-data/page": "app/super-admin/master-data/page.js",
-  "/super-admin/subscriptions/page": "app/super-admin/subscriptions/page.js",
-  "/super-admin/master-data/product-category/page": "app/super-admin/master-data/product-category/page.js",
-  "/super-admin/dashboard/page": "app/super-admin/dashboard/page.js",
-  "/super-admin/reports/purchase-report/page": "app/super-admin/reports/purchase-report/page.js"
+  "/super-admin/users/page": "app/super-admin/users/page.js",
+  "/super-admin/shop-management/shops/page": "app/super-admin/shop-management/shops/page.js",
+  "/super-admin/shop-management/accounts/page": "app/super-admin/shop-management/accounts/page.js",
+  "/super-admin/shop-management/subscriptions/page": "app/super-admin/shop-management/subscriptions/page.js",
+  "/super-admin/subscriptions/page": "app/super-admin/subscriptions/page.js"
 }

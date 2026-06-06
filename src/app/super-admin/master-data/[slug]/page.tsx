@@ -921,7 +921,7 @@ function ProductCatalogControlIcon({ type }: { type: "search" | "filter" | "rese
   return <MoneyBoxToolbarIcon type="search" />;
 }
 
-function ProductCatalogRowIcon({ type }: { type: "sugar" | "oil" }) {
+function ProductCatalogRowIcon({ type }: { type: string }) {
   if (type === "oil") {
     return (
       <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -1481,6 +1481,7 @@ export default function MasterDataSubmodulePage({
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   const [openBarcodeActionMenuId, setOpenBarcodeActionMenuId] = useState<number | null>(null);
   const [openMoneyBoxActionMenuId, setOpenMoneyBoxActionMenuId] = useState<number | null>(null);
+  const [openProductCatalogActionMenuId, setOpenProductCatalogActionMenuId] = useState<number | null>(null);
   const [openProductTemplateActionMenuId, setOpenProductTemplateActionMenuId] = useState<number | null>(null);
   const [openImportActionMenuId, setOpenImportActionMenuId] = useState<number | null>(null);
   const [openExportActionMenuId, setOpenExportActionMenuId] = useState<number | null>(null);
@@ -2847,9 +2848,51 @@ export default function MasterDataSubmodulePage({
                   <button type="button" className="master-category-icon-button master-category-icon-button-edit">
                     <MoneyBoxActionIcon type="edit" />
                   </button>
-                  <button type="button" className="master-category-icon-button product-catalog-icon-button-more">
-                    <ProductCatalogControlIcon type="more" />
-                  </button>
+                  <span className="master-category-action-menu">
+                    <button
+                      type="button"
+                      className="master-category-icon-button product-catalog-icon-button-more"
+                      onClick={() => setOpenProductCatalogActionMenuId((current) => (current === row.id ? null : row.id))}
+                      aria-haspopup="menu"
+                      aria-expanded={openProductCatalogActionMenuId === row.id}
+                      aria-label="More"
+                    >
+                      <ProductCatalogControlIcon type="more" />
+                    </button>
+
+                    {openProductCatalogActionMenuId === row.id ? (
+                      <div className="master-category-action-dropdown" role="menu">
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          <FiEye />
+                          <span>View Details</span>
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          <FiFileText />
+                          <span>View Usage</span>
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          <FiRefreshCw />
+                          <span>Duplicate</span>
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          <FiPackage />
+                          <span>Merge Product</span>
+                        </button>
+                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                          <LuArchive />
+                          <span>Archive</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                          role="menuitem"
+                        >
+                          <FiTrash2 />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </span>
                 </span>
               </div>
             ))}

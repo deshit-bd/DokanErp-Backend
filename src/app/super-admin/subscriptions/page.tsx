@@ -219,16 +219,6 @@ export default function SubscriptionsPage() {
 
         {activeView === "plans" ? (
           <>
-            <div className="subscription-plan-toolbar">
-              <button
-                type="button"
-                className="subscription-table-outline-button subscription-plan-add-button"
-                onClick={() => setIsPlanModalOpen(true)}
-              >
-                Add New Plan
-              </button>
-            </div>
-
             <div className="subscription-pricing-grid">
               {subscriptionPlanCards.map((plan) => (
                 <article

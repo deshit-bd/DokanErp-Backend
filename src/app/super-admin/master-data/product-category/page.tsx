@@ -100,7 +100,9 @@ export default function ProductCategoryPage() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const editingCategory = categoryRows.find((row) => row.id === editingCategoryId) ?? null;
+  const selectedCategory = categoryRows.find((row) => row.id === selectedCategoryId) ?? null;
 
   return (
     <>
@@ -207,7 +209,15 @@ export default function ProductCategoryPage() {
 
                     {openActionMenuId === row.id ? (
                       <div className="master-category-action-dropdown" role="menu">
-                        <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                        <button
+                          type="button"
+                          className="master-category-action-dropdown-item"
+                          role="menuitem"
+                          onClick={() => {
+                            setSelectedCategoryId(row.id);
+                            setOpenActionMenuId(null);
+                          }}
+                        >
                           View Details
                         </button>
                         <button type="button" className="master-category-action-dropdown-item" role="menuitem">
@@ -339,6 +349,83 @@ export default function ProductCategoryPage() {
             </form>
           </div>
         </div>
+      ) : null}
+
+      {selectedCategory ? (
+        <>
+          <button
+            type="button"
+            className="master-category-details-backdrop"
+            onClick={() => {
+              setSelectedCategoryId(null);
+              setOpenActionMenuId(null);
+            }}
+            aria-label="Close category details"
+          />
+          <aside
+            className="master-category-details-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-details-title"
+          >
+            <div className="master-category-details-header">
+              <div>
+                <span className="master-category-details-eyebrow">Category Details</span>
+                <h3 id="category-details-title">{selectedCategory.name}</h3>
+              </div>
+              <button
+                type="button"
+                className="master-category-details-close"
+                onClick={() => setSelectedCategoryId(null)}
+                aria-label="Close category details"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="master-category-details-body">
+              <div className="master-category-details-card">
+                <span className="master-category-details-label">Category Name</span>
+                <strong>{selectedCategory.name}</strong>
+              </div>
+
+              <div className="master-category-details-card">
+                <span className="master-category-details-label">Description</span>
+                <p>{selectedCategory.description}</p>
+              </div>
+
+              <div className="master-category-details-grid">
+                <div className="master-category-details-card">
+                  <span className="master-category-details-label">Total Products</span>
+                  <strong>{selectedCategory.products}</strong>
+                </div>
+
+                <div className="master-category-details-card">
+                  <span className="master-category-details-label">Status</span>
+                  <em
+                    className={`master-category-status-badge${
+                      selectedCategory.status === "Inactive" ? " master-category-status-badge-inactive" : ""
+                    }`}
+                  >
+                    {selectedCategory.status}
+                  </em>
+                </div>
+              </div>
+
+              <div className="master-category-details-grid">
+                <div className="master-category-details-card">
+                  <span className="master-category-details-label">Created Date</span>
+                  <strong>{selectedCategory.createdDate}</strong>
+                </div>
+
+                <div className="master-category-details-card">
+                  <span className="master-category-details-label">Updated Date</span>
+                  <strong>{selectedCategory.updatedDate}</strong>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </>
       ) : null}
     </>
   );
