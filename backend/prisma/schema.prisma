@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PlatformRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum AppType {
+  WEB
+  MOBILE
+}
+
+enum ShopStatus {
+  ACTIVE
+  SUSPENDED
+  GRACE
+  BLOCKED
+}
+
+enum ShopRole {
+  SHOP_OWNER
+  SALESMAN
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum CategoryLogAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  ARCHIVED
+  RESTORED
+  DELETE_BLOCKED
+}
+
+enum MasterProductStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum BrandStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum UnitStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum UnitType {
+  COUNTABLE
+  WEIGHT
+  VOLUME
+  PACKAGING
+  LENGTH
+  AREA
+}
+
+model User {
+  id              String         @id @default(cuid())
+  name            String         @db.VarChar(120)
+  phone           String?        @unique @db.VarChar(30)
+  email           String?        @unique @db.VarChar(150)
+  profileImageUrl String?        @map("profile_image_url")
+  passwordHash    String         @map("password_hash")
+  status          UserStatus     @default(ACTIVE)
+  lastLoginAt     DateTime?      @map("last_login_at")
+  createdByUserId String?        @map("created_by_user_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  createdBy       User?          @relation("UserCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdUsers    User[]         @relation("UserCreator")
+  platformUser    PlatformUser?
+  ownedShops      Shop[]         @relation("ShopOwner")
+  shopUsers       ShopUser[]
+  refreshTokens   RefreshToken[]
+  categoriesCreated ProductCategory[] @relation("CategoryCreatedBy")
+  categoriesUpdated ProductCategory[] @relation("CategoryUpdatedBy")
+  categoryLogsPerformed CategoryLog[] @relation("CategoryLogPerformedBy")
+  masterProductsCreated MasterProduct[] @relation("MasterProductCreatedBy")
+  masterProductsUpdated MasterProduct[] @relation("MasterProductUpdatedBy")
+  brandsCreated     Brand[]        @relation("BrandCreatedBy")
+  brandsUpdated     Brand[]        @relation("BrandUpdatedBy")
+
+  @@map("users")
+}
+
+model PlatformUser {
+  id        String       @id @default(cuid())
+  userId    String       @unique @map("user_id")
+  role      PlatformRole
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("platform_users")
+}
+
+model Shop {
+  id          String      @id @default(cuid())
+  shopName    String      @map("shop_name") @db.VarChar(150)
+  ownerUserId String?     @map("owner_user_id")
+  phone       String?     @db.VarChar(30)
+  email       String?     @db.VarChar(150)
+  address     String?
+  district    String?     @db.VarChar(100)
+  status      ShopStatus  @default(ACTIVE)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  owner       User?       @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  shopUsers   ShopUser[]
+
+  @@map("shops")
+}
+
+model ShopUser {
+  id             String    @id @default(cuid())
+  shopId         String    @map("shop_id")
+  userId         String    @map("user_id")
+  role           ShopRole  @default(SALESMAN)
+  isBillable     Boolean   @default(true) @map("is_billable")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  shop           Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, userId])
+  @@index([shopId, role])
+  @@map("shop_users")
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
+  family       String
+  appType      AppType   @map("app_type")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, family])
+  @@index([family])
+  @@map("refresh_tokens")
+}
+
+model ProductCategory {
+  id              String         @id @default(cuid())
+  name            String         @unique @db.VarChar(120)
+  description     String?
+  status          CategoryStatus @default(ACTIVE)
+  createdByUserId String?        @map("created_by")
+  updatedByUserId String?        @map("updated_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  createdBy       User?          @relation("CategoryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?          @relation("CategoryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  masterProducts  MasterProduct[]
+  logs            CategoryLog[]
+
+  @@index([status])
+  @@map("product_categories")
+}
+
+model MasterProduct {
+  id              String              @id @default(cuid())
+  sku             String              @unique @db.VarChar(60)
+  name            String              @db.VarChar(160)
+  description     String?
+  categoryId      String?             @map("category_id")
+  brandId         String?             @map("brand_id")
+  unitId          String?             @map("unit_id")
+  barcode         String?             @unique @db.VarChar(80)
+  price           Float?              @map("price")
+  suggestedPrice  Float?              @map("suggested_price")
+  packageSize     String?             @map("package_size") @db.VarChar(80)
+  pictureUrl      String?             @map("picture_url")
+  status          MasterProductStatus @default(ACTIVE)
+  createdByUserId String?             @map("created_by")
+  updatedByUserId String?             @map("updated_by")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  category        ProductCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand           Brand?              @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  unit            Unit?               @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  createdBy       User?               @relation("MasterProductCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?               @relation("MasterProductUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([unitId])
+  @@index([status])
+  @@map("master_products")
+}
+
+model Brand {
+  id              String       @id @default(cuid())
+  name            String       @unique @db.VarChar(120)
+  description     String?
+  logoUrl         String?      @map("logo_url")
+  status          BrandStatus  @default(ACTIVE)
+  createdByUserId String?      @map("created_by")
+  updatedByUserId String?      @map("updated_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  masterProducts  MasterProduct[]
+  createdBy       User?        @relation("BrandCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?        @relation("BrandUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("brands")
+}
+
+model Unit {
+  id          String     @id @default(cuid())
+  name        String     @unique @db.VarChar(120)
+  shortName   String     @unique @map("short_name") @db.VarChar(40)
+  type        UnitType
+  description String?
+  status      UnitStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  masterProducts MasterProduct[]
+
+  @@index([status])
+  @@index([type])
+  @@map("units")
+}
+
+model CategoryLog {
+  id            String            @id @default(cuid())
+  categoryId    String            @map("category_id")
+  action        CategoryLogAction
+  oldData       Json?             @map("old_data")
+  newData       Json?             @map("new_data")
+  performedById String?           @map("performed_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  category      ProductCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  performedBy   User?             @relation("CategoryLogPerformedBy", fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([categoryId, createdAt])
+  @@map("category_logs")
+}

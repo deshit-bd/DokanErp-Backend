@@ -1,7 +1,0 @@
-{
-  "/super-admin/users/page": "app/super-admin/users/page.js",
-  "/super-admin/shop-management/shops/page": "app/super-admin/shop-management/shops/page.js",
-  "/super-admin/shop-management/accounts/page": "app/super-admin/shop-management/accounts/page.js",
-  "/super-admin/shop-management/subscriptions/page": "app/super-admin/shop-management/subscriptions/page.js",
-  "/super-admin/subscriptions/page": "app/super-admin/subscriptions/page.js"
-}
