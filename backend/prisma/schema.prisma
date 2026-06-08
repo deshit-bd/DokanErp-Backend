@@ -77,6 +77,76 @@ enum UnitType {
   AREA
 }
 
+enum BarcodeStatus {
+  MAPPED
+  UNMAPPED
+  ARCHIVED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  GRACE
+  SUSPENDED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum ProductTemplateStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum MoneyBoxType {
+  CASH
+  BKASH
+  NAGAD
+}
+
+enum MoneyBoxStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BankAccountType {
+  CURRENT
+  SAVINGS
+}
+
+enum BankAccountStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SupplierLedgerEntryType {
+  OPENING_DUE
+  PURCHASE
+  PAYMENT
+  ADJUSTMENT
+}
+
 model User {
   id              String         @id @default(cuid())
   name            String         @db.VarChar(120)
@@ -103,6 +173,8 @@ model User {
   masterProductsUpdated MasterProduct[] @relation("MasterProductUpdatedBy")
   brandsCreated     Brand[]        @relation("BrandCreatedBy")
   brandsUpdated     Brand[]        @relation("BrandUpdatedBy")
+  barcodesCreated   MasterProductBarcode[] @relation("BarcodeCreatedBy")
+  barcodesUpdated   MasterProductBarcode[] @relation("BarcodeUpdatedBy")
 
   @@map("users")
 }
@@ -120,19 +192,38 @@ model PlatformUser {
 }
 
 model Shop {
-  id          String      @id @default(cuid())
-  shopName    String      @map("shop_name") @db.VarChar(150)
-  ownerUserId String?     @map("owner_user_id")
-  phone       String?     @db.VarChar(30)
-  email       String?     @db.VarChar(150)
-  address     String?
-  district    String?     @db.VarChar(100)
-  status      ShopStatus  @default(ACTIVE)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id              String      @id @default(cuid())
+  shopName        String      @map("shop_name") @db.VarChar(150)
+  ownerUserId     String?     @map("owner_user_id")
+  phone           String?     @db.VarChar(30)
+  email           String?     @db.VarChar(150)
+  businessType    String?     @map("business_type") @db.VarChar(80)
+  logoUrl         String?     @map("logo_url")
+  address         String?
+  area            String?     @db.VarChar(100)
+  district        String?     @db.VarChar(100)
+  postalCode      String?     @map("postal_code") @db.VarChar(20)
+  openingTime     String?     @map("opening_time") @db.VarChar(20)
+  closingTime     String?     @map("closing_time") @db.VarChar(20)
+  weeklyHoliday   String?     @map("weekly_holiday") @db.VarChar(30)
+  tradeLicenseNo  String?     @map("trade_license_no") @db.VarChar(100)
+  tinNo           String?     @map("tin_no") @db.VarChar(100)
+  vatRegNo        String?     @map("vat_reg_no") @db.VarChar(100)
+  status          ShopStatus  @default(ACTIVE)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  owner       User?       @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  shopUsers   ShopUser[]
+  owner           User?       @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  shopUsers       ShopUser[]
+  subscription    Subscription?
+  invoices        Invoice[]
+  payments        Payment[]
+  purchases       Purchase[]
+  moneyBoxes      MoneyBox[]
+  bankAccounts    BankAccount[]
+  supplierPayments SupplierPayment[]
+  supplierLedgers SupplierLedger[]
+  receiptSetting  ShopReceiptSetting?
 
   @@map("shops")
 }
@@ -197,9 +288,8 @@ model MasterProduct {
   categoryId      String?             @map("category_id")
   brandId         String?             @map("brand_id")
   unitId          String?             @map("unit_id")
-  barcode         String?             @unique @db.VarChar(80)
-  price           Float?              @map("price")
-  suggestedPrice  Float?              @map("suggested_price")
+  price           Decimal?            @map("price") @db.Decimal(10, 2)
+  suggestedPrice  Decimal?            @map("suggested_price") @db.Decimal(10, 2)
   packageSize     String?             @map("package_size") @db.VarChar(80)
   pictureUrl      String?             @map("picture_url")
   status          MasterProductStatus @default(ACTIVE)
@@ -213,6 +303,9 @@ model MasterProduct {
   unit            Unit?               @relation(fields: [unitId], references: [id], onDelete: SetNull)
   createdBy       User?               @relation("MasterProductCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   updatedBy       User?               @relation("MasterProductUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  barcodes        MasterProductBarcode[]
+  templateItems   ProductTemplateItem[]
+  purchaseItems   PurchaseItem[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -257,6 +350,211 @@ model Unit {
   @@map("units")
 }
 
+model MasterProductBarcode {
+  id              String         @id @default(cuid())
+  masterProductId String?        @map("master_product_id")
+  barcode         String         @unique @db.VarChar(80)
+  packSize        String?        @map("pack_size") @db.VarChar(80)
+  status          BarcodeStatus  @default(UNMAPPED)
+  createdByUserId String?        @map("created_by")
+  updatedByUserId String?        @map("updated_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  masterProduct   MasterProduct? @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
+  createdBy       User?          @relation("BarcodeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?          @relation("BarcodeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([masterProductId])
+  @@index([status])
+  @@map("master_product_barcodes")
+}
+
+model ProductTemplate {
+  id          String                @id @default(cuid())
+  code        String                @unique @db.VarChar(80)
+  name        String                @db.VarChar(160)
+  description String?
+  status      ProductTemplateStatus @default(ACTIVE)
+  products    ProductTemplateItem[]
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("product_templates")
+}
+
+model ProductTemplateItem {
+  id              String          @id @default(cuid())
+  templateId      String          @map("template_id")
+  masterProductId String          @map("master_product_id")
+
+  template        ProductTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  masterProduct   MasterProduct   @relation(fields: [masterProductId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, masterProductId])
+  @@index([masterProductId])
+  @@map("product_template_items")
+}
+
+model Supplier {
+  id              String         @id @default(cuid())
+  supplierCode    String         @unique @map("supplier_code") @db.VarChar(50)
+  name            String         @db.VarChar(160)
+  mobile          String?        @db.VarChar(30)
+  email           String?        @db.VarChar(150)
+  address         String?
+  contactPerson   String?        @map("contact_person") @db.VarChar(120)
+  contactPersonMobile String?    @map("contact_person_mobile") @db.VarChar(30)
+  notes           String?
+  status          SupplierStatus @default(ACTIVE)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  purchases       Purchase[]
+  supplierPayments SupplierPayment[]
+  supplierLedgers SupplierLedger[]
+
+  @@index([status])
+  @@map("suppliers")
+}
+
+model Purchase {
+  id              String           @id @default(cuid())
+  shopId          String           @map("shop_id")
+  supplierId      String?          @map("supplier_id")
+  invoiceNo       String?          @map("invoice_no") @db.VarChar(80)
+  purchaseDate    DateTime         @default(now()) @map("purchase_date")
+  totalAmount     Decimal          @map("total_amount") @db.Decimal(10, 2)
+  paidAmount      Decimal          @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  dueAmount       Decimal          @default(0) @map("due_amount") @db.Decimal(10, 2)
+  paymentMethod   String?          @map("payment_method") @db.VarChar(50)
+  notes           String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  shop            Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplier        Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items           PurchaseItem[]
+  ledgerEntries   SupplierLedger[]
+
+  @@index([shopId])
+  @@index([supplierId])
+  @@index([purchaseDate])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id              String         @id @default(cuid())
+  purchaseId      String         @map("purchase_id")
+  masterProductId String         @map("master_product_id")
+  quantity        Decimal        @db.Decimal(12, 3)
+  purchasePrice   Decimal        @map("purchase_price") @db.Decimal(10, 2)
+  totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
+
+  purchase        Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  masterProduct   MasterProduct  @relation(fields: [masterProductId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@index([masterProductId])
+  @@map("purchase_items")
+}
+
+model SupplierPayment {
+  id              String         @id @default(cuid())
+  shopId          String         @map("shop_id")
+  supplierId      String         @map("supplier_id")
+  amount          Decimal        @db.Decimal(10, 2)
+  paymentMethod   String?        @map("payment_method") @db.VarChar(50)
+  moneyBoxId      String?        @map("money_box_id") @db.VarChar(80)
+  notes           String?
+  paidAt          DateTime       @default(now()) @map("paid_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  moneyBox        MoneyBox?      @relation(fields: [moneyBoxId], references: [id], onDelete: SetNull)
+  ledgerEntries   SupplierLedger[]
+
+  @@index([shopId])
+  @@index([supplierId])
+  @@index([paidAt])
+  @@map("supplier_payments")
+}
+
+model MoneyBox {
+  id             String         @id @default(cuid()) @db.VarChar(80)
+  shopId         String         @map("shop_id")
+  boxName        String         @map("box_name") @db.VarChar(150)
+  code           String         @unique @db.VarChar(80)
+  type           MoneyBoxType
+  openingBalance Decimal        @default(0) @map("opening_balance") @db.Decimal(12, 2)
+  currentBalance Decimal        @default(0) @map("current_balance") @db.Decimal(12, 2)
+  details        String?
+  status         MoneyBoxStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplierPayments SupplierPayment[]
+
+  @@index([shopId])
+  @@index([shopId, status])
+  @@map("money_boxes")
+}
+
+model BankAccount {
+  id             String            @id @default(cuid())
+  shopId         String            @map("shop_id")
+  accountName    String            @map("account_name") @db.VarChar(160)
+  bankName       String            @map("bank_name") @db.VarChar(160)
+  branchName     String?           @map("branch_name") @db.VarChar(160)
+  accountNumber  String            @map("account_number") @db.VarChar(80)
+  accountType    BankAccountType   @map("account_type")
+  openingBalance Decimal           @default(0) @map("opening_balance") @db.Decimal(12, 2)
+  currentBalance Decimal           @default(0) @map("current_balance") @db.Decimal(12, 2)
+  currency       String            @default("BDT") @db.VarChar(10)
+  status         BankAccountStatus @default(ACTIVE)
+  isDefault      Boolean           @default(false) @map("is_default")
+  notes          String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  shop           Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([bankName, accountNumber])
+  @@index([shopId])
+  @@index([shopId, status])
+  @@index([bankName])
+  @@map("bank_accounts")
+}
+
+model SupplierLedger {
+  id                String                  @id @default(cuid())
+  shopId            String                  @map("shop_id")
+  supplierId        String                  @map("supplier_id")
+  entryType         SupplierLedgerEntryType @map("entry_type")
+  purchaseId        String?                 @map("purchase_id")
+  supplierPaymentId String?                 @map("supplier_payment_id")
+  referenceNo       String?                 @map("reference_no") @db.VarChar(80)
+  debit             Decimal                 @default(0) @db.Decimal(10, 2)
+  credit            Decimal                 @default(0) @db.Decimal(10, 2)
+  notes             String?
+  entryDate         DateTime                @default(now()) @map("entry_date")
+  createdAt         DateTime                @default(now()) @map("created_at")
+
+  shop              Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplier          Supplier                @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchase          Purchase?               @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  supplierPayment   SupplierPayment?        @relation(fields: [supplierPaymentId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, supplierId, entryDate])
+  @@index([purchaseId])
+  @@index([supplierPaymentId])
+  @@map("supplier_ledgers")
+}
+
 model CategoryLog {
   id            String            @id @default(cuid())
   categoryId    String            @map("category_id")
@@ -271,4 +569,81 @@ model CategoryLog {
 
   @@index([categoryId, createdAt])
   @@map("category_logs")
+}
+
+model Subscription {
+  id                  String             @id @default(cuid())
+  shopId              String             @unique @map("shop_id")
+  status              SubscriptionStatus @default(TRIAL)
+  trialStartedAt      DateTime           @default(now()) @map("trial_started_at")
+  trialEndsAt         DateTime           @map("trial_ends_at")
+  billingStartedAt    DateTime?          @map("billing_started_at")
+  dailyRatePerAccount Decimal            @default(10.00) @map("daily_rate_per_account") @db.Decimal(10, 2)
+  graceEndsAt         DateTime?          @map("grace_ends_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  shop                Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  invoices            Invoice[]
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  subscriptionId   String        @map("subscription_id")
+  shopId           String        @map("shop_id")
+  billingDate      DateTime      @map("billing_date")
+  billableAccounts Int           @map("billable_accounts")
+  ratePerAccount   Decimal       @map("rate_per_account") @db.Decimal(10, 2)
+  totalAmount      Decimal       @map("total_amount") @db.Decimal(10, 2)
+  paidAmount       Decimal       @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  status           InvoiceStatus @default(UNPAID)
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  subscription     Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  shop             Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  payments         Payment[]
+
+  @@unique([shopId, billingDate])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  invoiceId String        @map("invoice_id")
+  shopId    String        @map("shop_id")
+  amount    Decimal       @db.Decimal(10, 2)
+  method    String?       @db.VarChar(50)
+  trxId     String?       @map("trx_id") @db.VarChar(120)
+  status    PaymentStatus @default(PENDING)
+  paidAt    DateTime?     @map("paid_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shop      Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([status])
+  @@map("payments")
+}
+
+model ShopReceiptSetting {
+  id          String   @id @default(cuid())
+  shopId      String   @unique @map("shop_id")
+  printerType String?  @map("printer_type") @db.VarChar(80)
+  paperSize   String?  @map("paper_size") @db.VarChar(40)
+  showLogo    Boolean  @default(false) @map("show_logo")
+  showAddress Boolean  @default(true) @map("show_address")
+  showPhone   Boolean  @default(true) @map("show_phone")
+  showVatInfo Boolean  @default(false) @map("show_vat_info")
+  headerText  String?  @map("header_text")
+  footerText  String?  @map("footer_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("shop_receipt_settings")
 }

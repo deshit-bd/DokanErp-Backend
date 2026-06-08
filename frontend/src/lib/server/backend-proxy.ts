@@ -4,6 +4,14 @@ function getBackendBaseUrl() {
   return process.env.BACKEND_URL || process.env.API_BASE_URL || "http://localhost:4000";
 }
 
+function resolveBackendPath(pathname: string, scope: "web" | "app" = "web") {
+  if (pathname.startsWith("/api/")) {
+    return `/${scope}${pathname}`;
+  }
+
+  return pathname;
+}
+
 function buildBackendUrl(pathname: string) {
   return new URL(pathname, getBackendBaseUrl()).toString();
 }
@@ -34,12 +42,12 @@ function copyUpstreamHeaders(upstream: Response) {
   return headers;
 }
 
-export async function proxyToBackend(request: Request, pathname: string) {
+export async function proxyToBackend(request: Request, pathname: string, scope: "web" | "app" = "web") {
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("content-length");
 
-  const upstream = await fetch(buildBackendUrl(pathname), {
+  const upstream = await fetch(buildBackendUrl(resolveBackendPath(pathname, scope)), {
     method: request.method,
     headers,
     body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer(),
@@ -58,7 +66,7 @@ export async function patchAvatarInBackend(request: Request, profileImageUrl: st
   headers.delete("host");
   headers.delete("content-length");
 
-  const upstream = await fetch(buildBackendUrl("/api/auth/me/avatar"), {
+  const upstream = await fetch(buildBackendUrl(resolveBackendPath("/api/auth/me/avatar", "web")), {
     method: "PATCH",
     headers,
     body: JSON.stringify({ profileImageUrl }),

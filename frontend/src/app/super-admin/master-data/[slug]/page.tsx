@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type FormEvent, use, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, use, useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiCheckCircle, FiCopy, FiCreditCard, FiDollarSign, FiDownload, FiEdit, FiEye, FiFileText, FiFolder, FiMoreVertical, FiPackage, FiPauseCircle, FiRefreshCw, FiToggleLeft, FiTrash2 } from "react-icons/fi";
 import { LuArchive, LuBadgeCheck, LuBadgeInfo, LuCircleOff } from "react-icons/lu";
 
@@ -16,13 +16,6 @@ const masterDataPageTitles: Record<string, string> = {
   "bank-account": "Bank Account",
   "product-template": "Product Template",
 };
-
-const moneyBoxStats = [
-  { label: "Total Money Boxes", value: "16", note: "All Money Boxes", accent: "indigo" as const, type: "users" as const },
-  { label: "Total Balance", value: "৳251,200", note: "Current Balance", accent: "green" as const, type: "balance" as const },
-  { label: "Active Boxes", value: "14", note: "Currently Active", accent: "indigo" as const, type: "check" as const },
-  { label: "Inactive Boxes", value: "2", note: "Currently Inactive", accent: "red" as const, type: "alert" as const },
-];
 
 const importExportStats = [
   { label: "Total Imports", value: "4,516", note: "All Imported Records", accent: "indigo" as const, type: "import" as const },
@@ -44,17 +37,6 @@ const exportRows = [
   { id: 3, fileName: "supplier-directory.pdf", module: "Supplier Data", exportedBy: "Admin Team", records: 4516, format: "PDF", date: "29 may 2024" },
   { id: 4, fileName: "barcode-database.xlsx", module: "Barcode Database", exportedBy: "Inventory Team", records: 98765, format: "Excel", date: "28 may 2024" },
 ];
-
-const moneyBoxRows = Array.from({ length: 10 }, (_, index) => ({
-  id: index + 1,
-  shopName: index % 2 === 0 ? "Rahman Store" : "Bondhon Store",
-  boxName: index === 2 ? "Bkash Wallet" : "Cash Counter",
-  code: "CASH-001",
-  type: index === 2 ? "Bkash" : "Nagad",
-  balance: "$544.20",
-  status: "Active",
-  date: "31 may 2024",
-}));
 
 const productCatalogStats = [
   { label: "Total Products", value: "4516", note: "All products", accent: "indigo" as const, type: "box" as const },
@@ -392,6 +374,153 @@ type BrandFormState = {
   logoName: string;
 };
 
+type SupplierStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
+
+type SupplierRecord = {
+  id: string;
+  supplierCode: string;
+  name: string;
+  mobile: string | null;
+  email: string | null;
+  address: string | null;
+  contactPerson: string | null;
+  contactPersonMobile: string | null;
+  notes: string | null;
+  status: SupplierStatusValue;
+  statusLabel: string;
+  purchases: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type SupplierApiResponse = {
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+    archived: number;
+  };
+  suppliers: SupplierRecord[];
+};
+
+type SupplierFormState = {
+  supplierCode: string;
+  name: string;
+  mobile: string;
+  email: string;
+  address: string;
+  contactPerson: string;
+  contactPersonMobile: string;
+  notes: string;
+  status: SupplierStatusValue;
+};
+
+type SupplierModalMode = "create" | "edit" | "view";
+
+type ShopOption = {
+  id: string;
+  shopName: string;
+  status: string;
+};
+
+type ShopListResponse = {
+  shops: ShopOption[];
+};
+
+type MoneyBoxStatusValue = "ACTIVE" | "INACTIVE";
+type MoneyBoxTypeValue = "CASH" | "BKASH" | "NAGAD";
+
+type MoneyBoxRecord = {
+  id: string;
+  shopId: string;
+  shopName: string;
+  boxName: string;
+  code: string;
+  type: MoneyBoxTypeValue;
+  typeLabel: string;
+  openingBalance: number;
+  currentBalance: number;
+  details: string | null;
+  status: MoneyBoxStatusValue;
+  statusLabel: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type MoneyBoxApiResponse = {
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+    totalBalance: number;
+  };
+  moneyBoxes: MoneyBoxRecord[];
+};
+
+type MoneyBoxFormState = {
+  shopId: string;
+  boxName: string;
+  code: string;
+  type: MoneyBoxTypeValue | "";
+  openingBalance: string;
+  details: string;
+  status: MoneyBoxStatusValue;
+};
+
+type MoneyBoxModalMode = "create" | "edit";
+
+type BankAccountStatusValue = "ACTIVE" | "INACTIVE" | "CLOSED";
+type BankAccountTypeValue = "CURRENT" | "SAVINGS";
+
+type BankAccountRecord = {
+  id: string;
+  shopId: string;
+  shopName: string;
+  accountName: string;
+  bankName: string;
+  branchName: string | null;
+  accountNumber: string;
+  accountNumberMasked: string;
+  accountType: BankAccountTypeValue;
+  accountTypeLabel: string;
+  openingBalance: number;
+  currentBalance: number;
+  currency: string;
+  status: BankAccountStatusValue;
+  statusLabel: string;
+  isDefault: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type BankAccountApiResponse = {
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+    totalBalance: number;
+  };
+  banks: string[];
+  bankAccounts: BankAccountRecord[];
+};
+
+type BankAccountFormState = {
+  shopId: string;
+  accountName: string;
+  bankName: string;
+  branchName: string;
+  accountNumber: string;
+  accountType: BankAccountTypeValue | "";
+  openingBalance: string;
+  currency: string;
+  status: BankAccountStatusValue;
+  isDefault: boolean;
+  notes: string;
+};
+
+type BankAccountModalMode = "create" | "edit";
+
 type ProductPictureState = {
   previewUrl: string;
   fileName: string;
@@ -453,9 +582,75 @@ type ProductCatalogFormState = {
   unitId: string;
   packageSize: string;
   description: string;
+  barcodeStatus: "ACTIVE" | "ARCHIVED";
 };
 
 type ProductCatalogModalMode = "create" | "edit";
+type BarcodeDatabaseStatusValue = "Mapped" | "Unmapped" | "Archived";
+type BarcodeModalMode = "assign" | "edit";
+type ProductTemplateStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
+type ProductTemplateModalMode = "create" | "edit" | "view";
+
+type BarcodeDatabaseRow = {
+  id: string;
+  productName: string;
+  productNote: string;
+  pictureUrl: string | null;
+  sku: string;
+  category: string;
+  categoryId: string | null;
+  brand: string;
+  brandId: string | null;
+  unit: string;
+  barcode: string | null;
+  status: BarcodeDatabaseStatusValue;
+  addedDate: string;
+  addedTime: string;
+  type: string;
+};
+
+type ProductTemplateItemRecord = {
+  id: string;
+  masterProductId: string;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  pictureUrl: string | null;
+  category: string;
+  brand: string;
+  unit: string;
+};
+
+type ProductTemplateRecord = {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  status: ProductTemplateStatusValue;
+  statusLabel: string;
+  productCount: number;
+  products: ProductTemplateItemRecord[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ProductTemplateApiResponse = {
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+    archived: number;
+    withProducts: number;
+  };
+  templates: ProductTemplateRecord[];
+};
+
+type ProductTemplateFormState = {
+  code: string;
+  name: string;
+  description: string;
+  status: ProductTemplateStatusValue;
+};
 
 const unitTypeOptions: Array<{ value: UnitTypeValue; label: string }> = [
   { value: "COUNTABLE", label: "Countable" },
@@ -489,6 +684,71 @@ const defaultBrandFormState: BrandFormState = {
   logoUrl: "",
   logoName: "",
 };
+const defaultSupplierData: SupplierApiResponse = {
+  stats: {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    archived: 0,
+  },
+  suppliers: [],
+};
+const defaultSupplierFormState: SupplierFormState = {
+  supplierCode: "",
+  name: "",
+  mobile: "",
+  email: "",
+  address: "",
+  contactPerson: "",
+  contactPersonMobile: "",
+  notes: "",
+  status: "ACTIVE",
+};
+
+const defaultMoneyBoxData: MoneyBoxApiResponse = {
+  stats: {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    totalBalance: 0,
+  },
+  moneyBoxes: [],
+};
+
+const defaultMoneyBoxFormState: MoneyBoxFormState = {
+  shopId: "",
+  boxName: "",
+  code: "",
+  type: "",
+  openingBalance: "",
+  details: "",
+  status: "ACTIVE",
+};
+
+const defaultBankAccountData: BankAccountApiResponse = {
+  stats: {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    totalBalance: 0,
+  },
+  banks: [],
+  bankAccounts: [],
+};
+
+const defaultBankAccountFormState: BankAccountFormState = {
+  shopId: "",
+  accountName: "",
+  bankName: "",
+  branchName: "",
+  accountNumber: "",
+  accountType: "",
+  openingBalance: "0",
+  currency: "BDT",
+  status: "ACTIVE",
+  isDefault: false,
+  notes: "",
+};
 
 const brandLogoAcceptedTypes = ["image/jpeg", "image/png", "image/svg+xml"];
 const maxBrandLogoSizeInBytes = 2 * 1024 * 1024;
@@ -519,6 +779,23 @@ const defaultProductCatalogFormState: ProductCatalogFormState = {
   unitId: "",
   packageSize: "",
   description: "",
+  barcodeStatus: "ACTIVE",
+};
+const defaultProductTemplateData: ProductTemplateApiResponse = {
+  stats: {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    archived: 0,
+    withProducts: 0,
+  },
+  templates: [],
+};
+const defaultProductTemplateFormState: ProductTemplateFormState = {
+  code: "",
+  name: "",
+  description: "",
+  status: "ACTIVE",
 };
 
 const supplierStats = [
@@ -526,166 +803,6 @@ const supplierStats = [
   { label: "Active Suppliers", value: "4500", note: "Active Suppliers", accent: "green" as const, type: "check" as const },
   { label: "Inactive Suppliers", value: "16", note: "All Inactive Suppliers", accent: "amber" as const, type: "close" as const },
   { label: "Blocked Suppliers", value: "12,684", note: "All Blocked", accent: "red" as const, type: "alert" as const },
-];
-
-const bankAccountStats = [
-  { label: "Total Accounts", value: "32", note: "All Accounts", accent: "indigo" as const, icon: FiCreditCard },
-  { label: "Active Accounts", value: "28", note: "Active Accounts", accent: "green" as const, icon: FiCheckCircle },
-  { label: "Inactive Accounts", value: "2", note: "Inactive Accounts", accent: "amber" as const, icon: FiPauseCircle },
-  { label: "Total Balance", value: "৳15,487,650", note: "Current Balance", accent: "red" as const, icon: FiDollarSign },
-];
-
-const bankAccountRows = [
-  {
-    id: 1,
-    storeName: "Main Outlet",
-    accountCode: "BANK-001",
-    accountName: "Main Business Account",
-    bankName: "BRAC Bank",
-    branch: "Gazipur Branch",
-    accountNumber: "****2145",
-    accountType: "Current",
-    currentBalance: 487650.75,
-    currency: "BDT",
-    status: "Active",
-    isDefault: true,
-    updatedAt: "2025-06-01",
-  },
-  {
-    id: 2,
-    storeName: "Gazipur Store",
-    accountCode: "BANK-002",
-    accountName: "Daily Sales Deposit",
-    bankName: "Dutch-Bangla Bank",
-    branch: "Kaliganj Branch",
-    accountNumber: "****1230",
-    accountType: "Current",
-    currentBalance: 156420.5,
-    currency: "BDT",
-    status: "Active",
-    isDefault: false,
-    updatedAt: "2025-06-01",
-  },
-  {
-    id: 3,
-    storeName: "Uttara Store",
-    accountCode: "BANK-003",
-    accountName: "Supplier Payment Account",
-    bankName: "City Bank",
-    branch: "Uttara Branch",
-    accountNumber: "****7890",
-    accountType: "Current",
-    currentBalance: 94350.0,
-    currency: "BDT",
-    status: "Active",
-    isDefault: false,
-    updatedAt: "2025-05-31",
-  },
-  {
-    id: 4,
-    storeName: "Head Office",
-    accountCode: "BANK-004",
-    accountName: "Payroll Account",
-    bankName: "Eastern Bank PLC",
-    branch: "Gulshan Branch",
-    accountNumber: "****4582",
-    accountType: "Savings",
-    currentBalance: 78500.0,
-    currency: "BDT",
-    status: "Active",
-    isDefault: false,
-    updatedAt: "2025-05-30",
-  },
-  {
-    id: 5,
-    storeName: "Main Outlet",
-    accountCode: "BANK-005",
-    accountName: "Emergency Reserve Fund",
-    bankName: "Prime Bank",
-    branch: "Motijheel Branch",
-    accountNumber: "****9630",
-    accountType: "Savings",
-    currentBalance: 650000.0,
-    currency: "BDT",
-    status: "Active",
-    isDefault: false,
-    updatedAt: "2025-05-29",
-  },
-  {
-    id: 6,
-    storeName: "Online Shop",
-    accountCode: "BANK-006",
-    accountName: "Online Order Collection",
-    bankName: "Bank Asia",
-    branch: "Dhanmondi Branch",
-    accountNumber: "****7412",
-    accountType: "Current",
-    currentBalance: 128940.25,
-    currency: "BDT",
-    status: "Active",
-    isDefault: false,
-    updatedAt: "2025-06-01",
-  },
-  {
-    id: 7,
-    storeName: "Mirpur Store",
-    accountCode: "BANK-007",
-    accountName: "VAT & Tax Account",
-    bankName: "Islami Bank Bangladesh PLC",
-    branch: "Mirpur Branch",
-    accountNumber: "****8524",
-    accountType: "Savings",
-    currentBalance: 42500.0,
-    currency: "BDT",
-    status: "Active",
-    isDefault: false,
-    updatedAt: "2025-05-28",
-  },
-  {
-    id: 8,
-    storeName: "Tongi Store",
-    accountCode: "BANK-008",
-    accountName: "Branch Store Account",
-    bankName: "Pubali Bank",
-    branch: "Tongi Branch",
-    accountNumber: "****3691",
-    accountType: "Current",
-    currentBalance: 212750.0,
-    currency: "BDT",
-    status: "Inactive",
-    isDefault: false,
-    updatedAt: "2025-05-25",
-  },
-  {
-    id: 9,
-    storeName: "Gazipur Store",
-    accountCode: "BANK-009",
-    accountName: "Petty Cash Reserve",
-    bankName: "Sonali Bank",
-    branch: "Gazipur Sadar Branch",
-    accountNumber: "****9517",
-    accountType: "Savings",
-    currentBalance: 15000.0,
-    currency: "BDT",
-    status: "Inactive",
-    isDefault: false,
-    updatedAt: "2025-05-20",
-  },
-  {
-    id: 10,
-    storeName: "Banani Store",
-    accountCode: "BANK-010",
-    accountName: "Legacy Business Account",
-    bankName: "Mutual Trust Bank",
-    branch: "Banani Branch",
-    accountNumber: "****4862",
-    accountType: "Current",
-    currentBalance: 0.0,
-    currency: "BDT",
-    status: "Closed",
-    isDefault: false,
-    updatedAt: "2025-04-15",
-  },
 ];
 
 const productTemplateRows = Array.from({ length: 10 }, (_, index) => ({
@@ -741,6 +858,44 @@ function formatUnitDate(dateString: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+function formatMasterDataDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatMoneyBoxCurrency(amount: number) {
+  return `৳${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatMasterDataTime(dateString: string) {
+  return new Date(dateString).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatStatValue(value: number) {
+  return value.toLocaleString("en-US");
+}
+
+function getBarcodeDatabaseStatus(product: ProductCatalogRecord): BarcodeDatabaseStatusValue {
+  if (product.status === "ARCHIVED") {
+    return "Archived";
+  }
+
+  if (!product.barcode) {
+    return "Unmapped";
+  }
+
+  return "Mapped";
 }
 
 function MoneyBoxStatIcon({
@@ -1287,6 +1442,10 @@ function BarcodeRowPreview({ barcode }: { barcode: string }) {
   );
 }
 
+function getBarcodeImageUrl(productId: string, download = false) {
+  return `/api/products/${productId}/barcode${download ? "?download=1" : ""}`;
+}
+
 function ProductTemplateStatIcon({
   accent,
   type,
@@ -1683,10 +1842,51 @@ export default function MasterDataSubmodulePage({
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [isMoneyBoxModalOpen, setIsMoneyBoxModalOpen] = useState(false);
+  const [moneyBoxData, setMoneyBoxData] = useState<MoneyBoxApiResponse>(defaultMoneyBoxData);
+  const [isMoneyBoxLoading, setIsMoneyBoxLoading] = useState(false);
+  const [moneyBoxLoadError, setMoneyBoxLoadError] = useState<string | null>(null);
+  const [moneyBoxSearch, setMoneyBoxSearch] = useState("");
+  const [moneyBoxShopFilter, setMoneyBoxShopFilter] = useState("");
+  const [moneyBoxStatusFilter, setMoneyBoxStatusFilter] = useState<MoneyBoxStatusValue | "">("");
+  const [moneyBoxForm, setMoneyBoxForm] = useState<MoneyBoxFormState>(defaultMoneyBoxFormState);
+  const [moneyBoxFormError, setMoneyBoxFormError] = useState<string | null>(null);
+  const [isMoneyBoxSaving, setIsMoneyBoxSaving] = useState(false);
+  const [moneyBoxModalMode, setMoneyBoxModalMode] = useState<MoneyBoxModalMode>("create");
+  const [selectedMoneyBox, setSelectedMoneyBox] = useState<MoneyBoxRecord | null>(null);
+  const [bankAccountData, setBankAccountData] = useState<BankAccountApiResponse>(defaultBankAccountData);
+  const [isBankAccountLoading, setIsBankAccountLoading] = useState(false);
+  const [bankAccountLoadError, setBankAccountLoadError] = useState<string | null>(null);
+  const [bankAccountSearch, setBankAccountSearch] = useState("");
+  const [bankAccountShopFilter, setBankAccountShopFilter] = useState("");
+  const [bankAccountBankFilter, setBankAccountBankFilter] = useState("");
+  const [bankAccountStatusFilter, setBankAccountStatusFilter] = useState<BankAccountStatusValue | "">("");
+  const [bankAccountForm, setBankAccountForm] = useState<BankAccountFormState>(defaultBankAccountFormState);
+  const [bankAccountFormError, setBankAccountFormError] = useState<string | null>(null);
+  const [isBankAccountSaving, setIsBankAccountSaving] = useState(false);
+  const [bankAccountModalMode, setBankAccountModalMode] = useState<BankAccountModalMode>("create");
+  const [selectedBankAccount, setSelectedBankAccount] = useState<BankAccountRecord | null>(null);
   const [isProductTemplateModalOpen, setIsProductTemplateModalOpen] = useState(false);
+  const [isManageTemplateProductsModalOpen, setIsManageTemplateProductsModalOpen] = useState(false);
   const [isProductCatalogExportOpen, setIsProductCatalogExportOpen] = useState(false);
   const [isBankAccountExportOpen, setIsBankAccountExportOpen] = useState(false);
   const [isProductCatalogModalOpen, setIsProductCatalogModalOpen] = useState(false);
+  const [productTemplateData, setProductTemplateData] = useState<ProductTemplateApiResponse>(defaultProductTemplateData);
+  const [isProductTemplateLoading, setIsProductTemplateLoading] = useState(false);
+  const [productTemplateLoadError, setProductTemplateLoadError] = useState<string | null>(null);
+  const [productTemplateSearch, setProductTemplateSearch] = useState("");
+  const [productTemplateStatusFilter, setProductTemplateStatusFilter] = useState<ProductTemplateStatusValue | "">("");
+  const [productTemplateForm, setProductTemplateForm] = useState<ProductTemplateFormState>(defaultProductTemplateFormState);
+  const [productTemplateFormError, setProductTemplateFormError] = useState<string | null>(null);
+  const [isProductTemplateSaving, setIsProductTemplateSaving] = useState(false);
+  const [productTemplateModalMode, setProductTemplateModalMode] = useState<ProductTemplateModalMode>("create");
+  const [selectedProductTemplate, setSelectedProductTemplate] = useState<ProductTemplateRecord | null>(null);
+  const [manageTemplateProductsSearch, setManageTemplateProductsSearch] = useState("");
+  const [selectedTemplateProductIds, setSelectedTemplateProductIds] = useState<string[]>([]);
+  const [isTemplateProductsSaving, setIsTemplateProductsSaving] = useState(false);
+  const [templateProductsError, setTemplateProductsError] = useState<string | null>(null);
+  const [barcodeModalMode, setBarcodeModalMode] = useState<BarcodeModalMode>("assign");
+  const [selectedBarcodeProduct, setSelectedBarcodeProduct] = useState<ProductCatalogRecord | null>(null);
+  const [isBarcodeScannerReady, setIsBarcodeScannerReady] = useState(false);
   const [productCatalogData, setProductCatalogData] = useState<ProductCatalogApiResponse>(defaultProductCatalogData);
   const [isProductCatalogLoading, setIsProductCatalogLoading] = useState(false);
   const [productCatalogLoadError, setProductCatalogLoadError] = useState<string | null>(null);
@@ -1694,6 +1894,10 @@ export default function MasterDataSubmodulePage({
   const [productCatalogCategoryFilter, setProductCatalogCategoryFilter] = useState("");
   const [productCatalogBrandFilter, setProductCatalogBrandFilter] = useState("");
   const [productCatalogStatusFilter, setProductCatalogStatusFilter] = useState<ProductStatusValue | "">("");
+  const [barcodeSearch, setBarcodeSearch] = useState("");
+  const [barcodeCategoryFilter, setBarcodeCategoryFilter] = useState("");
+  const [barcodeBrandFilter, setBarcodeBrandFilter] = useState("");
+  const [barcodeStatusFilter, setBarcodeStatusFilter] = useState<BarcodeDatabaseStatusValue | "">("");
   const [productCatalogForm, setProductCatalogForm] = useState<ProductCatalogFormState>(defaultProductCatalogFormState);
   const [productCatalogFormError, setProductCatalogFormError] = useState<string | null>(null);
   const [isProductCatalogSaving, setIsProductCatalogSaving] = useState(false);
@@ -1705,10 +1909,25 @@ export default function MasterDataSubmodulePage({
   });
   const [productPictureError, setProductPictureError] = useState<string | null>(null);
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
-  const [openBarcodeActionMenuId, setOpenBarcodeActionMenuId] = useState<number | null>(null);
-  const [openMoneyBoxActionMenuId, setOpenMoneyBoxActionMenuId] = useState<number | null>(null);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [shopOptions, setShopOptions] = useState<ShopOption[]>([]);
+  const [isShopOptionsLoading, setIsShopOptionsLoading] = useState(false);
+  const [shopOptionsLoadError, setShopOptionsLoadError] = useState<string | null>(null);
+  const [supplierData, setSupplierData] = useState<SupplierApiResponse>(defaultSupplierData);
+  const [isSupplierLoading, setIsSupplierLoading] = useState(false);
+  const [supplierLoadError, setSupplierLoadError] = useState<string | null>(null);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [supplierStatusFilter, setSupplierStatusFilter] = useState<SupplierStatusValue | "">("");
+  const [supplierForm, setSupplierForm] = useState<SupplierFormState>(defaultSupplierFormState);
+  const [supplierFormError, setSupplierFormError] = useState<string | null>(null);
+  const [isSupplierSaving, setIsSupplierSaving] = useState(false);
+  const [supplierModalMode, setSupplierModalMode] = useState<SupplierModalMode>("create");
+  const [selectedSupplier, setSelectedSupplier] = useState<SupplierRecord | null>(null);
+  const [openSupplierActionMenuId, setOpenSupplierActionMenuId] = useState<string | null>(null);
+  const [openBarcodeActionMenuId, setOpenBarcodeActionMenuId] = useState<string | null>(null);
+  const [openMoneyBoxActionMenuId, setOpenMoneyBoxActionMenuId] = useState<string | null>(null);
   const [openProductCatalogActionMenuId, setOpenProductCatalogActionMenuId] = useState<string | null>(null);
-  const [openProductTemplateActionMenuId, setOpenProductTemplateActionMenuId] = useState<number | null>(null);
+  const [openProductTemplateActionMenuId, setOpenProductTemplateActionMenuId] = useState<string | null>(null);
   const [openUnitActionMenuId, setOpenUnitActionMenuId] = useState<string | null>(null);
   const [openImportActionMenuId, setOpenImportActionMenuId] = useState<number | null>(null);
   const [openExportActionMenuId, setOpenExportActionMenuId] = useState<number | null>(null);
@@ -1750,12 +1969,426 @@ export default function MasterDataSubmodulePage({
   const [isUnitSaving, setIsUnitSaving] = useState(false);
   const [unitCurrentPage, setUnitCurrentPage] = useState(1);
   const [unitPageSize, setUnitPageSize] = useState<UnitPageSizeValue>(11);
+  const barcodeFormRef = useRef<HTMLFormElement | null>(null);
+  const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const isBrandPage = slug === "brand";
+  const isSupplierPage = slug === "supplier-data";
   const isProductCatalogPage = slug === "product-catalog";
+  const isBarcodePage = slug === "barcode-database";
+  const isMoneyBoxPage = slug === "money-box";
+  const isBankAccountPage = slug === "bank-account";
+  const isProductTemplatePage = slug === "product-template";
   const isUnitPage = slug === "unit";
 
   useEffect(() => {
-    if (!isProductCatalogPage) {
+    if (!isMoneyBoxPage && !isBankAccountPage) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadShops() {
+      setIsShopOptionsLoading(true);
+      setShopOptionsLoadError(null);
+
+      try {
+        const response = await fetch("/api/shops", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | ShopListResponse
+          | { message?: string }
+          | null;
+
+        if (!response.ok) {
+          throw new Error(payload && "message" in payload ? payload.message || "Failed to load shops." : "Failed to load shops.");
+        }
+
+        if (isActive && payload && "shops" in payload) {
+          setShopOptions(payload.shops);
+        }
+      } catch (error) {
+        if (isActive) {
+          setShopOptionsLoadError(error instanceof Error ? error.message : "Failed to load shops.");
+        }
+      } finally {
+        if (isActive) {
+          setIsShopOptionsLoading(false);
+        }
+      }
+    }
+
+    void loadShops();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isBankAccountPage, isMoneyBoxPage]);
+
+  useEffect(() => {
+    if (!isMoneyBoxPage) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadMoneyBoxes() {
+      setIsMoneyBoxLoading(true);
+      setMoneyBoxLoadError(null);
+
+      try {
+        const response = await fetch("/api/money-boxes", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | MoneyBoxApiResponse
+          | { message?: string }
+          | null;
+
+        if (!response.ok) {
+          throw new Error(payload && "message" in payload ? payload.message || "Failed to load money boxes." : "Failed to load money boxes.");
+        }
+
+        if (isActive && payload && "moneyBoxes" in payload) {
+          setMoneyBoxData(payload);
+        }
+      } catch (error) {
+        if (isActive) {
+          setMoneyBoxLoadError(error instanceof Error ? error.message : "Failed to load money boxes.");
+        }
+      } finally {
+        if (isActive) {
+          setIsMoneyBoxLoading(false);
+        }
+      }
+    }
+
+    void loadMoneyBoxes();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isMoneyBoxPage]);
+
+  useEffect(() => {
+    if (!isBankAccountPage) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadBankAccounts() {
+      setIsBankAccountLoading(true);
+      setBankAccountLoadError(null);
+
+      try {
+        const response = await fetch("/api/bank-accounts", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | BankAccountApiResponse
+          | { message?: string }
+          | null;
+
+        if (!response.ok) {
+          throw new Error(
+            payload && "message" in payload
+              ? payload.message || "Failed to load bank accounts."
+              : "Failed to load bank accounts.",
+          );
+        }
+
+        if (isActive && payload && "bankAccounts" in payload) {
+          setBankAccountData(payload);
+        }
+      } catch (error) {
+        if (isActive) {
+          setBankAccountLoadError(error instanceof Error ? error.message : "Failed to load bank accounts.");
+        }
+      } finally {
+        if (isActive) {
+          setIsBankAccountLoading(false);
+        }
+      }
+    }
+
+    void loadBankAccounts();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isBankAccountPage]);
+
+  function openCreateMoneyBoxModal() {
+    setMoneyBoxModalMode("create");
+    setSelectedMoneyBox(null);
+    setMoneyBoxForm(defaultMoneyBoxFormState);
+    setMoneyBoxFormError(null);
+    setIsMoneyBoxModalOpen(true);
+  }
+
+  function openEditMoneyBoxModal(moneyBox: MoneyBoxRecord) {
+    setMoneyBoxModalMode("edit");
+    setSelectedMoneyBox(moneyBox);
+    setMoneyBoxForm({
+      shopId: moneyBox.shopId,
+      boxName: moneyBox.boxName,
+      code: moneyBox.code,
+      type: moneyBox.type,
+      openingBalance: String(moneyBox.openingBalance),
+      details: moneyBox.details ?? "",
+      status: moneyBox.status,
+    });
+    setMoneyBoxFormError(null);
+    setOpenMoneyBoxActionMenuId(null);
+    setIsMoneyBoxModalOpen(true);
+  }
+
+  function closeMoneyBoxModal() {
+    setIsMoneyBoxModalOpen(false);
+    setMoneyBoxModalMode("create");
+    setSelectedMoneyBox(null);
+    setMoneyBoxForm(defaultMoneyBoxFormState);
+    setMoneyBoxFormError(null);
+  }
+
+  async function refreshMoneyBoxes() {
+    const response = await fetch("/api/money-boxes", {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | MoneyBoxApiResponse
+      | { message?: string }
+      | null;
+
+    if (!response.ok) {
+      throw new Error(payload && "message" in payload ? payload.message || "Failed to load money boxes." : "Failed to load money boxes.");
+    }
+
+    if (payload && "moneyBoxes" in payload) {
+      setMoneyBoxData(payload);
+    }
+  }
+
+  async function handleMoneyBoxSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMoneyBoxFormError(null);
+
+    if (!moneyBoxForm.shopId) {
+      setMoneyBoxFormError("Shop is required.");
+      return;
+    }
+
+    if (!moneyBoxForm.boxName.trim()) {
+      setMoneyBoxFormError("Money box name is required.");
+      return;
+    }
+
+    if (!moneyBoxForm.code.trim()) {
+      setMoneyBoxFormError("Money box code is required.");
+      return;
+    }
+
+    if (!moneyBoxForm.type) {
+      setMoneyBoxFormError("Money box type is required.");
+      return;
+    }
+
+    const openingBalance = Number(moneyBoxForm.openingBalance || 0);
+
+    if (Number.isNaN(openingBalance)) {
+      setMoneyBoxFormError("Opening balance must be a valid number.");
+      return;
+    }
+
+    setIsMoneyBoxSaving(true);
+
+    try {
+      const endpoint =
+        moneyBoxModalMode === "edit" && selectedMoneyBox
+          ? `/api/money-boxes/${selectedMoneyBox.id}`
+          : "/api/money-boxes";
+      const method = moneyBoxModalMode === "edit" ? "PUT" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shopId: moneyBoxForm.shopId,
+          boxName: moneyBoxForm.boxName,
+          code: moneyBoxForm.code,
+          type: moneyBoxForm.type,
+          openingBalance,
+          details: moneyBoxForm.details || null,
+          status: moneyBoxForm.status,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to save money box.");
+      }
+
+      await refreshMoneyBoxes();
+      closeMoneyBoxModal();
+    } catch (error) {
+      setMoneyBoxFormError(error instanceof Error ? error.message : "Failed to save money box.");
+    } finally {
+      setIsMoneyBoxSaving(false);
+    }
+  }
+
+  function openCreateBankAccountModal() {
+    setBankAccountModalMode("create");
+    setSelectedBankAccount(null);
+    setBankAccountForm(defaultBankAccountFormState);
+    setBankAccountFormError(null);
+    setIsBankAccountModalOpen(true);
+  }
+
+  function openEditBankAccountModal(bankAccount: BankAccountRecord) {
+    setBankAccountModalMode("edit");
+    setSelectedBankAccount(bankAccount);
+    setBankAccountForm({
+      shopId: bankAccount.shopId,
+      accountName: bankAccount.accountName,
+      bankName: bankAccount.bankName,
+      branchName: bankAccount.branchName ?? "",
+      accountNumber: bankAccount.accountNumber,
+      accountType: bankAccount.accountType,
+      openingBalance: String(bankAccount.openingBalance),
+      currency: bankAccount.currency,
+      status: bankAccount.status,
+      isDefault: bankAccount.isDefault,
+      notes: bankAccount.notes ?? "",
+    });
+    setBankAccountFormError(null);
+    setIsBankAccountModalOpen(true);
+  }
+
+  function closeBankAccountModal() {
+    setIsBankAccountModalOpen(false);
+    setBankAccountModalMode("create");
+    setSelectedBankAccount(null);
+    setBankAccountForm(defaultBankAccountFormState);
+    setBankAccountFormError(null);
+  }
+
+  async function refreshBankAccounts() {
+    const response = await fetch("/api/bank-accounts", {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | BankAccountApiResponse
+      | { message?: string }
+      | null;
+
+    if (!response.ok) {
+      throw new Error(
+        payload && "message" in payload
+          ? payload.message || "Failed to load bank accounts."
+          : "Failed to load bank accounts.",
+      );
+    }
+
+    if (payload && "bankAccounts" in payload) {
+      setBankAccountData(payload);
+    }
+  }
+
+  async function handleBankAccountSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBankAccountFormError(null);
+
+    if (!bankAccountForm.shopId) {
+      setBankAccountFormError("Shop is required.");
+      return;
+    }
+    if (!bankAccountForm.accountName.trim()) {
+      setBankAccountFormError("Account name is required.");
+      return;
+    }
+    if (!bankAccountForm.bankName.trim()) {
+      setBankAccountFormError("Bank name is required.");
+      return;
+    }
+    if (!bankAccountForm.accountNumber.trim()) {
+      setBankAccountFormError("Account number is required.");
+      return;
+    }
+    if (!bankAccountForm.accountType) {
+      setBankAccountFormError("Account type is required.");
+      return;
+    }
+
+    const openingBalance = Number(bankAccountForm.openingBalance || 0);
+
+    if (Number.isNaN(openingBalance)) {
+      setBankAccountFormError("Opening balance must be a valid number.");
+      return;
+    }
+
+    setIsBankAccountSaving(true);
+
+    try {
+      const endpoint =
+        bankAccountModalMode === "edit" && selectedBankAccount
+          ? `/api/bank-accounts/${selectedBankAccount.id}`
+          : "/api/bank-accounts";
+      const method = bankAccountModalMode === "edit" ? "PUT" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shopId: bankAccountForm.shopId,
+          accountName: bankAccountForm.accountName,
+          bankName: bankAccountForm.bankName,
+          branchName: bankAccountForm.branchName || null,
+          accountNumber: bankAccountForm.accountNumber,
+          accountType: bankAccountForm.accountType,
+          openingBalance,
+          currency: bankAccountForm.currency,
+          status: bankAccountForm.status,
+          isDefault: bankAccountForm.isDefault,
+          notes: bankAccountForm.notes || null,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to save bank account.");
+      }
+
+      await refreshBankAccounts();
+      closeBankAccountModal();
+    } catch (error) {
+      setBankAccountFormError(error instanceof Error ? error.message : "Failed to save bank account.");
+    } finally {
+      setIsBankAccountSaving(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!isProductCatalogPage && !isBarcodePage && !isProductTemplatePage) {
       return;
     }
 
@@ -1799,7 +2432,115 @@ export default function MasterDataSubmodulePage({
     return () => {
       isActive = false;
     };
-  }, [isProductCatalogPage]);
+  }, [isBarcodePage, isProductCatalogPage, isProductTemplatePage]);
+
+  useEffect(() => {
+    if (!isProductTemplatePage) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadProductTemplates() {
+      setIsProductTemplateLoading(true);
+      setProductTemplateLoadError(null);
+
+      try {
+        const response = await fetch("/api/product-templates", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | ProductTemplateApiResponse
+          | { message?: string }
+          | null;
+
+        if (!response.ok) {
+          throw new Error(payload && "message" in payload ? payload.message || "Failed to load product templates." : "Failed to load product templates.");
+        }
+
+        if (isActive && payload && "templates" in payload) {
+          setProductTemplateData(payload);
+        }
+      } catch (error) {
+        if (isActive) {
+          setProductTemplateLoadError(error instanceof Error ? error.message : "Failed to load product templates.");
+        }
+      } finally {
+        if (isActive) {
+          setIsProductTemplateLoading(false);
+        }
+      }
+    }
+
+    void loadProductTemplates();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isProductTemplatePage]);
+
+  useEffect(() => {
+    if (!isSupplierPage) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadSuppliers() {
+      setIsSupplierLoading(true);
+      setSupplierLoadError(null);
+
+      try {
+        const response = await fetch("/api/suppliers", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json().catch(() => null)) as SupplierApiResponse | { message?: string } | null;
+
+        if (!response.ok) {
+          throw new Error(payload && "message" in payload ? payload.message || "Failed to load suppliers." : "Failed to load suppliers.");
+        }
+
+        if (isActive && payload && "suppliers" in payload) {
+          setSupplierData(payload);
+        }
+      } catch (error) {
+        if (isActive) {
+          setSupplierLoadError(error instanceof Error ? error.message : "Failed to load suppliers.");
+        }
+      } finally {
+        if (isActive) {
+          setIsSupplierLoading(false);
+        }
+      }
+    }
+
+    void loadSuppliers();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isSupplierPage]);
+
+  useEffect(() => {
+    if (!selectedProductTemplate) {
+      return;
+    }
+
+    const latestTemplate = productTemplateData.templates.find((item) => item.id === selectedProductTemplate.id) ?? null;
+
+    if (!latestTemplate) {
+      setSelectedProductTemplate(null);
+      return;
+    }
+
+    if (latestTemplate !== selectedProductTemplate) {
+      setSelectedProductTemplate(latestTemplate);
+    }
+  }, [productTemplateData.templates, selectedProductTemplate]);
 
   useEffect(() => {
     if (!isBrandPage) {
@@ -1895,6 +2636,21 @@ export default function MasterDataSubmodulePage({
     };
   }, [isUnitPage]);
 
+  useEffect(() => {
+    if (!isBarcodeModalOpen) {
+      setIsBarcodeScannerReady(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      barcodeInputRef.current?.focus();
+      barcodeInputRef.current?.select();
+      setIsBarcodeScannerReady(true);
+    }, 80);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isBarcodeModalOpen, barcodeModalMode]);
+
   function resetUnitFilters() {
     setUnitSearch("");
     setUnitTypeFilter("");
@@ -1913,6 +2669,192 @@ export default function MasterDataSubmodulePage({
     setBrandFormError(null);
   }
 
+  async function refreshSuppliers() {
+    setIsSupplierLoading(true);
+    setSupplierLoadError(null);
+
+    try {
+      const response = await fetch("/api/suppliers", {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      const payload = (await response.json().catch(() => null)) as SupplierApiResponse | { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload && "message" in payload ? payload.message || "Failed to load suppliers." : "Failed to load suppliers.");
+      }
+
+      if (payload && "suppliers" in payload) {
+        setSupplierData(payload);
+      }
+    } catch (error) {
+      setSupplierLoadError(error instanceof Error ? error.message : "Failed to load suppliers.");
+    } finally {
+      setIsSupplierLoading(false);
+    }
+  }
+
+  function openCreateSupplierModal() {
+    setSupplierModalMode("create");
+    setSelectedSupplier(null);
+    setSupplierForm(defaultSupplierFormState);
+    setSupplierFormError(null);
+    setOpenSupplierActionMenuId(null);
+    setIsSupplierModalOpen(true);
+  }
+
+  function openEditSupplierModal(supplier: SupplierRecord) {
+    setSupplierModalMode("edit");
+    setSelectedSupplier(supplier);
+    setSupplierForm({
+      supplierCode: supplier.supplierCode,
+      name: supplier.name,
+      mobile: supplier.mobile ?? "",
+      email: supplier.email ?? "",
+      address: supplier.address ?? "",
+      contactPerson: supplier.contactPerson ?? "",
+      contactPersonMobile: supplier.contactPersonMobile ?? "",
+      notes: supplier.notes ?? "",
+      status: supplier.status,
+    });
+    setSupplierFormError(null);
+    setOpenSupplierActionMenuId(null);
+    setIsSupplierModalOpen(true);
+  }
+
+  function openViewSupplierModal(supplier: SupplierRecord) {
+    setSupplierModalMode("view");
+    setSelectedSupplier(supplier);
+    setSupplierForm({
+      supplierCode: supplier.supplierCode,
+      name: supplier.name,
+      mobile: supplier.mobile ?? "",
+      email: supplier.email ?? "",
+      address: supplier.address ?? "",
+      contactPerson: supplier.contactPerson ?? "",
+      contactPersonMobile: supplier.contactPersonMobile ?? "",
+      notes: supplier.notes ?? "",
+      status: supplier.status,
+    });
+    setSupplierFormError(null);
+    setOpenSupplierActionMenuId(null);
+    setIsSupplierModalOpen(true);
+  }
+
+  function closeSupplierModal() {
+    setIsSupplierModalOpen(false);
+    setSupplierModalMode("create");
+    setSelectedSupplier(null);
+    setSupplierForm(defaultSupplierFormState);
+    setSupplierFormError(null);
+  }
+
+  async function handleSupplierSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!supplierForm.supplierCode.trim()) {
+      setSupplierFormError("Supplier code is required.");
+      return;
+    }
+
+    if (!supplierForm.name.trim()) {
+      setSupplierFormError("Supplier name is required.");
+      return;
+    }
+
+    setIsSupplierSaving(true);
+    setSupplierFormError(null);
+
+    try {
+      const endpoint =
+        supplierModalMode === "edit" && selectedSupplier ? `/api/suppliers/${selectedSupplier.id}` : "/api/suppliers";
+      const method = supplierModalMode === "edit" && selectedSupplier ? "PUT" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+          body: JSON.stringify({
+          supplierCode: supplierForm.supplierCode,
+          name: supplierForm.name,
+          mobile: supplierForm.mobile || null,
+          email: supplierForm.email || null,
+          address: supplierForm.address || null,
+          contactPerson: supplierForm.contactPerson || null,
+          contactPersonMobile: supplierForm.contactPersonMobile || null,
+          notes: supplierForm.notes || null,
+          status: supplierForm.status,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to save supplier.");
+      }
+
+      closeSupplierModal();
+      await refreshSuppliers();
+    } catch (error) {
+      setSupplierFormError(error instanceof Error ? error.message : "Failed to save supplier.");
+    } finally {
+      setIsSupplierSaving(false);
+    }
+  }
+
+  async function setSupplierStatus(supplier: SupplierRecord, status: SupplierStatusValue) {
+    try {
+      const response = await fetch(`/api/suppliers/${supplier.id}/status`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to change supplier status.");
+      }
+
+      setOpenSupplierActionMenuId(null);
+      await refreshSuppliers();
+    } catch (error) {
+      setSupplierLoadError(error instanceof Error ? error.message : "Failed to change supplier status.");
+    }
+  }
+
+  async function deleteSupplier(supplier: SupplierRecord) {
+    const shouldDelete = window.confirm(`Archive supplier "${supplier.name}"?`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/suppliers/${supplier.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to delete supplier.");
+      }
+
+      setOpenSupplierActionMenuId(null);
+      await refreshSuppliers();
+    } catch (error) {
+      setSupplierLoadError(error instanceof Error ? error.message : "Failed to delete supplier.");
+    }
+  }
+
   function closeProductCatalogModal() {
     setIsProductCatalogModalOpen(false);
     setProductCatalogModalMode("create");
@@ -1924,6 +2866,239 @@ export default function MasterDataSubmodulePage({
     });
     setProductPictureError(null);
     setProductCatalogFormError(null);
+  }
+
+  function closeBarcodeModal() {
+    setIsBarcodeModalOpen(false);
+    setBarcodeModalMode("assign");
+    setSelectedBarcodeProduct(null);
+    setEditingProductId(null);
+    setIsBarcodeScannerReady(false);
+    setProductCatalogForm(defaultProductCatalogFormState);
+    setProductCatalogFormError(null);
+    setOpenBarcodeActionMenuId(null);
+  }
+
+  async function refreshProductTemplates() {
+    setIsProductTemplateLoading(true);
+    setProductTemplateLoadError(null);
+
+    try {
+      const response = await fetch("/api/product-templates", {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      const payload = (await response.json().catch(() => null)) as ProductTemplateApiResponse | { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload && "message" in payload ? payload.message || "Failed to load product templates." : "Failed to load product templates.");
+      }
+
+      if (payload && "templates" in payload) {
+        setProductTemplateData(payload);
+      }
+    } catch (error) {
+      setProductTemplateLoadError(error instanceof Error ? error.message : "Failed to load product templates.");
+    } finally {
+      setIsProductTemplateLoading(false);
+    }
+  }
+
+  function openCreateProductTemplateModal() {
+    setProductTemplateModalMode("create");
+    setSelectedProductTemplate(null);
+    setProductTemplateForm(defaultProductTemplateFormState);
+    setProductTemplateFormError(null);
+    setOpenProductTemplateActionMenuId(null);
+    setIsProductTemplateModalOpen(true);
+  }
+
+  function openEditProductTemplateModal(template: ProductTemplateRecord) {
+    setProductTemplateModalMode("edit");
+    setSelectedProductTemplate(template);
+    setProductTemplateForm({
+      code: template.code,
+      name: template.name,
+      description: template.description ?? "",
+      status: template.status,
+    });
+    setProductTemplateFormError(null);
+    setOpenProductTemplateActionMenuId(null);
+    setIsProductTemplateModalOpen(true);
+  }
+
+  function openViewProductTemplateModal(template: ProductTemplateRecord) {
+    setProductTemplateModalMode("view");
+    setSelectedProductTemplate(template);
+    setProductTemplateForm({
+      code: template.code,
+      name: template.name,
+      description: template.description ?? "",
+      status: template.status,
+    });
+    setProductTemplateFormError(null);
+    setOpenProductTemplateActionMenuId(null);
+    setIsProductTemplateModalOpen(true);
+  }
+
+  function closeProductTemplateModal() {
+    setIsProductTemplateModalOpen(false);
+    setProductTemplateModalMode("create");
+    setSelectedProductTemplate(null);
+    setProductTemplateForm(defaultProductTemplateFormState);
+    setProductTemplateFormError(null);
+  }
+
+  function openManageTemplateProductsModal(template: ProductTemplateRecord) {
+    setSelectedProductTemplate(template);
+    setSelectedTemplateProductIds(template.products.map((item) => item.masterProductId));
+    setManageTemplateProductsSearch("");
+    setTemplateProductsError(null);
+    setOpenProductTemplateActionMenuId(null);
+    setIsManageTemplateProductsModalOpen(true);
+  }
+
+  function closeManageTemplateProductsModal() {
+    setIsManageTemplateProductsModalOpen(false);
+    setManageTemplateProductsSearch("");
+    setSelectedTemplateProductIds([]);
+    setTemplateProductsError(null);
+    setIsTemplateProductsSaving(false);
+  }
+
+  async function handleProductTemplateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!productTemplateForm.code.trim()) {
+      setProductTemplateFormError("Template code is required.");
+      return;
+    }
+
+    if (!productTemplateForm.name.trim()) {
+      setProductTemplateFormError("Template name is required.");
+      return;
+    }
+
+    setIsProductTemplateSaving(true);
+    setProductTemplateFormError(null);
+
+    try {
+      const endpoint =
+        productTemplateModalMode === "edit" && selectedProductTemplate
+          ? `/api/product-templates/${selectedProductTemplate.id}`
+          : "/api/product-templates";
+      const method = productTemplateModalMode === "edit" && selectedProductTemplate ? "PUT" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          code: productTemplateForm.code,
+          name: productTemplateForm.name,
+          description: productTemplateForm.description,
+          status: productTemplateForm.status,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to save product template.");
+      }
+
+      closeProductTemplateModal();
+      await refreshProductTemplates();
+    } catch (error) {
+      setProductTemplateFormError(error instanceof Error ? error.message : "Failed to save product template.");
+    } finally {
+      setIsProductTemplateSaving(false);
+    }
+  }
+
+  async function deleteProductTemplate(template: ProductTemplateRecord) {
+    const shouldDelete = window.confirm(`Delete template "${template.name}"?`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/product-templates/${template.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to delete template.");
+      }
+
+      await refreshProductTemplates();
+    } catch (error) {
+      setProductTemplateLoadError(error instanceof Error ? error.message : "Failed to delete template.");
+    }
+  }
+
+  async function handleManageTemplateProductsSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedProductTemplate) {
+      setTemplateProductsError("Select a template first.");
+      return;
+    }
+
+    setIsTemplateProductsSaving(true);
+    setTemplateProductsError(null);
+
+    try {
+      const response = await fetch(`/api/product-templates/${selectedProductTemplate.id}/products`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          productIds: selectedTemplateProductIds,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to update template products.");
+      }
+
+      closeManageTemplateProductsModal();
+      await refreshProductTemplates();
+    } catch (error) {
+      setTemplateProductsError(error instanceof Error ? error.message : "Failed to update template products.");
+    } finally {
+      setIsTemplateProductsSaving(false);
+    }
+  }
+
+  async function removeTemplateProduct(templateId: string, productId: string) {
+    try {
+      const response = await fetch(`/api/product-templates/${templateId}/products/${productId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to remove product.");
+      }
+
+      await refreshProductTemplates();
+    } catch (error) {
+      setProductTemplateLoadError(error instanceof Error ? error.message : "Failed to remove product.");
+    }
   }
 
   const filteredBrands = brandData.brands.filter((brand) => {
@@ -1948,6 +3123,13 @@ export default function MasterDataSubmodulePage({
     setProductCatalogStatusFilter("");
   }
 
+  function resetBarcodeFilters() {
+    setBarcodeSearch("");
+    setBarcodeCategoryFilter("");
+    setBarcodeBrandFilter("");
+    setBarcodeStatusFilter("");
+  }
+
   function openCreateProductCatalogModal() {
     setProductCatalogModalMode("create");
     setEditingProductId(null);
@@ -1959,6 +3141,16 @@ export default function MasterDataSubmodulePage({
     });
     setProductPictureError(null);
     setIsProductCatalogModalOpen(true);
+  }
+
+  function openCreateBarcodeModal() {
+    setBarcodeModalMode("assign");
+    setSelectedBarcodeProduct(null);
+    setEditingProductId(null);
+    setProductCatalogForm(defaultProductCatalogFormState);
+    setProductCatalogFormError(null);
+    setOpenBarcodeActionMenuId(null);
+    setIsBarcodeModalOpen(true);
   }
 
   function openEditProductCatalogModal(product: ProductCatalogRecord) {
@@ -1975,6 +3167,7 @@ export default function MasterDataSubmodulePage({
       unitId: product.unitId ?? "",
       packageSize: product.packageSize ?? "",
       description: product.note ?? "",
+      barcodeStatus: product.status === "ARCHIVED" ? "ARCHIVED" : "ACTIVE",
     });
     setProductPicture({
       previewUrl: product.pictureUrl ?? "",
@@ -1982,8 +3175,31 @@ export default function MasterDataSubmodulePage({
     });
     setProductPictureError(null);
     setProductCatalogFormError(null);
+    setOpenBarcodeActionMenuId(null);
     setOpenProductCatalogActionMenuId(null);
     setIsProductCatalogModalOpen(true);
+  }
+
+  function openEditBarcodeModal(product: ProductCatalogRecord) {
+    setBarcodeModalMode(product.barcode ? "edit" : "assign");
+    setSelectedBarcodeProduct(product);
+    setEditingProductId(product.id);
+    setProductCatalogForm({
+      name: product.name,
+      sku: product.sku,
+      price: product.price != null ? String(product.price) : "",
+      barcode: product.barcode ?? "",
+      suggestedPrice: product.suggestedPrice != null ? String(product.suggestedPrice) : "",
+      categoryId: product.categoryId ?? "",
+      brandId: product.brandId ?? "",
+      unitId: product.unitId ?? "",
+      packageSize: product.packageSize ?? "",
+      description: product.note ?? "",
+      barcodeStatus: product.status === "ARCHIVED" ? "ARCHIVED" : "ACTIVE",
+    });
+    setProductCatalogFormError(null);
+    setOpenBarcodeActionMenuId(null);
+    setIsBarcodeModalOpen(true);
   }
 
   const filteredProductCatalogRows = productCatalogData.products.filter((product) => {
@@ -2008,6 +3224,156 @@ export default function MasterDataSubmodulePage({
       [product.name, product.sku, product.barcode ?? "", product.category, product.brand, product.unit].join(" "),
     );
   });
+
+  const filteredProductTemplateRows = productTemplateData.templates.filter((template) => {
+    if (productTemplateStatusFilter && template.status !== productTemplateStatusFilter) {
+      return false;
+    }
+
+    if (!productTemplateSearch.trim()) {
+      return true;
+    }
+
+    return isSubsequenceMatch(
+      productTemplateSearch,
+      [template.code, template.name, template.description ?? "", template.statusLabel].join(" "),
+    );
+  });
+
+  const productTemplateStatCards = [
+    {
+      label: "Total Templates",
+      value: String(productTemplateData.stats.total),
+      note: "All product templates",
+      accent: "indigo" as const,
+      icon: FiFileText,
+    },
+    {
+      label: "Active Templates",
+      value: String(productTemplateData.stats.active),
+      note: "Currently active",
+      accent: "green" as const,
+      icon: FiCheckCircle,
+    },
+    {
+      label: "Inactive Templates",
+      value: String(productTemplateData.stats.inactive),
+      note: "Temporarily hidden",
+      accent: "amber" as const,
+      icon: FiPauseCircle,
+    },
+    {
+      label: "With Products",
+      value: String(productTemplateData.stats.withProducts),
+      note: "Starter packs ready",
+      accent: "red" as const,
+      icon: FiPackage,
+    },
+  ];
+
+  const availableTemplateProducts = productCatalogData.products.filter((product) => {
+    if (!manageTemplateProductsSearch.trim()) {
+      return true;
+    }
+
+    return isSubsequenceMatch(
+      manageTemplateProductsSearch,
+      [product.name, product.sku, product.barcode ?? "", product.category, product.brand, product.unit].join(" "),
+    );
+  });
+
+  const barcodeDatabaseRows = productCatalogData.products
+    .map<BarcodeDatabaseRow>((product) => ({
+      id: product.id,
+      productName: product.name,
+      productNote: product.note ?? product.packageSize ?? "No additional note",
+      pictureUrl: product.pictureUrl,
+      sku: product.sku,
+      category: product.category,
+      categoryId: product.categoryId,
+      brand: product.brand,
+      brandId: product.brandId,
+      unit: product.unit,
+      barcode: product.barcode,
+      status: getBarcodeDatabaseStatus(product),
+      addedDate: formatMasterDataDate(product.createdAt),
+      addedTime: formatMasterDataTime(product.createdAt),
+      type: product.type,
+    }))
+    .filter((product) => {
+      if (barcodeCategoryFilter && product.categoryId !== barcodeCategoryFilter) {
+        return false;
+      }
+
+      if (barcodeBrandFilter && product.brandId !== barcodeBrandFilter) {
+        return false;
+      }
+
+      if (barcodeStatusFilter && product.status !== barcodeStatusFilter) {
+        return false;
+      }
+
+      if (!barcodeSearch.trim()) {
+        return true;
+      }
+
+      return isSubsequenceMatch(
+        barcodeSearch,
+        [product.productName, product.sku, product.barcode ?? "", product.category, product.brand, product.unit].join(" "),
+      );
+    });
+
+  const mappedBarcodeCount = productCatalogData.products.filter((product) => getBarcodeDatabaseStatus(product) === "Mapped").length;
+  const unmappedBarcodeCount = productCatalogData.products.filter((product) => getBarcodeDatabaseStatus(product) === "Unmapped").length;
+  const archivedBarcodeCount = productCatalogData.products.filter((product) => getBarcodeDatabaseStatus(product) === "Archived").length;
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const newBarcodeThisMonthCount = productCatalogData.products.filter((product) => {
+    if (!product.barcode) {
+      return false;
+    }
+
+    const createdAt = new Date(product.createdAt);
+    return createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
+  }).length;
+
+  const barcodeDatabaseStats = [
+    {
+      label: "Total Barcodes",
+      value: formatStatValue(mappedBarcodeCount),
+      note: "Products with barcode",
+      accent: "indigo" as const,
+      type: "barcode" as const,
+    },
+    {
+      label: "Mapped",
+      value: formatStatValue(mappedBarcodeCount),
+      note: `${productCatalogData.products.length === 0 ? 0 : Math.round((mappedBarcodeCount / productCatalogData.products.length) * 100)}% of products`,
+      accent: "green" as const,
+      type: "mapped" as const,
+    },
+    {
+      label: "Unmapped",
+      value: formatStatValue(unmappedBarcodeCount),
+      note: "Need barcode assignment",
+      accent: "amber" as const,
+      type: "grid" as const,
+    },
+    {
+      label: "New ( This Month)",
+      value: formatStatValue(newBarcodeThisMonthCount),
+      note: "Created this month",
+      accent: "violet" as const,
+      type: "badge" as const,
+    },
+    {
+      label: "Archived",
+      value: formatStatValue(archivedBarcodeCount),
+      note: "Inactive barcode records",
+      accent: "red" as const,
+      type: "scan" as const,
+    },
+  ];
 
   function closeUnitModal() {
     setIsUnitModalOpen(false);
@@ -2117,7 +3483,7 @@ export default function MasterDataSubmodulePage({
     }
   }
 
-  async function refreshProductCatalog() {
+async function refreshProductCatalog() {
     setIsProductCatalogLoading(true);
     setProductCatalogLoadError(null);
 
@@ -2143,7 +3509,176 @@ export default function MasterDataSubmodulePage({
       setProductCatalogLoadError(error instanceof Error ? error.message : "Failed to load products.");
     } finally {
       setIsProductCatalogLoading(false);
+  }
+}
+
+  async function setProductCatalogStatus(product: ProductCatalogRecord, nextStatus: ProductStatusValue) {
+    setProductCatalogFormError(null);
+    setProductCatalogLoadError(null);
+
+    try {
+      const response = await fetch(`/api/products/${product.id}/status`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to change product status.");
+      }
+
+      setOpenBarcodeActionMenuId(null);
+      setOpenProductCatalogActionMenuId(null);
+      await refreshProductCatalog();
+    } catch (error) {
+      setProductCatalogLoadError(error instanceof Error ? error.message : "Failed to change product status.");
     }
+  }
+
+  async function unmapBarcodeRecord(product: ProductCatalogRecord) {
+    setProductCatalogFormError(null);
+    setProductCatalogLoadError(null);
+
+    try {
+      const response = await fetch(`/api/products/${product.id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          barcode: null,
+          suggestedPrice: product.suggestedPrice,
+          categoryId: product.categoryId,
+          brandId: product.brandId,
+          unitId: product.unitId,
+          packageSize: product.packageSize,
+          description: product.note,
+          pictureUrl: product.pictureUrl,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to unmap barcode.");
+      }
+
+      setOpenBarcodeActionMenuId(null);
+      await refreshProductCatalog();
+    } catch (error) {
+      setProductCatalogLoadError(error instanceof Error ? error.message : "Failed to unmap barcode.");
+    }
+  }
+
+  async function handleBarcodeSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedBarcodeProduct) {
+      setProductCatalogFormError("Select an unmapped product from the table to assign a barcode.");
+      return;
+    }
+
+    if (!productCatalogForm.barcode.trim()) {
+      setProductCatalogFormError("Barcode number is required.");
+      return;
+    }
+
+    setIsProductCatalogSaving(true);
+    setProductCatalogFormError(null);
+
+    try {
+      const updateResponse = await fetch(`/api/products/${selectedBarcodeProduct.id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: selectedBarcodeProduct.name,
+          sku: selectedBarcodeProduct.sku,
+          price: selectedBarcodeProduct.price,
+          barcode: productCatalogForm.barcode,
+          suggestedPrice: selectedBarcodeProduct.suggestedPrice,
+          categoryId: selectedBarcodeProduct.categoryId,
+          brandId: selectedBarcodeProduct.brandId,
+          unitId: selectedBarcodeProduct.unitId,
+          packageSize: productCatalogForm.packageSize,
+          description: selectedBarcodeProduct.note,
+          pictureUrl: selectedBarcodeProduct.pictureUrl,
+        }),
+      });
+
+      const updatePayload = (await updateResponse.json().catch(() => null)) as { message?: string } | null;
+
+      if (!updateResponse.ok) {
+        throw new Error(updatePayload?.message || "Failed to save barcode.");
+      }
+
+      if (barcodeModalMode === "edit") {
+        const nextStatus = productCatalogForm.barcodeStatus;
+
+        if (selectedBarcodeProduct.status !== nextStatus) {
+          const statusResponse = await fetch(`/api/products/${selectedBarcodeProduct.id}/status`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: {
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ status: nextStatus }),
+          });
+
+          const statusPayload = (await statusResponse.json().catch(() => null)) as { message?: string } | null;
+
+          if (!statusResponse.ok) {
+            throw new Error(statusPayload?.message || "Failed to update barcode status.");
+          }
+        }
+      } else if (selectedBarcodeProduct.status !== "ACTIVE") {
+        const statusResponse = await fetch(`/api/products/${selectedBarcodeProduct.id}/status`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ status: "ACTIVE" }),
+        });
+
+        const statusPayload = (await statusResponse.json().catch(() => null)) as { message?: string } | null;
+
+        if (!statusResponse.ok) {
+          throw new Error(statusPayload?.message || "Failed to activate barcode.");
+        }
+      }
+
+      closeBarcodeModal();
+      await refreshProductCatalog();
+    } catch (error) {
+      setProductCatalogFormError(error instanceof Error ? error.message : "Failed to save barcode.");
+    } finally {
+      setIsProductCatalogSaving(false);
+    }
+  }
+
+  function openGeneratedBarcode(productId: string) {
+    window.open(getBarcodeImageUrl(productId), "_blank", "noopener,noreferrer");
+  }
+
+  function downloadGeneratedBarcode(productId: string) {
+    const link = document.createElement("a");
+    link.href = getBarcodeImageUrl(productId, true);
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   async function handleProductCatalogSubmit(event: FormEvent<HTMLFormElement>) {
@@ -2196,7 +3731,11 @@ export default function MasterDataSubmodulePage({
         throw new Error(payload?.message || "Failed to save product.");
       }
 
-      closeProductCatalogModal();
+      if (isBarcodeModalOpen) {
+        closeBarcodeModal();
+      } else {
+        closeProductCatalogModal();
+      }
       await refreshProductCatalog();
     } catch (error) {
       setProductCatalogFormError(error instanceof Error ? error.message : "Failed to save product.");
@@ -2229,37 +3768,13 @@ export default function MasterDataSubmodulePage({
   }
 
   async function changeProductCatalogStatus(product: ProductCatalogRecord) {
-    setProductCatalogFormError(null);
-    setProductCatalogLoadError(null);
-
     const nextStatus: ProductStatusValue =
       product.status === "ACTIVE"
         ? "INACTIVE"
         : product.status === "INACTIVE"
           ? "ACTIVE"
           : "ACTIVE";
-
-    try {
-      const response = await fetch(`/api/products/${product.id}/status`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-
-      if (!response.ok) {
-        throw new Error(payload?.message || "Failed to change product status.");
-      }
-
-      setOpenProductCatalogActionMenuId(null);
-      await refreshProductCatalog();
-    } catch (error) {
-      setProductCatalogLoadError(error instanceof Error ? error.message : "Failed to change product status.");
-    }
+    await setProductCatalogStatus(product, nextStatus);
   }
 
   async function deleteProductCatalogRow(product: ProductCatalogRecord) {
@@ -2764,30 +4279,462 @@ export default function MasterDataSubmodulePage({
   }
 
   if (slug === "supplier-data") {
-    return (
-      <section className="master-category-page">
-        <div className="master-category-stats">
-          {supplierStats.map((item) => (
-            <article className="master-category-stat-card" key={item.label}>
-              <SupplierStatIcon accent={item.accent} type={item.type} />
-              <div className="master-category-stat-copy">
-                <strong>{item.label}</strong>
-                <span>{item.value}</span>
-                <small>{item.note}</small>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    );
-  }
+    const filteredSuppliers = supplierData.suppliers.filter((supplier) => {
+      if (supplierStatusFilter && supplier.status !== supplierStatusFilter) {
+        return false;
+      }
 
-  if (slug === "bank-account") {
+      if (!supplierSearch.trim()) {
+        return true;
+      }
+
+      return isSubsequenceMatch(
+        supplierSearch,
+        [
+          supplier.supplierCode,
+          supplier.name,
+          supplier.mobile ?? "",
+          supplier.email ?? "",
+          supplier.contactPerson ?? "",
+          supplier.contactPersonMobile ?? "",
+        ].join(" "),
+      );
+    });
+
+    const supplierStatCards = [
+      { label: "Total Suppliers", value: String(supplierData.stats.total), note: "All suppliers", accent: "indigo" as const, type: "users" as const },
+      { label: "Active Suppliers", value: String(supplierData.stats.active), note: "Currently active", accent: "green" as const, type: "check" as const },
+      { label: "Inactive Suppliers", value: String(supplierData.stats.inactive), note: "Temporarily inactive", accent: "amber" as const, type: "close" as const },
+      { label: "Archived Suppliers", value: String(supplierData.stats.archived), note: "Soft deleted", accent: "red" as const, type: "alert" as const },
+    ];
+
     return (
       <>
         <section className="master-category-page">
           <div className="master-category-stats">
-            {bankAccountStats.map((item) => (
+            {supplierStatCards.map((item) => (
+              <article className="master-category-stat-card" key={item.label}>
+                <SupplierStatIcon accent={item.accent} type={item.type} />
+                <div className="master-category-stat-copy">
+                  <strong>{item.label}</strong>
+                  <span>{item.value}</span>
+                  <small>{item.note}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <section className="master-category-table-card">
+            <div className="master-category-toolbar supplier-page-toolbar">
+              <label className="master-category-search product-catalog-search">
+                <span className="product-catalog-search-icon" aria-hidden="true">
+                  <ProductCatalogControlIcon type="search" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search supplier, mobile, contact person..."
+                  value={supplierSearch}
+                  onChange={(event) => setSupplierSearch(event.target.value)}
+                />
+              </label>
+
+              <select
+                className="master-category-select"
+                value={supplierStatusFilter}
+                onChange={(event) => setSupplierStatusFilter(event.target.value as SupplierStatusValue | "")}
+              >
+                <option value="">All Status</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+
+              <button
+                type="button"
+                className="master-category-outline-button supplier-page-reset-button"
+                onClick={() => {
+                  setSupplierSearch("");
+                  setSupplierStatusFilter("");
+                }}
+              >
+                Reset
+              </button>
+
+              <button
+                type="button"
+                className="master-category-primary-button supplier-page-add-button"
+                onClick={openCreateSupplierModal}
+              >
+                + Add Supplier
+              </button>
+            </div>
+
+            {supplierLoadError ? (
+              <p className="master-category-inline-error">{supplierLoadError}</p>
+            ) : null}
+
+            <div className="supplier-page-table">
+              <div className="supplier-page-table-head">
+                <span>#</span>
+                <span>Supplier Code</span>
+                <span>Supplier Name</span>
+                <span>Mobile</span>
+                <span>Contact Person</span>
+                <span>Status</span>
+                <span>Date</span>
+                <span>Action</span>
+              </div>
+
+              {isSupplierLoading ? (
+                <div className="supplier-page-table-row">
+                  <span style={{ gridColumn: "1 / -1" }}>Loading suppliers...</span>
+                </div>
+              ) : filteredSuppliers.length === 0 ? (
+                <div className="supplier-page-table-row">
+                  <span style={{ gridColumn: "1 / -1" }}>No suppliers matched your filters.</span>
+                </div>
+              ) : (
+                filteredSuppliers.map((row, index) => (
+                  <div className="supplier-page-table-row" key={row.id}>
+                    <span>{index + 1}</span>
+                    <span>{row.supplierCode}</span>
+                    <span className="supplier-page-name-cell">
+                      <strong>{row.name}</strong>
+                      <small>{row.email || row.address || "No extra contact info"}</small>
+                    </span>
+                    <span>{row.mobile || "N/A"}</span>
+                    <span className="supplier-page-name-cell">
+                      <strong>{row.contactPerson || "N/A"}</strong>
+                      <small>{row.contactPersonMobile || "No contact number"}</small>
+                    </span>
+                    <span>
+                      <em
+                        className={`master-category-status-badge${
+                          row.status === "INACTIVE"
+                            ? " unit-page-status-badge-inactive"
+                            : row.status === "ARCHIVED"
+                              ? " bank-account-status-badge-closed"
+                              : ""
+                        }`}
+                      >
+                        {row.statusLabel}
+                      </em>
+                    </span>
+                    <span>{formatMasterDataDate(row.createdAt)}</span>
+                    <span className="master-category-actions">
+                      <button
+                        type="button"
+                        className="master-category-icon-button master-category-icon-button-edit"
+                        onClick={() => openEditSupplierModal(row)}
+                        aria-label={`Edit ${row.name}`}
+                      >
+                        <FiEdit />
+                      </button>
+                      <span className="master-category-action-menu">
+                        <button
+                          type="button"
+                          className="master-category-icon-button master-category-icon-button-more"
+                          onClick={() =>
+                            setOpenSupplierActionMenuId((current) => (current === row.id ? null : row.id))
+                          }
+                          aria-haspopup="menu"
+                          aria-expanded={openSupplierActionMenuId === row.id}
+                          aria-label="More"
+                        >
+                          <ProductCatalogControlIcon type="more" />
+                        </button>
+                        {openSupplierActionMenuId === row.id ? (
+                          <div className="master-category-action-dropdown" role="menu">
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              role="menuitem"
+                              onClick={() => openViewSupplierModal(row)}
+                            >
+                              View Details
+                            </button>
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              role="menuitem"
+                              onClick={() => openEditSupplierModal(row)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              role="menuitem"
+                              onClick={() => void setSupplierStatus(row, row.status === "ACTIVE" ? "INACTIVE" : "ACTIVE")}
+                            >
+                              {row.status === "ACTIVE" ? "Change Status to Inactive" : "Change Status to Active"}
+                            </button>
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                              role="menuitem"
+                              onClick={() => void deleteSupplier(row)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </span>
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="master-category-footer">
+              <span className="master-category-footer-text">
+                Showing {filteredSuppliers.length.toLocaleString("en-US")} suppliers total
+              </span>
+            </div>
+          </section>
+        </section>
+
+        {isSupplierModalOpen ? (
+          <div className="payment-modal-backdrop" onClick={closeSupplierModal}>
+            <div
+              className="payment-modal supplier-modal"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="supplier-modal-title"
+            >
+              <div className="payment-modal-header supplier-modal-header">
+                <div>
+                  <h3 id="supplier-modal-title">
+                    {supplierModalMode === "view" ? "View Supplier" : supplierModalMode === "edit" ? "Edit Supplier" : "Add Supplier"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  className="payment-modal-close"
+                  onClick={closeSupplierModal}
+                  aria-label="Close modal"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form className="supplier-modal-form" onSubmit={handleSupplierSubmit}>
+                <div className="supplier-modal-grid">
+                  <label className="payment-modal-field">
+                    <span>Supplier Code</span>
+                    <input
+                      type="text"
+                      value={supplierForm.supplierCode}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          supplierCode: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field">
+                    <span>Supplier Name</span>
+                    <input
+                      type="text"
+                      value={supplierForm.name}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field">
+                    <span>Mobile</span>
+                    <input
+                      type="text"
+                      value={supplierForm.mobile}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          mobile: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field">
+                    <span>Email</span>
+                    <input
+                      type="text"
+                      value={supplierForm.email}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          email: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field">
+                    <span>Contact Person</span>
+                    <input
+                      type="text"
+                      value={supplierForm.contactPerson}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          contactPerson: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field">
+                    <span>Contact Person Mobile</span>
+                    <input
+                      type="text"
+                      value={supplierForm.contactPersonMobile}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          contactPersonMobile: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field">
+                    <span>Status</span>
+                    <select
+                      value={supplierForm.status}
+                      disabled={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          status: event.target.value as SupplierStatusValue,
+                        }))
+                      }
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="ARCHIVED">Archived</option>
+                    </select>
+                  </label>
+
+                  <label className="payment-modal-field payment-modal-field-full">
+                    <span>Address</span>
+                    <textarea
+                      value={supplierForm.address}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          address: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="payment-modal-field payment-modal-field-full">
+                    <span>Notes</span>
+                    <textarea
+                      value={supplierForm.notes}
+                      readOnly={supplierModalMode === "view"}
+                      onChange={(event) =>
+                        setSupplierForm((current) => ({
+                          ...current,
+                          notes: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+
+                {supplierFormError ? (
+                  <p className="master-category-inline-error">{supplierFormError}</p>
+                ) : null}
+
+                <div className="payment-modal-actions supplier-modal-actions">
+                  <button
+                    type="button"
+                    className="payment-modal-secondary-button"
+                    onClick={closeSupplierModal}
+                  >
+                    {supplierModalMode === "view" ? "Close" : "Cancel"}
+                  </button>
+                  {supplierModalMode !== "view" ? (
+                    <button type="submit" className="payment-modal-primary-button" disabled={isSupplierSaving}>
+                      {isSupplierSaving ? "Saving..." : "Save Supplier"}
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  if (slug === "bank-account") {
+    const filteredBankAccounts = bankAccountData.bankAccounts.filter((row) => {
+      const matchesSearch = bankAccountSearch
+        ? [row.shopName, row.accountName, row.bankName, row.branchName ?? "", row.accountNumber]
+            .join(" ")
+            .toLowerCase()
+            .includes(bankAccountSearch.toLowerCase())
+        : true;
+      const matchesShop = bankAccountShopFilter ? row.shopId === bankAccountShopFilter : true;
+      const matchesBank = bankAccountBankFilter ? row.bankName === bankAccountBankFilter : true;
+      const matchesStatus = bankAccountStatusFilter ? row.status === bankAccountStatusFilter : true;
+
+      return matchesSearch && matchesShop && matchesBank && matchesStatus;
+    });
+
+    const bankAccountStatCards = [
+      {
+        label: "Total Accounts",
+        value: formatStatValue(bankAccountData.stats.total),
+        note: "All Accounts",
+        accent: "indigo" as const,
+        icon: FiCreditCard,
+      },
+      {
+        label: "Active Accounts",
+        value: formatStatValue(bankAccountData.stats.active),
+        note: "Active Accounts",
+        accent: "green" as const,
+        icon: FiCheckCircle,
+      },
+      {
+        label: "Inactive Accounts",
+        value: formatStatValue(bankAccountData.stats.inactive),
+        note: "Inactive Accounts",
+        accent: "amber" as const,
+        icon: FiPauseCircle,
+      },
+      {
+        label: "Total Balance",
+        value: formatMoneyBoxCurrency(bankAccountData.stats.totalBalance),
+        note: "Current Balance",
+        accent: "red" as const,
+        icon: FiDollarSign,
+      },
+    ];
+
+    return (
+      <>
+        <section className="master-category-page">
+          <div className="master-category-stats">
+            {bankAccountStatCards.map((item) => (
               <article className="master-category-stat-card" key={item.label}>
                 <BankAccountStatIcon accent={item.accent} icon={item.icon} />
                 <div className="master-category-stat-copy">
@@ -2805,33 +4752,61 @@ export default function MasterDataSubmodulePage({
                 <span className="product-catalog-search-icon" aria-hidden="true">
                   <ProductCatalogControlIcon type="search" />
                 </span>
-                <input type="text" placeholder="Search account, bank or number..." />
+                <input
+                  type="text"
+                  placeholder="Search account, bank or number..."
+                  value={bankAccountSearch}
+                  onChange={(event) => setBankAccountSearch(event.target.value)}
+                />
               </label>
 
-              <select className="master-category-select" defaultValue="All Stores">
-                <option>All Stores</option>
-                <option>Main Outlet</option>
-                <option>Gazipur Store</option>
-                <option>Uttara Store</option>
-                <option>Head Office</option>
+              <select
+                className="master-category-select"
+                value={bankAccountShopFilter}
+                onChange={(event) => setBankAccountShopFilter(event.target.value)}
+              >
+                <option value="">All Stores</option>
+                {shopOptions.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.shopName}
+                  </option>
+                ))}
               </select>
 
-              <select className="master-category-select" defaultValue="All Banks">
-                <option>All Banks</option>
-                <option>BRAC Bank</option>
-                <option>Dutch-Bangla Bank</option>
-                <option>City Bank</option>
-                <option>Eastern Bank PLC</option>
+              <select
+                className="master-category-select"
+                value={bankAccountBankFilter}
+                onChange={(event) => setBankAccountBankFilter(event.target.value)}
+              >
+                <option value="">All Banks</option>
+                {bankAccountData.banks.map((bank) => (
+                  <option key={bank} value={bank}>
+                    {bank}
+                  </option>
+                ))}
               </select>
 
-              <select className="master-category-select" defaultValue="All Status">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Inactive</option>
-                <option>Closed</option>
+              <select
+                className="master-category-select"
+                value={bankAccountStatusFilter}
+                onChange={(event) => setBankAccountStatusFilter(event.target.value as BankAccountStatusValue | "")}
+              >
+                <option value="">All Status</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="CLOSED">Closed</option>
               </select>
 
-              <button type="button" className="master-category-outline-button bank-account-reset-button">
+              <button
+                type="button"
+                className="master-category-outline-button bank-account-reset-button"
+                onClick={() => {
+                  setBankAccountSearch("");
+                  setBankAccountShopFilter("");
+                  setBankAccountBankFilter("");
+                  setBankAccountStatusFilter("");
+                }}
+              >
                 Reset
               </button>
 
@@ -2865,11 +4840,19 @@ export default function MasterDataSubmodulePage({
               <button
                 type="button"
                 className="master-category-primary-button bank-account-add-button"
-                onClick={() => setIsBankAccountModalOpen(true)}
+                onClick={openCreateBankAccountModal}
               >
                 + Add Account
               </button>
             </div>
+
+            {bankAccountLoadError ? (
+              <p className="master-category-inline-error">{bankAccountLoadError}</p>
+            ) : null}
+
+            {shopOptionsLoadError ? (
+              <p className="master-category-inline-error">{shopOptionsLoadError}</p>
+            ) : null}
 
             <div className="bank-account-table">
               <div className="bank-account-table-head">
@@ -2885,43 +4868,55 @@ export default function MasterDataSubmodulePage({
                 <span>Actions</span>
               </div>
 
-              {bankAccountRows.map((row) => (
-                <div className="bank-account-table-row" key={row.id}>
-                  <span>{row.id}</span>
-                  <span>{row.storeName}</span>
-                  <span>{row.accountName}</span>
-                  <span>{row.bankName}</span>
-                  <span>{row.accountNumber}</span>
-                  <span>{row.branch}</span>
-                  <span>{formatBankAccountBalance(row.currentBalance, row.currency)}</span>
-                  <span>
-                    <em
-                      className={`master-category-status-badge${
-                        row.status === "Inactive"
-                          ? " unit-page-status-badge-inactive"
-                          : row.status === "Closed"
-                            ? " bank-account-status-badge-closed"
-                            : ""
-                      }`}
-                    >
-                      {row.status}
-                    </em>
-                  </span>
-                  <span>{row.updatedAt}</span>
-                  <span className="master-category-actions">
-                    <button type="button" className="master-category-icon-button master-category-icon-button-edit">
-                      <MoneyBoxActionIcon type="edit" />
-                    </button>
-                    <button type="button" className="master-category-icon-button master-category-icon-button-more">
-                      <ProductCatalogControlIcon type="more" />
-                    </button>
-                  </span>
-                </div>
-              ))}
+              {isBankAccountLoading ? (
+                <div className="master-category-empty-state">Loading bank accounts...</div>
+              ) : filteredBankAccounts.length === 0 ? (
+                <div className="master-category-empty-state">No bank accounts found.</div>
+              ) : (
+                filteredBankAccounts.map((row, index) => (
+                  <div className="bank-account-table-row" key={row.id}>
+                    <span>{index + 1}</span>
+                    <span>{row.shopName}</span>
+                    <span>{row.accountName}</span>
+                    <span>{row.bankName}</span>
+                    <span>{row.accountNumberMasked}</span>
+                    <span>{row.branchName || "—"}</span>
+                    <span>{formatBankAccountBalance(row.currentBalance, row.currency)}</span>
+                    <span>
+                      <em
+                        className={`master-category-status-badge${
+                          row.status === "INACTIVE"
+                            ? " unit-page-status-badge-inactive"
+                            : row.status === "CLOSED"
+                              ? " bank-account-status-badge-closed"
+                              : ""
+                        }`}
+                      >
+                        {row.statusLabel}
+                      </em>
+                    </span>
+                    <span>{formatMasterDataDate(row.updatedAt)}</span>
+                    <span className="master-category-actions">
+                      <button
+                        type="button"
+                        className="master-category-icon-button master-category-icon-button-edit"
+                        onClick={() => openEditBankAccountModal(row)}
+                      >
+                        <MoneyBoxActionIcon type="edit" />
+                      </button>
+                      <button type="button" className="master-category-icon-button master-category-icon-button-more">
+                        <ProductCatalogControlIcon type="more" />
+                      </button>
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="master-category-footer">
-              <span className="master-category-footer-text">Showing 5,842 products total</span>
+              <span className="master-category-footer-text">
+                Showing {filteredBankAccounts.length.toLocaleString("en-US")} bank accounts total
+              </span>
 
               <div className="master-category-pagination">
                 <button type="button" className="master-category-page-button">{"<"} Preview</button>
@@ -2940,7 +4935,7 @@ export default function MasterDataSubmodulePage({
         </section>
 
         {isBankAccountModalOpen ? (
-          <div className="payment-modal-backdrop" onClick={() => setIsBankAccountModalOpen(false)}>
+          <div className="payment-modal-backdrop" onClick={closeBankAccountModal}>
             <div
               className="payment-modal bank-account-modal"
               onClick={(event) => event.stopPropagation()}
@@ -2950,48 +4945,120 @@ export default function MasterDataSubmodulePage({
             >
               <div className="payment-modal-header bank-account-modal-header">
                 <div>
-                  <h3 id="bank-account-modal-title">Add Bank Account</h3>
+                  <h3 id="bank-account-modal-title">
+                    {bankAccountModalMode === "edit" ? "Edit Bank Account" : "Add Bank Account"}
+                  </h3>
                 </div>
                 <button
                   type="button"
                   className="payment-modal-close"
-                  onClick={() => setIsBankAccountModalOpen(false)}
+                  onClick={closeBankAccountModal}
                   aria-label="Close modal"
                 >
                   ×
                 </button>
               </div>
 
-              <form className="payment-modal-form bank-account-modal-form">
+              <form className="payment-modal-form bank-account-modal-form" onSubmit={handleBankAccountSubmit}>
                 <div className="bank-account-modal-section">
                   <h4>Basic Information</h4>
                   <div className="bank-account-modal-grid">
+                    <label className="payment-modal-field bank-account-modal-field payment-modal-field-full">
+                      <span>Shop</span>
+                      <select
+                        value={bankAccountForm.shopId}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            shopId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="" disabled>
+                          Select shop
+                        </option>
+                        {shopOptions.map((shop) => (
+                          <option key={shop.id} value={shop.id}>
+                            {shop.shopName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Account Name</span>
-                      <input type="text" placeholder="Enter account name" />
+                      <input
+                        type="text"
+                        placeholder="Enter account name"
+                        value={bankAccountForm.accountName}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            accountName: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
 
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Bank Name</span>
-                      <input type="text" placeholder="Enter bank name" />
+                      <input
+                        type="text"
+                        placeholder="Enter bank name"
+                        value={bankAccountForm.bankName}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            bankName: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
 
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Branch Name</span>
-                      <input type="text" placeholder="Enter branch name" />
+                      <input
+                        type="text"
+                        placeholder="Enter branch name"
+                        value={bankAccountForm.branchName}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            branchName: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
 
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Account Number</span>
-                      <input type="text" placeholder="Enter account number" />
+                      <input
+                        type="text"
+                        placeholder="Enter account number"
+                        value={bankAccountForm.accountNumber}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            accountNumber: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
 
                     <label className="payment-modal-field bank-account-modal-field payment-modal-field-full">
                       <span>Account Type</span>
-                      <select defaultValue="">
+                      <select
+                        value={bankAccountForm.accountType}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            accountType: event.target.value as BankAccountTypeValue | "",
+                          }))
+                        }
+                      >
                         <option value="" disabled>Select account type</option>
-                        <option>Current</option>
-                        <option>Savings</option>
+                        <option value="CURRENT">Current</option>
+                        <option value="SAVINGS">Savings</option>
                       </select>
                     </label>
                   </div>
@@ -3002,14 +5069,32 @@ export default function MasterDataSubmodulePage({
                   <div className="bank-account-modal-grid">
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Opening Balance</span>
-                      <input type="text" placeholder="0.00" />
+                      <input
+                        type="text"
+                        placeholder="0.00"
+                        value={bankAccountForm.openingBalance}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            openingBalance: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
 
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Currency</span>
-                      <select defaultValue="BDT">
-                        <option>BDT</option>
-                        <option>USD</option>
+                      <select
+                        value={bankAccountForm.currency}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            currency: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="BDT">BDT</option>
+                        <option value="USD">USD</option>
                       </select>
                     </label>
                   </div>
@@ -3020,35 +5105,73 @@ export default function MasterDataSubmodulePage({
                   <div className="bank-account-modal-grid">
                     <label className="payment-modal-field bank-account-modal-field">
                       <span>Status</span>
-                      <select defaultValue="Active">
-                        <option>Active</option>
-                        <option>Inactive</option>
-                        <option>Closed</option>
+                      <select
+                        value={bankAccountForm.status}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            status: event.target.value as BankAccountStatusValue,
+                          }))
+                        }
+                      >
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="CLOSED">Closed</option>
                       </select>
                     </label>
 
                     <label className="bank-account-modal-check">
-                      <input type="checkbox" />
+                      <input
+                        type="checkbox"
+                        checked={bankAccountForm.isDefault}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            isDefault: event.target.checked,
+                          }))
+                        }
+                      />
                       <span>Set as Default Account</span>
                     </label>
 
                     <label className="payment-modal-field bank-account-modal-field payment-modal-field-full">
                       <span>Notes</span>
-                      <textarea placeholder="Write account notes" />
+                      <textarea
+                        placeholder="Write account notes"
+                        value={bankAccountForm.notes}
+                        onChange={(event) =>
+                          setBankAccountForm((current) => ({
+                            ...current,
+                            notes: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
                   </div>
                 </div>
+
+                {bankAccountFormError ? (
+                  <p className="master-category-inline-error">{bankAccountFormError}</p>
+                ) : null}
 
                 <div className="payment-modal-actions bank-account-modal-actions">
                   <button
                     type="button"
                     className="payment-modal-secondary-button bank-account-modal-secondary-button"
-                    onClick={() => setIsBankAccountModalOpen(false)}
+                    onClick={closeBankAccountModal}
                   >
                     Cancel
                   </button>
-                  <button type="button" className="payment-modal-primary-button bank-account-modal-primary-button">
-                    Save Account
+                  <button
+                    type="submit"
+                    className="payment-modal-primary-button bank-account-modal-primary-button"
+                    disabled={isBankAccountSaving}
+                  >
+                    {isBankAccountSaving
+                      ? "Saving..."
+                      : bankAccountModalMode === "edit"
+                        ? "Update Account"
+                        : "Save Account"}
                   </button>
                 </div>
               </form>
@@ -3458,7 +5581,7 @@ export default function MasterDataSubmodulePage({
       <>
         <section className="master-category-page">
           <div className="master-category-stats">
-            {productTemplateStats.map((item) => (
+            {productTemplateStatCards.map((item) => (
               <article className="master-category-stat-card" key={item.label}>
                 <ProductTemplateCardIcon accent={item.accent} icon={item.icon} />
                 <div className="master-category-stat-copy">
@@ -3476,18 +5599,33 @@ export default function MasterDataSubmodulePage({
                 <span className="product-catalog-search-icon" aria-hidden="true">
                   <ProductCatalogControlIcon type="search" />
                 </span>
-                <input type="text" placeholder="Search Template..." />
+                <input
+                  type="text"
+                  placeholder="Search template..."
+                  value={productTemplateSearch}
+                  onChange={(event) => setProductTemplateSearch(event.target.value)}
+                />
               </label>
 
-              <select className="master-category-select" defaultValue="All Status">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Inactive</option>
-                <option>Draft</option>
-                <option>Archived</option>
+              <select
+                className="master-category-select"
+                value={productTemplateStatusFilter}
+                onChange={(event) => setProductTemplateStatusFilter(event.target.value as ProductTemplateStatusValue | "")}
+              >
+                <option value="">All Status</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="ARCHIVED">Archived</option>
               </select>
 
-              <button type="button" className="master-category-outline-button product-template-refresh-button">
+              <button
+                type="button"
+                className="master-category-outline-button product-template-refresh-button"
+                onClick={() => {
+                  setProductTemplateSearch("");
+                  setProductTemplateStatusFilter("");
+                }}
+              >
                 <ProductCatalogControlIcon type="reset" />
                 <span>Reset</span>
               </button>
@@ -3495,111 +5633,173 @@ export default function MasterDataSubmodulePage({
               <button
                 type="button"
                 className="master-category-primary-button"
-                onClick={() => setIsProductTemplateModalOpen(true)}
+                onClick={openCreateProductTemplateModal}
               >
                 + Add Template
               </button>
             </div>
+
+            {productTemplateLoadError ? (
+              <p className="master-category-inline-error">{productTemplateLoadError}</p>
+            ) : null}
 
             <div className="product-template-table">
               <div className="product-template-table-head">
                 <span>#</span>
                 <span>Template Code</span>
                 <span>Template Name</span>
-                <span>Category</span>
-                <span>Used By Products</span>
+                <span>Description</span>
+                <span>Products</span>
                 <span>Status</span>
                 <span>Created Date</span>
                 <span>Actions</span>
               </div>
 
-              {productTemplateRows.map((row) => (
-                <div className="product-template-table-row" key={row.id}>
-                  <span>{row.id}</span>
-                  <span>{row.code}</span>
-                  <span>{row.name}</span>
-                  <span>{row.category}</span>
-                  <span>{row.usedByProducts}</span>
-                  <span>
-                    <em
-                      className={`product-template-status-badge${
-                        row.status === "Draft"
-                          ? " unit-page-status-badge-inactive"
-                          : row.status === "Archived"
-                            ? " bank-account-status-badge-closed"
-                            : ""
-                      }`}
-                    >
-                      {row.status}
-                    </em>
-                  </span>
-                  <span>{row.createdDate}</span>
-                  <span className="master-category-actions">
-                    <button type="button" className="master-category-icon-button master-category-icon-button-edit">
-                      <MoneyBoxActionIcon type="edit" />
-                    </button>
-                    <span className="master-category-action-menu">
+              {isProductTemplateLoading ? (
+                <div className="product-template-table-row">
+                  <span>Loading templates...</span>
+                </div>
+              ) : filteredProductTemplateRows.length === 0 ? (
+                <div className="product-template-table-row">
+                  <span>No product templates matched your filters.</span>
+                </div>
+              ) : (
+                filteredProductTemplateRows.map((row, index) => (
+                  <div className="product-template-table-row" key={row.id}>
+                    <span>{index + 1}</span>
+                    <span>{row.code}</span>
+                    <span>{row.name}</span>
+                    <span>{row.description || "No description"}</span>
+                    <span>{row.productCount}</span>
+                    <span>
+                      <em
+                        className={`product-template-status-badge${
+                          row.status === "INACTIVE"
+                            ? " unit-page-status-badge-inactive"
+                            : row.status === "ARCHIVED"
+                              ? " bank-account-status-badge-closed"
+                              : ""
+                        }`}
+                      >
+                        {row.statusLabel}
+                      </em>
+                    </span>
+                    <span className="product-template-date-cell">
+                      <strong>{formatMasterDataDate(row.createdAt)}</strong>
+                      <small>{formatMasterDataTime(row.createdAt)}</small>
+                    </span>
+                    <span className="master-category-actions">
                       <button
                         type="button"
-                        className="master-category-icon-button master-category-icon-button-more"
-                        onClick={() =>
-                          setOpenProductTemplateActionMenuId((current) => (current === row.id ? null : row.id))
-                        }
-                        aria-haspopup="menu"
-                        aria-expanded={openProductTemplateActionMenuId === row.id}
+                        className="master-category-icon-button master-category-icon-button-edit"
+                        onClick={() => openEditProductTemplateModal(row)}
                       >
-                        <ProductCatalogControlIcon type="more" />
+                        <MoneyBoxActionIcon type="edit" />
                       </button>
-                      {openProductTemplateActionMenuId === row.id ? (
-                        <div className="master-category-action-dropdown" role="menu">
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            View Template
-                          </button>
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            Duplicate Template
-                          </button>
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            Use Template
-                          </button>
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            Archive Template
-                          </button>
-                          <button
-                            type="button"
-                            className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
-                            role="menuitem"
-                          >
-                            Delete Template
-                          </button>
-                        </div>
-                      ) : null}
+                      <button
+                        type="button"
+                        className="master-category-outline-button product-template-manage-button"
+                        onClick={() => openManageTemplateProductsModal(row)}
+                      >
+                        Manage Products
+                      </button>
+                      <span className="master-category-action-menu">
+                        <button
+                          type="button"
+                          className="master-category-icon-button master-category-icon-button-more"
+                          onClick={() =>
+                            setOpenProductTemplateActionMenuId((current) => (current === row.id ? null : row.id))
+                          }
+                          aria-haspopup="menu"
+                          aria-expanded={openProductTemplateActionMenuId === row.id}
+                        >
+                          <ProductCatalogControlIcon type="more" />
+                        </button>
+                        {openProductTemplateActionMenuId === row.id ? (
+                          <div className="master-category-action-dropdown" role="menu">
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              role="menuitem"
+                              onClick={() => openViewProductTemplateModal(row)}
+                            >
+                              View Template
+                            </button>
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              role="menuitem"
+                              onClick={() => openEditProductTemplateModal(row)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              role="menuitem"
+                              onClick={() => openManageTemplateProductsModal(row)}
+                            >
+                              Manage Products
+                            </button>
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                              role="menuitem"
+                              onClick={() => deleteProductTemplate(row)}
+                            >
+                              Delete Template
+                            </button>
+                          </div>
+                        ) : null}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              ))}
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="master-category-footer">
-              <span className="master-category-footer-text">Showing 5,842 products total</span>
-
-              <div className="master-category-pagination">
-                <button type="button" className="master-category-page-button">{"<"} Preview</button>
-                <button type="button" className="master-category-page-chip master-category-page-chip-active">1</button>
-                <button type="button" className="master-category-page-chip">2</button>
-                <button type="button" className="master-category-page-chip">...</button>
-                <button type="button" className="master-category-page-chip">150</button>
-                <button type="button" className="master-category-page-button">Next Page {">"}</button>
-              </div>
-
-              <select className="master-category-page-size" defaultValue="11">
-                <option>11</option>
-              </select>
+              <span className="master-category-footer-text">
+                Showing {filteredProductTemplateRows.length.toLocaleString("en-US")} templates total
+              </span>
             </div>
           </section>
+
+          {selectedProductTemplate ? (
+            <section className="master-category-table-card">
+              <div className="master-category-section-heading">
+                <h3>{selectedProductTemplate.name}</h3>
+                <p>Products in this starter pack</p>
+              </div>
+
+              {selectedProductTemplate.products.length === 0 ? (
+                <p className="master-category-empty-state">No products added to this template yet.</p>
+              ) : (
+                <div className="product-template-selected-products">
+                  {selectedProductTemplate.products.map((product) => (
+                    <div className="product-template-selected-product-row" key={product.masterProductId}>
+                      <div className="product-template-selected-product-copy">
+                        <strong>{product.name}</strong>
+                        <span>{product.sku}</span>
+                        <small>{product.barcode || `${product.category} • ${product.brand} • ${product.unit}`}</small>
+                      </div>
+                      <button
+                        type="button"
+                        className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                        onClick={() => void removeTemplateProduct(selectedProductTemplate.id, product.masterProductId)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
         </section>
 
         {isProductTemplateModalOpen ? (
-          <div className="payment-modal-backdrop" onClick={() => setIsProductTemplateModalOpen(false)}>
+          <div className="payment-modal-backdrop" onClick={closeProductTemplateModal}>
             <div
               className="payment-modal product-template-modal"
               onClick={(event) => event.stopPropagation()}
@@ -3609,67 +5809,203 @@ export default function MasterDataSubmodulePage({
             >
               <div className="payment-modal-header product-template-modal-header">
                 <div>
-                  <h3 id="product-template-modal-title">New Template import file</h3>
+                  <h3 id="product-template-modal-title">
+                    {productTemplateModalMode === "view"
+                      ? "View Template"
+                      : productTemplateModalMode === "edit"
+                        ? "Edit Template"
+                        : "Add Template"}
+                  </h3>
                 </div>
                 <button
                   type="button"
                   className="payment-modal-close"
-                  onClick={() => setIsProductTemplateModalOpen(false)}
+                  onClick={closeProductTemplateModal}
                   aria-label="Close modal"
                 >
                   ×
                 </button>
               </div>
 
-              <form className="product-template-modal-form">
-                <div className="product-template-modal-field">
-                  <span>Select file <sup>*</sup></span>
-                  <button type="button" className="product-template-upload-box">
-                    <strong>Drag the file here or click and select the file</strong>
-                    <small>Only Excel file (.xls, .xlsx)</small>
-                    <small>Supported</small>
-                    <small>maximum file size: 10MB</small>
-                  </button>
-                </div>
-
+              <form className="product-template-modal-form" onSubmit={handleProductTemplateSubmit}>
                 <label className="product-template-modal-field">
-                  <span>Import Type <sup>*</sup></span>
-                  <select defaultValue="">
-                    <option value="" disabled>Add new and update</option>
-                  </select>
+                  <span>Template Code <sup>*</sup></span>
+                  <input
+                    type="text"
+                    value={productTemplateForm.code}
+                    readOnly={productTemplateModalMode === "view"}
+                    onChange={(event) =>
+                      setProductTemplateForm((current) => ({
+                        ...current,
+                        code: event.target.value,
+                      }))
+                    }
+                    placeholder="Exm: TMP-GROCERY-001"
+                  />
                 </label>
 
                 <label className="product-template-modal-field">
-                  <span>File Formate <sup>*</sup></span>
-                  <select defaultValue="">
-                    <option value="" disabled>Excel (.xlsx)</option>
+                  <span>Template Name <sup>*</sup></span>
+                  <input
+                    type="text"
+                    value={productTemplateForm.name}
+                    readOnly={productTemplateModalMode === "view"}
+                    onChange={(event) =>
+                      setProductTemplateForm((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="Basic Grocery Starter Pack"
+                  />
+                </label>
+
+                <label className="product-template-modal-field">
+                  <span>Description</span>
+                  <textarea
+                    value={productTemplateForm.description}
+                    readOnly={productTemplateModalMode === "view"}
+                    onChange={(event) =>
+                      setProductTemplateForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                    placeholder="Starter pack for grocery shops"
+                  />
+                </label>
+
+                <label className="product-template-modal-field">
+                  <span>Status</span>
+                  <select
+                    value={productTemplateForm.status}
+                    disabled={productTemplateModalMode === "view"}
+                    onChange={(event) =>
+                      setProductTemplateForm((current) => ({
+                        ...current,
+                        status: event.target.value as ProductTemplateStatusValue,
+                      }))
+                    }
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="ARCHIVED">Archived</option>
                   </select>
                 </label>
 
-                <div className="product-template-modal-field">
-                  <span>Guidelines on format</span>
-                  <div className="product-template-guidelines">
-                    <p>Please follow the instructions below.</p>
-                    <ul>
-                      <li>Template Code</li>
-                      <li>Template Name</li>
-                      <li>Description</li>
-                      <li>Status</li>
-                    </ul>
+                {productTemplateModalMode === "view" && selectedProductTemplate ? (
+                  <div className="product-template-modal-field">
+                    <span>Products</span>
+                    {selectedProductTemplate.products.length === 0 ? (
+                      <p className="master-category-empty-state">No products added to this template yet.</p>
+                    ) : (
+                      <div className="product-template-selected-products">
+                        {selectedProductTemplate.products.map((product) => (
+                          <div className="product-template-selected-product-row" key={product.masterProductId}>
+                            <div className="product-template-selected-product-copy">
+                              <strong>{product.name}</strong>
+                              <span>{product.sku}</span>
+                              <small>{product.barcode || `${product.category} • ${product.brand} • ${product.unit}`}</small>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : null}
 
-                <label className="money-box-modal-check">
-                  <input type="checkbox" defaultChecked />
-                  <span>Header data on the first line</span>
-                </label>
+                {productTemplateFormError ? (
+                  <p className="master-category-inline-error">{productTemplateFormError}</p>
+                ) : null}
 
                 <div className="product-template-modal-actions">
-                  <button type="button" className="payment-modal-secondary-button product-template-download-button">
-                    Download
+                  <button type="button" className="payment-modal-secondary-button product-template-download-button" onClick={closeProductTemplateModal}>
+                    {productTemplateModalMode === "view" ? "Close" : "Cancel"}
                   </button>
-                  <button type="button" className="payment-modal-primary-button product-template-upload-button">
-                    Upload
+                  {productTemplateModalMode !== "view" ? (
+                    <button type="submit" className="payment-modal-primary-button product-template-upload-button" disabled={isProductTemplateSaving}>
+                      {isProductTemplateSaving ? "Saving..." : "Save"}
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {isManageTemplateProductsModalOpen && selectedProductTemplate ? (
+          <div className="payment-modal-backdrop" onClick={closeManageTemplateProductsModal}>
+            <div
+              className="payment-modal product-template-manage-modal"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="manage-template-products-modal-title"
+            >
+              <div className="payment-modal-header product-template-modal-header">
+                <div>
+                  <h3 id="manage-template-products-modal-title">Manage Template Products</h3>
+                  <p>Template: {selectedProductTemplate.name}</p>
+                </div>
+                <button
+                  type="button"
+                  className="payment-modal-close"
+                  onClick={closeManageTemplateProductsModal}
+                  aria-label="Close modal"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form className="product-template-manage-form" onSubmit={handleManageTemplateProductsSubmit}>
+                <label className="master-category-search product-catalog-search">
+                  <span className="product-catalog-search-icon" aria-hidden="true">
+                    <ProductCatalogControlIcon type="search" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search by name / SKU / barcode"
+                    value={manageTemplateProductsSearch}
+                    onChange={(event) => setManageTemplateProductsSearch(event.target.value)}
+                  />
+                </label>
+
+                <div className="product-template-manage-summary">
+                  <strong>Selected Products: {selectedTemplateProductIds.length}</strong>
+                </div>
+
+                <div className="product-template-available-list">
+                  {availableTemplateProducts.map((product) => (
+                    <label className="product-template-available-item" key={product.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTemplateProductIds.includes(product.id)}
+                        onChange={(event) =>
+                          setSelectedTemplateProductIds((current) =>
+                            event.target.checked
+                              ? Array.from(new Set([...current, product.id]))
+                              : current.filter((item) => item !== product.id),
+                          )
+                        }
+                      />
+                      <span className="product-template-available-copy">
+                        <strong>{product.name}</strong>
+                        <small>{product.sku} • {product.barcode || "No barcode"} • {product.unit}</small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {templateProductsError ? (
+                  <p className="master-category-inline-error">{templateProductsError}</p>
+                ) : null}
+
+                <div className="payment-modal-actions product-template-modal-actions">
+                  <button type="button" className="payment-modal-secondary-button" onClick={closeManageTemplateProductsModal}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="payment-modal-primary-button product-template-upload-button" disabled={isTemplateProductsSaving}>
+                    {isTemplateProductsSaving ? "Saving..." : "Add Selected Products"}
                   </button>
                 </div>
               </form>
@@ -3703,32 +6039,63 @@ export default function MasterDataSubmodulePage({
                 <span className="product-catalog-search-icon" aria-hidden="true">
                   <ProductCatalogControlIcon type="search" />
                 </span>
-                <input type="text" placeholder="Search barcode, product or SKU..." />
+                <input
+                  type="text"
+                  placeholder="Search barcode, product or SKU..."
+                  value={barcodeSearch}
+                  onChange={(event) => setBarcodeSearch(event.target.value)}
+                />
               </label>
 
-              <select className="master-category-select" defaultValue="Category">
-                <option>Category</option>
+              <select
+                className="master-category-select"
+                value={barcodeCategoryFilter}
+                onChange={(event) => setBarcodeCategoryFilter(event.target.value)}
+              >
+                <option value="">Category</option>
+                {productCatalogData.filters.categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
 
-              <select className="master-category-select" defaultValue="Brand">
-                <option>Brand</option>
+              <select
+                className="master-category-select"
+                value={barcodeBrandFilter}
+                onChange={(event) => setBarcodeBrandFilter(event.target.value)}
+              >
+                <option value="">Brand</option>
+                {productCatalogData.filters.brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </option>
+                ))}
               </select>
 
-              <select className="master-category-select" defaultValue="Status">
-                <option>Status</option>
-                <option>Mapped</option>
-                <option>Unmapped</option>
-                <option>Archived</option>
+              <select
+                className="master-category-select"
+                value={barcodeStatusFilter}
+                onChange={(event) => setBarcodeStatusFilter(event.target.value as BarcodeDatabaseStatusValue | "")}
+              >
+                <option value="">Status</option>
+                <option value="Mapped">Mapped</option>
+                <option value="Unmapped">Unmapped</option>
+                <option value="Archived">Archived</option>
               </select>
 
-              <button type="button" className="master-category-outline-button product-catalog-reset-button">
+              <button
+                type="button"
+                className="master-category-outline-button product-catalog-reset-button"
+                onClick={resetBarcodeFilters}
+              >
                 <span>Reset</span>
               </button>
 
               <button
                 type="button"
                 className="master-category-primary-button barcode-database-add-button"
-                onClick={() => setIsBarcodeModalOpen(true)}
+                onClick={openCreateBarcodeModal}
               >
                 + Add Barcode
               </button>
@@ -3736,122 +6103,265 @@ export default function MasterDataSubmodulePage({
           </section>
 
           <section className="master-category-table-card">
-            <div className="barcode-database-table">
-              <div className="barcode-database-table-head">
-                <span>#</span>
-                <span>Bar code</span>
-                <span>Product Name</span>
-                <span>SKU</span>
-                <span>Category</span>
-                <span>Brand</span>
-                <span>Unit</span>
-                <span>Status</span>
-                <span>Added Date</span>
-                <span>Action</span>
-              </div>
+            {productCatalogLoadError ? (
+              <p className="master-category-inline-error">{productCatalogLoadError}</p>
+            ) : null}
 
-              {barcodeDatabaseRows.map((row, index) => (
-                <div className="barcode-database-table-row" key={`${row.barcode}-${index}`}>
-                  <span>{row.id}</span>
-                  <span>
-                    <BarcodeRowPreview barcode={row.barcode} />
-                  </span>
-                  <span className="product-catalog-product-cell">
-                    <span className={`product-catalog-product-icon product-catalog-product-icon-${row.type}`}>
-                      <ProductCatalogRowIcon type={row.type} />
-                    </span>
-                    <span className="product-catalog-product-copy">
-                      <strong>{row.productName}</strong>
-                      <small>{row.productNote}</small>
-                    </span>
-                  </span>
-                  <span>{row.sku}</span>
-                  <span>{row.category}</span>
-                  <span>{row.brand}</span>
-                  <span>{row.unit}</span>
-                  <span>
-                    <em
-                      className={`barcode-database-status-badge${
-                        row.status === "Unmapped"
-                          ? " barcode-database-status-badge-unmapped"
-                          : row.status === "Archived"
-                            ? " barcode-database-status-badge-archived"
-                            : ""
-                      }`}
-                    >
-                      {row.status}
-                    </em>
-                  </span>
-                  <span className="barcode-database-date-cell">
-                    <strong>{row.addedDate}</strong>
-                    <small>{row.addedTime}</small>
-                  </span>
-                  <span className="master-category-actions">
-                    <button type="button" className="master-category-icon-button master-category-icon-button-edit">
-                      <MoneyBoxActionIcon type="edit" />
-                    </button>
-                    <span className="master-category-action-menu">
-                      <button
-                        type="button"
-                        className="master-category-icon-button product-catalog-icon-button-more"
-                        onClick={() =>
-                          setOpenBarcodeActionMenuId((current) => (current === index ? null : index))
-                        }
-                        aria-haspopup="menu"
-                        aria-expanded={openBarcodeActionMenuId === index}
-                      >
-                        <ProductCatalogControlIcon type="more" />
-                      </button>
-                      {openBarcodeActionMenuId === index ? (
-                        <div className="master-category-action-dropdown" role="menu">
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            View Barcode
-                          </button>
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            Print Barcode
-                          </button>
-                          <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                            Download Barcode
-                          </button>
+            {isProductCatalogLoading ? (
+              <p className="master-category-empty-state">Loading barcode records...</p>
+            ) : barcodeDatabaseRows.length === 0 ? (
+              <p className="master-category-empty-state">No barcode records matched your filters.</p>
+            ) : (
+              <div className="barcode-database-table">
+                <div className="barcode-database-table-head">
+                  <span>#</span>
+                  <span>Bar code</span>
+                  <span>Product Name</span>
+                  <span>SKU</span>
+                  <span>Category</span>
+                  <span>Brand</span>
+                  <span>Unit</span>
+                  <span>Status</span>
+                  <span>Added Date</span>
+                  <span>Action</span>
+                </div>
+
+                {barcodeDatabaseRows.map((row, index) => {
+                  const sourceProduct = productCatalogData.products.find((product) => product.id === row.id);
+                  const canPreviewBarcode = Boolean(row.barcode && sourceProduct);
+
+                  return (
+                    <div className="barcode-database-table-row" key={row.id}>
+                      <span>{index + 1}</span>
+                      <span>
+                        {canPreviewBarcode && sourceProduct ? (
                           <button
                             type="button"
-                            className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
-                            role="menuitem"
+                            className="barcode-database-preview-button"
+                            onClick={() => openGeneratedBarcode(sourceProduct.id)}
+                            title="Open generated barcode"
                           >
-                            Delete Barcode
+                            <img
+                              src={getBarcodeImageUrl(sourceProduct.id)}
+                              alt={`Generated barcode for ${row.productName}`}
+                              className="barcode-database-preview-image"
+                            />
                           </button>
-                        </div>
-                      ) : null}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
+                        ) : row.barcode ? (
+                          <BarcodeRowPreview barcode={row.barcode} />
+                        ) : (
+                          "N/A"
+                        )}
+                      </span>
+                      <span className="product-catalog-product-cell">
+                        <span className={`product-catalog-product-icon product-catalog-product-icon-${row.type}`}>
+                          {row.pictureUrl ? (
+                            <img
+                              src={row.pictureUrl}
+                              alt={`${row.productName} picture`}
+                              className="product-catalog-table-thumbnail"
+                            />
+                          ) : (
+                            <ProductCatalogRowIcon type={row.type} />
+                          )}
+                        </span>
+                        <span className="product-catalog-product-copy">
+                          <strong>{row.productName}</strong>
+                          <small>{row.productNote}</small>
+                        </span>
+                      </span>
+                      <span>{row.sku}</span>
+                      <span>{row.category}</span>
+                      <span>{row.brand}</span>
+                      <span>{row.unit}</span>
+                      <span>
+                        <em
+                          className={`barcode-database-status-badge${
+                            row.status === "Unmapped"
+                              ? " barcode-database-status-badge-unmapped"
+                              : row.status === "Archived"
+                                ? " barcode-database-status-badge-archived"
+                                : ""
+                          }`}
+                        >
+                          {row.status}
+                        </em>
+                      </span>
+                      <span className="barcode-database-date-cell">
+                        <strong>{row.addedDate}</strong>
+                        <small>{row.addedTime}</small>
+                      </span>
+                      <span className="barcode-database-actions">
+                        {sourceProduct ? (
+                          <>
+                            {row.status === "Unmapped" ? (
+                              <button
+                                type="button"
+                                className="barcode-database-quick-action"
+                                onClick={() => openEditBarcodeModal(sourceProduct)}
+                              >
+                                Assign Barcode
+                              </button>
+                            ) : null}
+
+                            {row.status === "Mapped" ? (
+                              <button
+                                type="button"
+                                className="barcode-database-quick-action barcode-database-quick-action-mapped"
+                                onClick={() => openEditBarcodeModal(sourceProduct)}
+                              >
+                                Edit
+                              </button>
+                            ) : null}
+
+                            {row.status === "Archived" ? (
+                              <button
+                                type="button"
+                                className="barcode-database-quick-action barcode-database-quick-action-archived"
+                                onClick={() => void setProductCatalogStatus(sourceProduct, "ACTIVE")}
+                              >
+                                Restore
+                              </button>
+                            ) : null}
+                          </>
+                        ) : null}
+
+                        <span className="master-category-action-menu">
+                          <button
+                            type="button"
+                            className="master-category-icon-button product-catalog-icon-button-more"
+                            onClick={() =>
+                              setOpenBarcodeActionMenuId((current) => (current === row.id ? null : row.id))
+                            }
+                            aria-haspopup="menu"
+                            aria-expanded={openBarcodeActionMenuId === row.id}
+                          >
+                            <ProductCatalogControlIcon type="more" />
+                          </button>
+                          {openBarcodeActionMenuId === row.id && sourceProduct ? (
+                            <div className="master-category-action-dropdown" role="menu">
+                              {row.status === "Unmapped" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => openEditBarcodeModal(sourceProduct)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => void setProductCatalogStatus(sourceProduct, "ARCHIVED")}
+                                  >
+                                    Archive
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                                    role="menuitem"
+                                    onClick={() => deleteProductCatalogRow(sourceProduct)}
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              ) : null}
+
+                              {row.status === "Mapped" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => openGeneratedBarcode(sourceProduct.id)}
+                                  >
+                                    View Barcode
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => downloadGeneratedBarcode(sourceProduct.id)}
+                                  >
+                                    Download Barcode
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => openEditProductCatalogModal(sourceProduct)}
+                                  >
+                                    View Product
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => void unmapBarcodeRecord(sourceProduct)}
+                                  >
+                                    Unmap
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => void setProductCatalogStatus(sourceProduct, "ARCHIVED")}
+                                  >
+                                    Archive
+                                  </button>
+                                </>
+                              ) : null}
+
+                              {row.status === "Archived" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => openGeneratedBarcode(sourceProduct.id)}
+                                  >
+                                    View Barcode
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item"
+                                    role="menuitem"
+                                    onClick={() => openEditProductCatalogModal(sourceProduct)}
+                                  >
+                                    View
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                                    role="menuitem"
+                                    onClick={() => deleteProductCatalogRow(sourceProduct)}
+                                  >
+                                    Delete Permanently
+                                  </button>
+                                </>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="master-category-footer">
-              <span className="master-category-footer-text">Showing 5,842 products total</span>
-
-              <div className="master-category-pagination">
-                <button type="button" className="master-category-page-button">{"<"} Preview</button>
-                <button type="button" className="master-category-page-chip master-category-page-chip-active">1</button>
-                <button type="button" className="master-category-page-chip">2</button>
-                <button type="button" className="master-category-page-chip">3</button>
-                <button type="button" className="master-category-page-chip">4</button>
-                <button type="button" className="master-category-page-chip">5</button>
-                <button type="button" className="master-category-page-chip">...</button>
-                <button type="button" className="master-category-page-chip">150</button>
-                <button type="button" className="master-category-page-button">Next Page {">"}</button>
-              </div>
-
-              <select className="master-category-page-size" defaultValue="20">
-                <option>20</option>
-              </select>
+              <span className="master-category-footer-text">
+                Showing {barcodeDatabaseRows.length.toLocaleString("en-US")} barcode records total
+              </span>
             </div>
           </section>
         </section>
 
         {isBarcodeModalOpen ? (
-          <div className="payment-modal-backdrop" onClick={() => setIsBarcodeModalOpen(false)}>
+          <div className="payment-modal-backdrop" onClick={closeBarcodeModal}>
             <div
               className="payment-modal barcode-modal"
               onClick={(event) => event.stopPropagation()}
@@ -3861,40 +6371,123 @@ export default function MasterDataSubmodulePage({
             >
               <div className="payment-modal-header barcode-modal-header">
                 <div>
-                  <h3 id="barcode-modal-title">Add new Barcode</h3>
+                  <h3 id="barcode-modal-title">
+                    {barcodeModalMode === "edit" ? "Edit Barcode" : "Assign Barcode"}
+                  </h3>
                 </div>
                 <button
                   type="button"
                   className="payment-modal-close"
-                  onClick={() => setIsBarcodeModalOpen(false)}
+                  onClick={closeBarcodeModal}
                   aria-label="Close modal"
                 >
                   ×
                 </button>
               </div>
 
-              <form className="barcode-modal-form">
+              <form ref={barcodeFormRef} className="barcode-modal-form" onSubmit={handleBarcodeSubmit}>
                 <div className="barcode-modal-section">
                   <h4>Product information</h4>
                   <div className="barcode-modal-grid barcode-modal-grid-product">
-                    <label className="payment-modal-field barcode-modal-search-field">
+                    <label className="payment-modal-field">
                       <span>Product Name</span>
-                      <input type="text" placeholder="Enter product name" />
-                      <span className="barcode-modal-inline-icon" aria-hidden="true">
-                        <ProductCatalogControlIcon type="search" />
-                      </span>
+                      <input
+                        type="text"
+                        value={selectedBarcodeProduct?.name ?? ""}
+                        readOnly
+                      />
                     </label>
 
                     <label className="payment-modal-field">
                       <span>SKU</span>
-                      <input type="text" placeholder="Enter SKU (PDR-0001)" />
+                      <input
+                        type="text"
+                        value={selectedBarcodeProduct?.sku ?? ""}
+                        readOnly
+                      />
                     </label>
 
+                    <label className="payment-modal-field">
+                      <span>Category</span>
+                      <select
+                        value={selectedBarcodeProduct?.categoryId ?? ""}
+                        disabled
+                      >
+                        <option value="">{selectedBarcodeProduct?.category ?? "Uncategorized"}</option>
+                        {productCatalogData.filters.categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Brand</span>
+                      <select
+                        value={selectedBarcodeProduct?.brandId ?? ""}
+                        disabled
+                      >
+                        <option value="">{selectedBarcodeProduct?.brand ?? "No Brand"}</option>
+                        {productCatalogData.filters.brands.map((brand) => (
+                          <option key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Unit</span>
+                      <select
+                        value={selectedBarcodeProduct?.unitId ?? ""}
+                        disabled
+                      >
+                        <option value="">{selectedBarcodeProduct?.unit ?? "No Unit"}</option>
+                        {productCatalogData.filters.units.map((unit) => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.name} ({unit.shortName})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="barcode-modal-section">
+                  <h4>{barcodeModalMode === "edit" ? "Barcode Information" : "Barcode Assignment"}</h4>
+                  <div className="barcode-modal-grid barcode-modal-grid-packaging">
                     <div className="payment-modal-field barcode-modal-scan-field">
-                      <span>Barcode (EAN/UPC)</span>
+                      <span>Barcode Number *</span>
                       <div className="barcode-modal-scan-row">
-                        <input type="text" placeholder="Scan barcode or Write number" />
-                        <button type="button" className="barcode-modal-scan-button">
+                        <input
+                          ref={barcodeInputRef}
+                          type="text"
+                          placeholder="Enter barcode number"
+                          value={productCatalogForm.barcode}
+                          onChange={(event) =>
+                            setProductCatalogForm((current) => ({
+                              ...current,
+                              barcode: event.target.value,
+                            }))
+                          }
+                          onFocus={() => setIsBarcodeScannerReady(true)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              barcodeFormRef.current?.requestSubmit();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="barcode-modal-scan-button"
+                          onClick={() => {
+                            barcodeInputRef.current?.focus();
+                            barcodeInputRef.current?.select();
+                            setIsBarcodeScannerReady(true);
+                          }}
+                        >
                           <svg aria-hidden="true" viewBox="0 0 24 24">
                             <path
                               d="M8 4.5H4.5V8"
@@ -3938,81 +6531,338 @@ export default function MasterDataSubmodulePage({
                               strokeLinejoin="round"
                             />
                           </svg>
-                          <span>Scan</span>
+                          <span>{isBarcodeScannerReady ? "Scanner Ready" : "Scan Barcode"}</span>
                         </button>
                       </div>
+                      <small className="barcode-modal-scan-helper">
+                        {isBarcodeScannerReady
+                          ? "Scan now or type the barcode number, then press Enter or Save."
+                          : "Click Scan Barcode to capture the scanner input here."}
+                      </small>
                     </div>
 
                     <label className="payment-modal-field">
-                      <span>Category</span>
-                      <select defaultValue="">
-                        <option value="" disabled>Select Category</option>
-                      </select>
-                    </label>
-
-                    <label className="payment-modal-field">
-                      <span>Brand</span>
-                      <select defaultValue="">
-                        <option value="" disabled>Select Brand</option>
-                      </select>
-                    </label>
-
-                    <label className="payment-modal-field">
-                      <span>Unit</span>
-                      <select defaultValue="">
-                        <option value="" disabled>Select Unit</option>
-                      </select>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="barcode-modal-section">
-                  <h4>Packaging and quantity</h4>
-                  <div className="barcode-modal-grid barcode-modal-grid-packaging">
-                    <label className="payment-modal-field barcode-modal-search-field">
                       <span>Pack Size</span>
-                      <input type="text" placeholder="100 GM, 1 LT, 500ml etc." />
-                      <span className="barcode-modal-inline-icon" aria-hidden="true">
-                        <ProductCatalogControlIcon type="search" />
-                      </span>
+                      <input
+                        type="text"
+                        placeholder="100 GM, 1 LT, 500ml etc."
+                        value={productCatalogForm.packageSize}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            packageSize: event.target.value,
+                          }))
+                        }
+                      />
                     </label>
 
-                    <div className="payment-modal-field barcode-modal-inline-select">
-                      <span>Net weight/quantity</span>
-                      <div className="barcode-modal-inline-row">
-                        <input type="text" placeholder="Enter number" />
-                        <select defaultValue="GRM">
-                          <option>GRM</option>
+                    {barcodeModalMode === "edit" ? (
+                      <label className="payment-modal-field">
+                        <span>Status</span>
+                        <select
+                          value={productCatalogForm.barcodeStatus}
+                          onChange={(event) =>
+                            setProductCatalogForm((current) => ({
+                              ...current,
+                              barcodeStatus: event.target.value as "ACTIVE" | "ARCHIVED",
+                            }))
+                          }
+                        >
+                          <option value="ACTIVE">Mapped</option>
+                          <option value="ARCHIVED">Archived</option>
                         </select>
-                      </div>
-                    </div>
+                      </label>
+                    ) : null}
 
-                    <label className="payment-modal-field">
-                      <span>Package type</span>
-                      <select defaultValue="">
-                        <option value="" disabled>Select package type</option>
-                      </select>
-                    </label>
-
-                    <label className="payment-modal-field">
-                      <span>Pitch/Unite Per Quantity</span>
-                      <select defaultValue="">
-                        <option value="" disabled>12 pitch, 6 bottle</option>
-                      </select>
-                    </label>
+                    {!selectedBarcodeProduct ? (
+                      <p className="master-category-empty-state">
+                        Use the Assign Barcode action from an unmapped product row.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
+
+                {productCatalogFormError ? (
+                  <p className="master-category-inline-error">{productCatalogFormError}</p>
+                ) : null}
 
                 <div className="barcode-modal-actions">
                   <button
                     type="button"
                     className="payment-modal-secondary-button"
-                    onClick={() => setIsBarcodeModalOpen(false)}
+                    onClick={closeBarcodeModal}
                   >
                     Cancel
                   </button>
-                  <button type="button" className="payment-modal-primary-button">
-                    Save Barcode
+                  <button type="submit" className="payment-modal-primary-button" disabled={isProductCatalogSaving}>
+                    {isProductCatalogSaving
+                      ? "Saving..."
+                      : barcodeModalMode === "edit"
+                        ? "Save Changes"
+                        : "Assign Barcode"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {isProductCatalogModalOpen ? (
+          <div className="payment-modal-backdrop" onClick={closeProductCatalogModal}>
+            <div
+              className="payment-modal product-catalog-modal"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="product-catalog-modal-title"
+            >
+              <div className="payment-modal-header product-catalog-modal-header">
+                <div>
+                  <h3 id="product-catalog-modal-title">
+                    {productCatalogModalMode === "edit" ? "Edit Product" : "Add new Product"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  className="payment-modal-close"
+                  onClick={closeProductCatalogModal}
+                  aria-label="Close modal"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form className="payment-modal-form product-catalog-modal-form" onSubmit={handleProductCatalogSubmit}>
+                <div className="product-catalog-modal-section">
+                  <h4>Price and Inventory</h4>
+                  <div className="product-catalog-modal-grid">
+                    <label className="payment-modal-field">
+                      <span>Product name</span>
+                      <input
+                        type="text"
+                        placeholder="Enter product name"
+                        value={productCatalogForm.name}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>SKU</span>
+                      <input
+                        type="text"
+                        placeholder="Enter SKU (Exm: PRD-0001)"
+                        value={productCatalogForm.sku}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            sku: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Price</span>
+                      <input
+                        type="text"
+                        placeholder="Enter price"
+                        value={productCatalogForm.price}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            price: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Barcode</span>
+                      <input
+                        type="text"
+                        placeholder="Enter Barcode"
+                        value={productCatalogForm.barcode}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            barcode: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Suggested selling price</span>
+                      <input
+                        type="text"
+                        placeholder="Enter suggested selling price"
+                        value={productCatalogForm.suggestedPrice}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            suggestedPrice: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Category</span>
+                      <select
+                        value={productCatalogForm.categoryId}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            categoryId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="" disabled>Select category</option>
+                        {productCatalogData.filters.categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Brand</span>
+                      <select
+                        value={productCatalogForm.brandId}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            brandId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="" disabled>Select Brand</option>
+                        {productCatalogData.filters.brands.map((brand) => (
+                          <option key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>Unit</span>
+                      <select
+                        value={productCatalogForm.unitId}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            unitId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="" disabled>Select Unit</option>
+                        {productCatalogData.filters.units.map((unit) => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.name} ({unit.shortName})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="payment-modal-field">
+                      <span>package Size</span>
+                      <input
+                        type="text"
+                        placeholder="Exm: 100gm, 1 LT, 500 ML"
+                        value={productCatalogForm.packageSize}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            packageSize: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="payment-modal-field payment-modal-field-full">
+                      <span>Additional Information</span>
+                      <textarea
+                        placeholder="Enter additional information."
+                        value={productCatalogForm.description}
+                        onChange={(event) =>
+                          setProductCatalogForm((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <div className="product-catalog-modal-upload-card">
+                      <span>Product Picture</span>
+                      <label className="product-catalog-modal-upload-box">
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.webp,.svg,image/jpeg,image/png,image/webp,image/svg+xml"
+                          onChange={handleProductPictureChange}
+                          style={{ display: "none" }}
+                        />
+                        {productPicture.previewUrl ? (
+                          <img
+                            src={productPicture.previewUrl}
+                            alt="Product picture preview"
+                            className="product-catalog-modal-upload-preview"
+                          />
+                        ) : (
+                          <>
+                            <strong>Upload picture</strong>
+                            <small>JPG, PNG, WEBP, or SVG</small>
+                            <small>maximum file size: 10MB</small>
+                          </>
+                        )}
+                      </label>
+                      {productPicture.previewUrl ? (
+                        <button
+                          type="button"
+                          className="product-catalog-modal-upload-clear"
+                          onClick={() => {
+                            setProductPicture({
+                              previewUrl: "",
+                              fileName: "",
+                            });
+                            setProductPictureError(null);
+                          }}
+                        >
+                          Remove picture
+                        </button>
+                      ) : null}
+                      {productPictureError ? (
+                        <p className="product-catalog-modal-upload-error">{productPictureError}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                {productCatalogFormError ? (
+                  <p className="master-category-inline-error">{productCatalogFormError}</p>
+                ) : null}
+
+                <div className="payment-modal-actions product-catalog-modal-actions">
+                  <button
+                    type="button"
+                    className="payment-modal-secondary-button"
+                    onClick={closeProductCatalogModal}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="payment-modal-primary-button" disabled={isProductCatalogSaving}>
+                    {isProductCatalogSaving
+                      ? "Saving..."
+                      : productCatalogModalMode === "edit"
+                        ? "Update Product"
+                        : "Save Product"}
                   </button>
                 </div>
               </form>
@@ -4517,15 +7367,11 @@ export default function MasterDataSubmodulePage({
                           style={{ display: "none" }}
                         />
                         {productPicture.previewUrl ? (
-                          <>
-                            <img
-                              src={productPicture.previewUrl}
-                              alt="Product picture preview"
-                              className="product-catalog-modal-upload-preview"
-                            />
-                            <strong>{productPicture.fileName || "Selected picture"}</strong>
-                            <small>Click to replace image</small>
-                          </>
+                          <img
+                            src={productPicture.previewUrl}
+                            alt="Product picture preview"
+                            className="product-catalog-modal-upload-preview"
+                          />
                         ) : (
                           <>
                             <strong>Upload picture</strong>
@@ -4585,11 +7431,34 @@ export default function MasterDataSubmodulePage({
   }
 
   if (slug === "money-box") {
+    const filteredMoneyBoxes = moneyBoxData.moneyBoxes.filter((row) => {
+      if (moneyBoxShopFilter && row.shopId !== moneyBoxShopFilter) {
+        return false;
+      }
+
+      if (moneyBoxStatusFilter && row.status !== moneyBoxStatusFilter) {
+        return false;
+      }
+
+      if (!moneyBoxSearch.trim()) {
+        return true;
+      }
+
+      return isSubsequenceMatch(moneyBoxSearch, [row.shopName, row.boxName, row.code, row.typeLabel].join(" "));
+    });
+
+    const moneyBoxStatCards = [
+      { label: "Total Money Boxes", value: String(moneyBoxData.stats.total), note: "All Money Boxes", accent: "indigo" as const, type: "users" as const },
+      { label: "Total Balance", value: formatMoneyBoxCurrency(moneyBoxData.stats.totalBalance), note: "Current Balance", accent: "green" as const, type: "balance" as const },
+      { label: "Active Boxes", value: String(moneyBoxData.stats.active), note: "Currently Active", accent: "indigo" as const, type: "check" as const },
+      { label: "Inactive Boxes", value: String(moneyBoxData.stats.inactive), note: "Currently Inactive", accent: "red" as const, type: "alert" as const },
+    ];
+
     return (
       <>
         <section className="master-category-page">
           <div className="master-category-stats">
-            {moneyBoxStats.map((item) => (
+            {moneyBoxStatCards.map((item) => (
               <article className="master-category-stat-card" key={item.label}>
                 <MoneyBoxStatIcon accent={item.accent} type={item.type} />
                 <div className="master-category-stat-copy">
@@ -4607,34 +7476,61 @@ export default function MasterDataSubmodulePage({
                 <span className="money-box-search-icon" aria-hidden="true">
                   <MoneyBoxToolbarIcon type="search" />
                 </span>
-                <input type="text" placeholder="Search box name, code or shop..." />
+                <input
+                  type="text"
+                  placeholder="Search box name, code or shop..."
+                  value={moneyBoxSearch}
+                  onChange={(event) => setMoneyBoxSearch(event.target.value)}
+                />
               </label>
 
-              <select className="master-category-select" defaultValue="All Shops">
-                <option>All Shops</option>
-                <option>Rahman Store</option>
-                <option>Bondhon Store</option>
-                <option>Main Outlet</option>
+              <select
+                className="master-category-select"
+                value={moneyBoxShopFilter}
+                onChange={(event) => setMoneyBoxShopFilter(event.target.value)}
+              >
+                <option value="">All Shops</option>
+                {shopOptions.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.shopName}
+                  </option>
+                ))}
               </select>
 
-              <select className="master-category-select" defaultValue="All Status">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Inactive</option>
+              <select
+                className="master-category-select"
+                value={moneyBoxStatusFilter}
+                onChange={(event) => setMoneyBoxStatusFilter(event.target.value as MoneyBoxStatusValue | "")}
+              >
+                <option value="">All Status</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
               </select>
 
-              <button type="button" className="master-category-outline-button">
+              <button
+                type="button"
+                className="master-category-outline-button"
+                onClick={() => {
+                  setMoneyBoxSearch("");
+                  setMoneyBoxShopFilter("");
+                  setMoneyBoxStatusFilter("");
+                }}
+              >
                 Clear Filters
               </button>
 
               <button
                 type="button"
                 className="master-category-primary-button"
-                onClick={() => setIsMoneyBoxModalOpen(true)}
+                onClick={openCreateMoneyBoxModal}
               >
                 Add Money Box
               </button>
             </div>
+
+            {moneyBoxLoadError || shopOptionsLoadError ? (
+              <p className="master-category-inline-error">{moneyBoxLoadError || shopOptionsLoadError}</p>
+            ) : null}
 
             <div className="money-box-table">
               <div className="money-box-table-head">
@@ -4649,20 +7545,34 @@ export default function MasterDataSubmodulePage({
                 <span>Actions</span>
               </div>
 
-              {moneyBoxRows.map((row) => (
+              {isMoneyBoxLoading ? (
+                <div className="money-box-table-row">
+                  <span style={{ gridColumn: "1 / -1" }}>Loading money boxes...</span>
+                </div>
+              ) : filteredMoneyBoxes.length === 0 ? (
+                <div className="money-box-table-row">
+                  <span style={{ gridColumn: "1 / -1" }}>No money boxes found for the current filters.</span>
+                </div>
+              ) : filteredMoneyBoxes.map((row, index) => (
                 <div className="money-box-table-row" key={row.id}>
-                  <span>{row.id}</span>
+                  <span>{index + 1}</span>
                   <span>{row.shopName}</span>
                   <span>{row.boxName}</span>
                   <span>{row.code}</span>
-                  <span>{row.type}</span>
-                  <span>{row.balance}</span>
+                  <span>{row.typeLabel}</span>
+                  <span>{formatMoneyBoxCurrency(row.currentBalance)}</span>
                   <span>
-                    <em className="master-category-status-badge">{row.status}</em>
+                    <em className={`master-category-status-badge${row.status === "INACTIVE" ? " unit-page-status-badge-inactive" : ""}`}>
+                      {row.statusLabel}
+                    </em>
                   </span>
-                  <span>{row.date}</span>
+                  <span>{formatMasterDataDate(row.createdAt)}</span>
                   <span className="master-category-actions money-box-row-actions">
-                    <button type="button" className="money-box-action-button money-box-action-button-edit">
+                    <button
+                      type="button"
+                      className="money-box-action-button money-box-action-button-edit"
+                      onClick={() => openEditMoneyBoxModal(row)}
+                    >
                       <MoneyBoxActionIcon type="edit" />
                       <span>Edit</span>
                     </button>
@@ -4715,26 +7625,15 @@ export default function MasterDataSubmodulePage({
             </div>
 
             <div className="master-category-footer">
-              <span className="master-category-footer-text">Showing 5,842 products total</span>
-
-              <div className="master-category-pagination">
-                <button type="button" className="master-category-page-button">{"<"} Preview</button>
-                <button type="button" className="master-category-page-chip master-category-page-chip-active">1</button>
-                <button type="button" className="master-category-page-chip">2</button>
-                <button type="button" className="master-category-page-chip">...</button>
-                <button type="button" className="master-category-page-chip">150</button>
-                <button type="button" className="master-category-page-button">Next Page {">"}</button>
-              </div>
-
-              <select className="master-category-page-size" defaultValue="11">
-                <option>11</option>
-              </select>
+              <span className="master-category-footer-text">
+                Showing {filteredMoneyBoxes.length.toLocaleString("en-US")} money boxes total
+              </span>
             </div>
           </section>
         </section>
 
         {isMoneyBoxModalOpen ? (
-          <div className="payment-modal-backdrop" onClick={() => setIsMoneyBoxModalOpen(false)}>
+          <div className="payment-modal-backdrop" onClick={closeMoneyBoxModal}>
             <div
               className="payment-modal money-box-modal"
               onClick={(event) => event.stopPropagation()}
@@ -4744,86 +7643,157 @@ export default function MasterDataSubmodulePage({
             >
               <div className="payment-modal-header money-box-modal-header">
                 <div>
-                  <h3 id="money-box-modal-title">Add New Money Box</h3>
+                  <h3 id="money-box-modal-title">
+                    {moneyBoxModalMode === "edit" ? "Edit Money Box" : "Add New Money Box"}
+                  </h3>
                 </div>
                 <button
                   type="button"
                   className="payment-modal-close"
-                  onClick={() => setIsMoneyBoxModalOpen(false)}
+                  onClick={closeMoneyBoxModal}
                   aria-label="Close modal"
                 >
                   ×
                 </button>
               </div>
 
-              <form className="payment-modal-form money-box-modal-form">
+              <form className="payment-modal-form money-box-modal-form" onSubmit={handleMoneyBoxSubmit}>
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Shop</span>
-                  <select defaultValue="">
+                  <select
+                    value={moneyBoxForm.shopId}
+                    disabled={isShopOptionsLoading || shopOptions.length === 0}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        shopId: event.target.value,
+                      }))
+                    }
+                  >
                     <option value="" disabled>
-                      Select shop
+                      {isShopOptionsLoading ? "Loading shops..." : "Select shop"}
                     </option>
-                    <option>Rahman Store</option>
-                    <option>Bondhon Store</option>
-                    <option>Main Outlet</option>
+                    {shopOptions.map((shop) => (
+                      <option key={shop.id} value={shop.id}>
+                        {shop.shopName}
+                      </option>
+                    ))}
                   </select>
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Money box name</span>
-                  <input type="text" placeholder="Enter name" />
+                  <input
+                    type="text"
+                    placeholder="Enter name"
+                    value={moneyBoxForm.boxName}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        boxName: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Code</span>
-                  <input type="text" placeholder="Enter Enter code  (CASH-001)" />
+                  <input
+                    type="text"
+                    placeholder="Enter Enter code  (CASH-001)"
+                    value={moneyBoxForm.code}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        code: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Type</span>
-                  <select defaultValue="">
+                  <select
+                    value={moneyBoxForm.type}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        type: event.target.value as MoneyBoxTypeValue | "",
+                      }))
+                    }
+                  >
                     <option value="" disabled>
                       Select Type
                     </option>
-                    <option>Nagad</option>
-                    <option>Bkash</option>
-                    <option>Cash</option>
+                    <option value="NAGAD">Nagad</option>
+                    <option value="BKASH">Bkash</option>
+                    <option value="CASH">Cash</option>
                   </select>
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>First Balance</span>
-                  <input type="text" placeholder="$000" />
+                  <input
+                    type="text"
+                    placeholder="$000"
+                    value={moneyBoxForm.openingBalance}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        openingBalance: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Details</span>
-                  <textarea placeholder="Enter Details" />
+                  <textarea
+                    placeholder="Enter Details"
+                    value={moneyBoxForm.details}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        details: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Condition</span>
-                  <select defaultValue="Active">
-                    <option>Active</option>
-                    <option>Inactive</option>
+                  <select
+                    value={moneyBoxForm.status}
+                    onChange={(event) =>
+                      setMoneyBoxForm((current) => ({
+                        ...current,
+                        status: event.target.value as MoneyBoxStatusValue,
+                      }))
+                    }
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
                   </select>
                 </label>
 
-                <label className="money-box-modal-check">
-                  <input type="checkbox" defaultChecked />
-                  <span>Save first balance</span>
-                </label>
+                {moneyBoxFormError ? (
+                  <p className="master-category-inline-error">{moneyBoxFormError}</p>
+                ) : null}
 
                 <div className="payment-modal-actions money-box-modal-actions">
                   <button
                     type="button"
                     className="payment-modal-secondary-button money-box-modal-secondary-button"
-                    onClick={() => setIsMoneyBoxModalOpen(false)}
+                    onClick={closeMoneyBoxModal}
                   >
                     Reset
                   </button>
-                  <button type="button" className="payment-modal-primary-button money-box-modal-primary-button">
-                    Save Change
+                  <button type="submit" className="payment-modal-primary-button money-box-modal-primary-button" disabled={isMoneyBoxSaving}>
+                    {isMoneyBoxSaving
+                      ? "Saving..."
+                      : moneyBoxModalMode === "edit"
+                        ? "Update Money Box"
+                        : "Save Change"}
                   </button>
                 </div>
               </form>

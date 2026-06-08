@@ -1,4 +1,5 @@
 import {
+  BarcodeStatus,
   BrandStatus,
   CategoryLogAction,
   CategoryStatus,
@@ -275,105 +276,6 @@ async function main() {
     },
   });
 
-  await prisma.masterProduct.upsert({
-    where: { sku: "PRD-0001" },
-    update: {
-      name: "Orange Juice 1L",
-      description: "Natural fruit drink for demo catalog data.",
-      categoryId: beveragesCategory.id,
-      brandId: pranBrand.id,
-      unitId: literUnit?.id,
-      barcode: "8901234567001",
-      price: 125,
-      suggestedPrice: 130,
-      packageSize: "1 L",
-      status: MasterProductStatus.ACTIVE,
-      createdByUserId: superAdmin.id,
-      updatedByUserId: superAdmin.id,
-    },
-    create: {
-      sku: "PRD-0001",
-      name: "Orange Juice 1L",
-      description: "Natural fruit drink for demo catalog data.",
-      categoryId: beveragesCategory.id,
-      brandId: pranBrand.id,
-      unitId: literUnit?.id,
-      barcode: "8901234567001",
-      price: 125,
-      suggestedPrice: 130,
-      packageSize: "1 L",
-      status: MasterProductStatus.ACTIVE,
-      createdByUserId: superAdmin.id,
-      updatedByUserId: superAdmin.id,
-    },
-  });
-
-  await prisma.masterProduct.upsert({
-    where: { sku: "PRD-0002" },
-    update: {
-      name: "Potato Chips Family Pack",
-      description: "Demo snack product linked with the Snacks category.",
-      categoryId: snacksCategory.id,
-      brandId: freshBrand.id,
-      unitId: pieceUnit?.id,
-      barcode: "8901234567002",
-      price: 120,
-      suggestedPrice: 125,
-      packageSize: "12 pcs",
-      status: MasterProductStatus.ACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: admin.id,
-    },
-    create: {
-      sku: "PRD-0002",
-      name: "Potato Chips Family Pack",
-      description: "Demo snack product linked with the Snacks category.",
-      categoryId: snacksCategory.id,
-      brandId: freshBrand.id,
-      unitId: pieceUnit?.id,
-      barcode: "8901234567002",
-      price: 120,
-      suggestedPrice: 125,
-      packageSize: "12 pcs",
-      status: MasterProductStatus.ACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: admin.id,
-    },
-  });
-
-  await prisma.masterProduct.upsert({
-    where: { sku: "PRD-0003" },
-    update: {
-      name: "Festival Gift Box",
-      description: "Demo archived-style catalog item for seasonal workflows.",
-      categoryId: seasonalCategory.id,
-      brandId: radhuniBrand.id,
-      unitId: kilogramUnit?.id,
-      barcode: "8901234567003",
-      price: 1950,
-      suggestedPrice: 2050,
-      packageSize: "25 KG",
-      status: MasterProductStatus.INACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: superAdmin.id,
-    },
-    create: {
-      sku: "PRD-0003",
-      name: "Festival Gift Box",
-      description: "Demo archived-style catalog item for seasonal workflows.",
-      categoryId: seasonalCategory.id,
-      brandId: radhuniBrand.id,
-      unitId: kilogramUnit?.id,
-      barcode: "8901234567003",
-      price: 1950,
-      suggestedPrice: 2050,
-      packageSize: "25 KG",
-      status: MasterProductStatus.INACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: superAdmin.id,
-    },
-  });
-
   const unitSeedData = [
     {
       name: "Piece",
@@ -431,6 +333,144 @@ async function main() {
   const literUnit = await prisma.unit.findUnique({
     where: { name: "Liter" },
   });
+
+  const orangeJuice = await prisma.masterProduct.upsert({
+    where: { sku: "PRD-0001" },
+    update: {
+      name: "Orange Juice 1L",
+      description: "Natural fruit drink for demo catalog data.",
+      categoryId: beveragesCategory.id,
+      brandId: pranBrand.id,
+      unitId: literUnit?.id,
+      price: 125,
+      suggestedPrice: 130,
+      packageSize: "1 L",
+      status: MasterProductStatus.ACTIVE,
+      createdByUserId: superAdmin.id,
+      updatedByUserId: superAdmin.id,
+    },
+    create: {
+      sku: "PRD-0001",
+      name: "Orange Juice 1L",
+      description: "Natural fruit drink for demo catalog data.",
+      categoryId: beveragesCategory.id,
+      brandId: pranBrand.id,
+      unitId: literUnit?.id,
+      price: 125,
+      suggestedPrice: 130,
+      packageSize: "1 L",
+      status: MasterProductStatus.ACTIVE,
+      createdByUserId: superAdmin.id,
+      updatedByUserId: superAdmin.id,
+    },
+  });
+
+  const chips = await prisma.masterProduct.upsert({
+    where: { sku: "PRD-0002" },
+    update: {
+      name: "Potato Chips Family Pack",
+      description: "Demo snack product linked with the Snacks category.",
+      categoryId: snacksCategory.id,
+      brandId: freshBrand.id,
+      unitId: pieceUnit?.id,
+      price: 120,
+      suggestedPrice: 125,
+      packageSize: "12 pcs",
+      status: MasterProductStatus.ACTIVE,
+      createdByUserId: admin.id,
+      updatedByUserId: admin.id,
+    },
+    create: {
+      sku: "PRD-0002",
+      name: "Potato Chips Family Pack",
+      description: "Demo snack product linked with the Snacks category.",
+      categoryId: snacksCategory.id,
+      brandId: freshBrand.id,
+      unitId: pieceUnit?.id,
+      price: 120,
+      suggestedPrice: 125,
+      packageSize: "12 pcs",
+      status: MasterProductStatus.ACTIVE,
+      createdByUserId: admin.id,
+      updatedByUserId: admin.id,
+    },
+  });
+
+  const giftBox = await prisma.masterProduct.upsert({
+    where: { sku: "PRD-0003" },
+    update: {
+      name: "Festival Gift Box",
+      description: "Demo archived-style catalog item for seasonal workflows.",
+      categoryId: seasonalCategory.id,
+      brandId: radhuniBrand.id,
+      unitId: kilogramUnit?.id,
+      price: 1950,
+      suggestedPrice: 2050,
+      packageSize: "25 KG",
+      status: MasterProductStatus.INACTIVE,
+      createdByUserId: admin.id,
+      updatedByUserId: superAdmin.id,
+    },
+    create: {
+      sku: "PRD-0003",
+      name: "Festival Gift Box",
+      description: "Demo archived-style catalog item for seasonal workflows.",
+      categoryId: seasonalCategory.id,
+      brandId: radhuniBrand.id,
+      unitId: kilogramUnit?.id,
+      price: 1950,
+      suggestedPrice: 2050,
+      packageSize: "25 KG",
+      status: MasterProductStatus.INACTIVE,
+      createdByUserId: admin.id,
+      updatedByUserId: superAdmin.id,
+    },
+  });
+
+  const barcodeSeedData = [
+    {
+      masterProductId: orangeJuice.id,
+      barcode: "8901234567001",
+      packSize: "1 L",
+      status: BarcodeStatus.MAPPED,
+      createdByUserId: superAdmin.id,
+      updatedByUserId: superAdmin.id,
+    },
+    {
+      masterProductId: chips.id,
+      barcode: "8901234567002",
+      packSize: "12 pcs",
+      status: BarcodeStatus.MAPPED,
+      createdByUserId: admin.id,
+      updatedByUserId: admin.id,
+    },
+    {
+      masterProductId: giftBox.id,
+      barcode: "8901234567003",
+      packSize: "25 KG",
+      status: BarcodeStatus.MAPPED,
+      createdByUserId: admin.id,
+      updatedByUserId: superAdmin.id,
+    },
+  ] as const;
+
+  for (const barcode of barcodeSeedData) {
+    const existingBarcode = await prisma.masterProductBarcode.findUnique({
+      where: { barcode: barcode.barcode },
+    });
+
+    if (existingBarcode) {
+      await prisma.masterProductBarcode.update({
+        where: { id: existingBarcode.id },
+        data: barcode,
+      });
+      continue;
+    }
+
+    await prisma.masterProductBarcode.create({
+      data: barcode,
+    });
+  }
 
   const existingCategoryLogs = await prisma.categoryLog.count();
 

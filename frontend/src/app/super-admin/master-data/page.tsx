@@ -725,11 +725,6 @@ function DashboardAddModal({
               </select>
             </label>
 
-            <label className="money-box-modal-check">
-              <input type="checkbox" defaultChecked />
-              <span>Save first balance</span>
-            </label>
-
             <div className="payment-modal-actions money-box-modal-actions">
               <button type="button" className="payment-modal-secondary-button money-box-modal-secondary-button" onClick={onClose}>
                 Reset

@@ -25,7 +25,42 @@ type LoginBody = {
   identity?: string;
   password?: string;
   appType?: AppType;
+  shopId?: string;
 };
+
+type ScopedRequest = Parameters<typeof getAuthenticatedUser>[0] & {
+  apiClientAppType?: AppType;
+};
+
+type RegisterOwnerBody = {
+  shopName?: string;
+  name?: string;
+  mobile?: string;
+  email?: string | null;
+  password?: string;
+  confirmPassword?: string;
+};
+
+type RegisterSalesmanBody = {
+  shopId?: string;
+  name?: string;
+  mobile?: string;
+  email?: string | null;
+  password?: string;
+};
+
+function isMobileApiRequest(request: ScopedRequest) {
+  return request.apiClientAppType === AppType.MOBILE;
+}
+
+function normalizeOptionalText(value?: string | null) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function validatePasswordRules(password: string) {
+  return password.trim().length >= 8;
+}
 
 async function findUserByIdentity(identity: string) {
   const user = await prisma.user.findFirst({
@@ -39,6 +74,7 @@ async function findUserByIdentity(identity: string) {
           shop: true,
         },
       },
+      ownedShops: true,
     },
   });
 
@@ -57,6 +93,7 @@ async function findUserByIdentity(identity: string) {
               shop: true,
             },
           },
+          ownedShops: true,
         },
       },
     },
@@ -68,6 +105,7 @@ async function findUserByIdentity(identity: string) {
 function resolveAuthContext(
   user: Awaited<ReturnType<typeof findUserByIdentity>>,
   appType: AppType,
+  requestedShopId?: string,
 ): { role: AuthRole; shopId?: string } | null {
   if (!user) {
     return null;
@@ -77,9 +115,44 @@ function resolveAuthContext(
     return user.platformUser ? { role: user.platformUser.role as AuthRole } : null;
   }
 
-  const activeMembership = user.shopUsers.find(
+  const activeOwnedShops = user.ownedShops.filter(
+    (shop) => shop.status !== "BLOCKED" && shop.status !== "SUSPENDED",
+  );
+
+  const activeMemberships = user.shopUsers.filter(
     (membership) => membership.shop.status !== "BLOCKED" && membership.shop.status !== "SUSPENDED",
   );
+
+  if (requestedShopId) {
+    const ownedShop = activeOwnedShops.find((shop) => shop.id === requestedShopId);
+
+    if (ownedShop) {
+      return {
+        role: "SHOP_OWNER",
+        shopId: ownedShop.id,
+      };
+    }
+
+    const membership = activeMemberships.find((item) => item.shopId === requestedShopId);
+
+    if (!membership) {
+      return null;
+    }
+
+    return {
+      role: membership.role as AuthRole,
+      shopId: membership.shopId,
+    };
+  }
+
+  if (activeOwnedShops.length > 0) {
+    return {
+      role: "SHOP_OWNER",
+      shopId: activeOwnedShops[0]?.id,
+    };
+  }
+
+  const activeMembership = activeMemberships[0];
 
   if (!activeMembership) {
     return null;
@@ -103,12 +176,267 @@ async function revokeRefreshFamily(family: string) {
   });
 }
 
+router.post("/register-owner", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This registration route is only available for the mobile app." });
+    }
+
+    const body = request.body as RegisterOwnerBody;
+    const shopName = body.shopName?.trim();
+    const name = body.name?.trim();
+    const mobile = body.mobile?.trim();
+    const email = normalizeOptionalText(body.email);
+    const password = body.password ?? "";
+    const confirmPassword = body.confirmPassword ?? "";
+
+    if (!shopName) {
+      return response.status(400).json({ message: "Shop name is required." });
+    }
+
+    if (!name) {
+      return response.status(400).json({ message: "Owner name is required." });
+    }
+
+    if (!mobile) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    if (!validatePasswordRules(password)) {
+      return response.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
+
+    if (password !== confirmPassword) {
+      return response.status(400).json({ message: "Confirm password does not match." });
+    }
+
+    const [existingUserByPhone, existingUserByEmail, existingShopByName] = await Promise.all([
+      prisma.user.findUnique({
+        where: { phone: mobile },
+        select: { id: true },
+      }),
+      email
+        ? prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      prisma.shop.findFirst({
+        where: { shopName },
+        select: { id: true },
+      }),
+    ]);
+
+    if (existingUserByPhone) {
+      return response.status(409).json({ message: "Mobile number is already in use." });
+    }
+
+    if (existingUserByEmail) {
+      return response.status(409).json({ message: "Email is already in use." });
+    }
+
+    if (existingShopByName) {
+      return response.status(409).json({ message: "Shop name is already in use." });
+    }
+
+    const result = await prisma.$transaction(async (transaction) => {
+      const user = await transaction.user.create({
+        data: {
+          name,
+          phone: mobile,
+          email,
+          passwordHash: password,
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      const shop = await transaction.shop.create({
+        data: {
+          shopName,
+          ownerUserId: user.id,
+          phone: mobile,
+          email,
+          status: "ACTIVE",
+        },
+      });
+
+      await transaction.shopUser.create({
+        data: {
+          shopId: shop.id,
+          userId: user.id,
+          role: "SHOP_OWNER",
+          isBillable: true,
+        },
+      });
+
+      return { user, shop };
+    });
+
+    return response.status(201).json({
+      message: "Shop owner registered successfully.",
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        mobile: result.user.phone,
+        email: result.user.email,
+        status: result.user.status,
+      },
+      shop: {
+        id: result.shop.id,
+        shopName: result.shop.shopName,
+        ownerUserId: result.shop.ownerUserId,
+        status: result.shop.status,
+      },
+    });
+  } catch (error) {
+    console.error("Register owner route error:", error);
+
+    return response.status(500).json({
+      message: "Shop owner registration failed. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/register-salesman", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This registration route is only available for the mobile app." });
+    }
+
+    const auth = await getAuthenticatedUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    if (auth.payload.appType !== AppType.MOBILE || auth.payload.role !== "SHOP_OWNER") {
+      return response.status(403).json({ message: "Only shop owners can add salesmen." });
+    }
+
+    const owner = await prisma.user.findUnique({
+      where: { id: auth.user.id },
+      include: {
+        ownedShops: {
+          select: { id: true, shopName: true, status: true },
+        },
+      },
+    });
+
+    if (!owner) {
+      return response.status(404).json({ message: "Owner account not found." });
+    }
+
+    const body = request.body as RegisterSalesmanBody;
+    const requestedShopId = body.shopId?.trim() || auth.payload.shopId || "";
+    const name = body.name?.trim();
+    const mobile = body.mobile?.trim();
+    const email = normalizeOptionalText(body.email);
+    const password = body.password ?? "";
+
+    if (!requestedShopId) {
+      return response.status(400).json({ message: "shopId is required." });
+    }
+
+    if (!name) {
+      return response.status(400).json({ message: "Salesman name is required." });
+    }
+
+    if (!mobile) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    if (!validatePasswordRules(password)) {
+      return response.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
+
+    const ownedShop = owner.ownedShops.find(
+      (shop) => shop.id === requestedShopId && shop.status !== "BLOCKED" && shop.status !== "SUSPENDED",
+    );
+
+    if (!ownedShop) {
+      return response.status(403).json({ message: "You can only add salesmen to your own active shop." });
+    }
+
+    const [existingUserByPhone, existingUserByEmail] = await Promise.all([
+      prisma.user.findUnique({
+        where: { phone: mobile },
+        select: { id: true },
+      }),
+      email
+        ? prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (existingUserByPhone) {
+      return response.status(409).json({ message: "Mobile number is already in use." });
+    }
+
+    if (existingUserByEmail) {
+      return response.status(409).json({ message: "Email is already in use." });
+    }
+
+    const result = await prisma.$transaction(async (transaction) => {
+      const user = await transaction.user.create({
+        data: {
+          name,
+          phone: mobile,
+          email,
+          passwordHash: password,
+          status: UserStatus.ACTIVE,
+          createdByUserId: auth.user.id,
+        },
+      });
+
+      await transaction.shopUser.create({
+        data: {
+          shopId: ownedShop.id,
+          userId: user.id,
+          role: "SALESMAN",
+          isBillable: true,
+        },
+      });
+
+      return { user };
+    });
+
+    return response.status(201).json({
+      message: "Salesman registered successfully.",
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        mobile: result.user.phone,
+        email: result.user.email,
+        status: result.user.status,
+      },
+      shop: {
+        id: ownedShop.id,
+        shopName: ownedShop.shopName,
+      },
+      role: "SALESMAN",
+    });
+  } catch (error) {
+    console.error("Register salesman route error:", error);
+
+    return response.status(500).json({
+      message: "Salesman registration failed. Please check server setup and try again.",
+    });
+  }
+});
+
 router.post("/login", async (request, response) => {
   try {
     const body = request.body as LoginBody;
     const identity = body.identity?.trim();
     const password = body.password?.trim();
-    const appType = body.appType ?? AppType.WEB;
+    const requestedShopId = body.shopId?.trim();
+    const appType = body.appType ?? (request as ScopedRequest).apiClientAppType ?? AppType.WEB;
 
     if (!identity || !password) {
       return response.status(400).json({ message: "Email/mobile/store ID and password are required." });
@@ -121,13 +449,18 @@ router.post("/login", async (request, response) => {
       return response.status(401).json({ message: "Invalid login credentials." });
     }
 
-    const authContext = resolveAuthContext(user, appType);
+    const authContext = resolveAuthContext(user, appType, requestedShopId);
 
     if (!authContext || !isAllowedForAppType(authContext.role, appType)) {
       const appLabel = appType === AppType.WEB ? "web app" : "mobile app";
       return response
         .status(403)
-        .json({ message: `This account is not allowed to log in to the ${appLabel}.` });
+        .json({
+          message:
+            appType === AppType.MOBILE && requestedShopId
+              ? "This mobile account is not allowed for the selected shop."
+              : `This account is not allowed to log in to the ${appLabel}.`,
+        });
     }
 
     const refreshToken = createRefreshTokenValue();
@@ -198,6 +531,7 @@ router.post("/refresh", async (request, response) => {
               shop: true,
             },
           },
+          ownedShops: true,
         },
       },
     },
@@ -226,12 +560,7 @@ router.post("/refresh", async (request, response) => {
       ? user.platformUser
         ? { role: user.platformUser.role as AuthRole }
         : null
-      : (() => {
-          const membership = user.shopUsers.find(
-            (item) => item.shop.status !== "BLOCKED" && item.shop.status !== "SUSPENDED",
-          );
-          return membership ? { role: membership.role as AuthRole, shopId: membership.shopId } : null;
-        })();
+      : resolveAuthContext(user, AppType.MOBILE, undefined);
 
   if (!authContext || !isAllowedForAppType(authContext.role, tokenRecord.appType)) {
     await revokeRefreshFamily(tokenRecord.family);

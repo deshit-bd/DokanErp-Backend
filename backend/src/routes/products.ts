@@ -5,6 +5,7 @@ import { type Request, Router } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import { generateBarcodeSvg } from "../utils/barcode/barcode-generator";
 
 const router = Router();
 
@@ -15,9 +16,8 @@ type ProductRow = {
   sku: string;
   name: string;
   description: string | null;
-  barcode: string | null;
-  price: number | null;
-  suggestedPrice: number | null;
+  price: unknown;
+  suggestedPrice: unknown;
   packageSize: string | null;
   pictureUrl: string | null;
   status: MasterProductStatusValue;
@@ -26,7 +26,32 @@ type ProductRow = {
   category: { id: string; name: string } | null;
   brand: { id: string; name: string; logoUrl: string | null } | null;
   unit: { id: string; name: string; shortName: string } | null;
+  barcodes: Array<{
+    id: string;
+    barcode: string;
+    packSize: string | null;
+    status: "MAPPED" | "UNMAPPED" | "ARCHIVED";
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
 };
+
+const productInclude = {
+  category: { select: { id: true, name: true } },
+  brand: { select: { id: true, name: true, logoUrl: true } },
+  unit: { select: { id: true, name: true, shortName: true } },
+  barcodes: {
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      barcode: true,
+      packSize: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  },
+} as const;
 
 const productPictureMimeToExtension: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -39,20 +64,112 @@ function toDisplayStatus(status: MasterProductStatusValue) {
   return status.replace(/_/g, " ");
 }
 
-function toCurrencyLabel(value: number | null | undefined) {
+function normalizeMoney(value: unknown) {
   if (value == null) {
     return null;
   }
 
-  return `$${value.toFixed(2).replace(/\.00$/, "")}`;
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "object" && value && "toNumber" in value && typeof value.toNumber === "function") {
+    return value.toNumber();
+  }
+
+  const parsedValue = Number(value);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
 }
 
-function productVisualType(name: string, categoryName: string | null) {
-  const source = `${name} ${categoryName ?? ""}`.toLowerCase();
-  return source.includes("oil") ? "oil" : "sugar";
+function toCurrencyLabel(value: unknown) {
+  const normalizedValue = normalizeMoney(value);
+
+  if (normalizedValue == null) {
+    return null;
+  }
+
+  return `$${normalizedValue.toFixed(2).replace(/\.00$/, "")}`;
 }
 
-function mapProduct(product: ProductRow) {
+function selectPrimaryBarcode(
+  barcodes: ProductRow["barcodes"],
+) {
+  return (
+    barcodes.find((item) => item.status === "MAPPED") ??
+    barcodes.find((item) => item.status === "UNMAPPED") ??
+    barcodes[0] ??
+    null
+  );
+}
+
+function toBarcodeStatusFromProductStatus(status: MasterProductStatusValue) {
+  return status === "ARCHIVED" ? "ARCHIVED" : "MAPPED";
+}
+
+function toCurrencyNumber(value: unknown) {
+  return normalizeMoney(value);
+}
+
+async function syncProductBarcodeRecord(params: {
+  barcode: string | null;
+  packageSize: string | null;
+  productId: string;
+  productStatus: MasterProductStatusValue;
+  userId: string;
+}) {
+  const { barcode, packageSize, productId, productStatus, userId } = params;
+
+  const existingBarcode = await (prisma as any).masterProductBarcode.findFirst({
+    where: { masterProductId: productId },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true, barcode: true },
+  });
+
+  if (!barcode) {
+    await (prisma as any).masterProductBarcode.deleteMany({
+      where: { masterProductId: productId },
+    });
+    return;
+  }
+
+  if (existingBarcode) {
+    await (prisma as any).masterProductBarcode.update({
+      where: { id: existingBarcode.id },
+      data: {
+        barcode,
+        packSize: packageSize,
+        status: toBarcodeStatusFromProductStatus(productStatus),
+        updatedByUserId: userId,
+      },
+    });
+
+    return;
+  }
+
+  await (prisma as any).masterProductBarcode.create({
+    data: {
+      masterProductId: productId,
+      barcode,
+      packSize: packageSize,
+      status: toBarcodeStatusFromProductStatus(productStatus),
+      createdByUserId: userId,
+      updatedByUserId: userId,
+    },
+  });
+}
+
+async function loadProductById(productId: string) {
+  return (prisma as any).masterProduct.findUnique({
+    where: { id: productId },
+    include: productInclude,
+  });
+}
+
+function toProductResponse(product: ProductRow) {
+  const primaryBarcode = selectPrimaryBarcode(product.barcodes);
+  const normalizedPrice = toCurrencyNumber(product.price);
+  const normalizedSuggestedPrice = toCurrencyNumber(product.suggestedPrice);
+
   return {
     id: product.id,
     sku: product.sku,
@@ -65,12 +182,12 @@ function mapProduct(product: ProductRow) {
     brandLogoUrl: product.brand?.logoUrl ?? null,
     unitId: product.unit?.id ?? null,
     unit: product.unit?.shortName?.toUpperCase() ?? product.unit?.name ?? "No Unit",
-    barcode: product.barcode,
-    price: product.price,
+    barcode: primaryBarcode?.barcode ?? null,
+    price: normalizedPrice,
     priceLabel: toCurrencyLabel(product.price),
-    suggestedPrice: product.suggestedPrice,
+    suggestedPrice: normalizedSuggestedPrice,
     suggestedPriceLabel: toCurrencyLabel(product.suggestedPrice),
-    packageSize: product.packageSize,
+    packageSize: primaryBarcode?.packSize ?? product.packageSize,
     pictureUrl: product.pictureUrl,
     status: product.status,
     statusLabel: toDisplayStatus(product.status),
@@ -78,6 +195,15 @@ function mapProduct(product: ProductRow) {
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
+}
+
+function productVisualType(name: string, categoryName: string | null) {
+  const source = `${name} ${categoryName ?? ""}`.toLowerCase();
+  return source.includes("oil") ? "oil" : "sugar";
+}
+
+function mapProduct(product: ProductRow) {
+  return toProductResponse(product);
 }
 
 async function requirePlatformUser(request: Parameters<typeof getAuthenticatedUser>[0]) {
@@ -162,11 +288,7 @@ router.get("/", async (request, response) => {
     const [products, filters] = await Promise.all([
       (prisma as any).masterProduct.findMany({
         orderBy: [{ createdAt: "desc" }, { name: "asc" }],
-        include: {
-          category: { select: { id: true, name: true } },
-          brand: { select: { id: true, name: true, logoUrl: true } },
-          unit: { select: { id: true, name: true, shortName: true } },
-        },
+        include: productInclude,
       }),
       buildProductFilters(),
     ]);
@@ -187,6 +309,46 @@ router.get("/", async (request, response) => {
     return response.status(503).json({
       message:
         "Products are not available yet because the database schema is not applied or the database is offline. Start PostgreSQL, then run backend prisma push and seed.",
+    });
+  }
+});
+
+router.get("/:id/barcode.svg", async (request, response) => {
+  try {
+    const auth = await requirePlatformUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    const product = await loadProductById(request.params.id);
+
+    if (!product) {
+      return response.status(404).json({ message: "Product not found." });
+    }
+
+    const primaryBarcode = selectPrimaryBarcode(product.barcodes);
+
+    if (!primaryBarcode?.barcode) {
+      return response.status(404).json({ message: "Barcode is not assigned for this product." });
+    }
+
+    const svg = generateBarcodeSvg(primaryBarcode.barcode);
+    const shouldDownload = request.query.download === "1";
+    const safeFileName = `${product.sku}-${primaryBarcode.barcode}`.replace(/[^a-zA-Z0-9-_]+/g, "-");
+
+    response.setHeader("content-type", "image/svg+xml; charset=utf-8");
+
+    if (shouldDownload) {
+      response.setHeader("content-disposition", `attachment; filename="${safeFileName}.svg"`);
+    }
+
+    return response.status(200).send(svg);
+  } catch (error) {
+    console.error("Failed to generate barcode SVG.", error);
+
+    return response.status(503).json({
+      message: "Barcode could not be generated right now.",
     });
   }
 });
@@ -248,7 +410,7 @@ router.post("/", async (request, response) => {
         select: { id: true },
       }),
       barcode
-        ? (prisma as any).masterProduct.findUnique({
+        ? (prisma as any).masterProductBarcode.findUnique({
             where: { barcode },
             select: { id: true },
           })
@@ -265,11 +427,10 @@ router.post("/", async (request, response) => {
 
     const pictureUrl = rawPictureUrl ? await persistProductPicture(rawPictureUrl, request) : null;
 
-    const product = await (prisma as any).masterProduct.create({
+    const createdProduct = await (prisma as any).masterProduct.create({
       data: {
         name,
         sku,
-        barcode,
         price: parsedPrice,
         suggestedPrice: parsedSuggestedPrice,
         categoryId,
@@ -282,12 +443,18 @@ router.post("/", async (request, response) => {
         createdByUserId: auth.user.id,
         updatedByUserId: auth.user.id,
       },
-      include: {
-        category: { select: { id: true, name: true } },
-        brand: { select: { id: true, name: true, logoUrl: true } },
-        unit: { select: { id: true, name: true, shortName: true } },
-      },
+      select: { id: true },
     });
+
+    await syncProductBarcodeRecord({
+      barcode,
+      packageSize,
+      productId: createdProduct.id,
+      productStatus: "ACTIVE",
+      userId: auth.user.id,
+    });
+
+    const product = await loadProductById(createdProduct.id);
 
     return response.status(201).json({
       message: "Product created successfully.",
@@ -328,7 +495,7 @@ router.put("/:id", async (request, response) => {
 
     const existingProduct = await (prisma as any).masterProduct.findUnique({
       where: { id: productId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!existingProduct) {
@@ -373,10 +540,10 @@ router.put("/:id", async (request, response) => {
         select: { id: true },
       }),
       barcode
-        ? (prisma as any).masterProduct.findFirst({
+        ? (prisma as any).masterProductBarcode.findFirst({
             where: {
               barcode,
-              NOT: { id: productId },
+              NOT: { masterProductId: productId },
             },
             select: { id: true },
           })
@@ -393,12 +560,11 @@ router.put("/:id", async (request, response) => {
 
     const pictureUrl = rawPictureUrl ? await persistProductPicture(rawPictureUrl, request) : null;
 
-    const product = await (prisma as any).masterProduct.update({
+    await (prisma as any).masterProduct.update({
       where: { id: productId },
       data: {
         name,
         sku,
-        barcode,
         price: parsedPrice,
         suggestedPrice: parsedSuggestedPrice,
         categoryId,
@@ -409,12 +575,17 @@ router.put("/:id", async (request, response) => {
         pictureUrl,
         updatedByUserId: auth.user.id,
       },
-      include: {
-        category: { select: { id: true, name: true } },
-        brand: { select: { id: true, name: true, logoUrl: true } },
-        unit: { select: { id: true, name: true, shortName: true } },
-      },
     });
+
+    await syncProductBarcodeRecord({
+      barcode,
+      packageSize,
+      productId,
+      productStatus: existingProduct.status ?? "ACTIVE",
+      userId: auth.user.id,
+    });
+
+    const product = await loadProductById(productId);
 
     return response.json({
       message: "Product updated successfully.",
@@ -440,11 +611,7 @@ router.post("/:id/duplicate", async (request, response) => {
     const productId = request.params.id;
     const sourceProduct = await (prisma as any).masterProduct.findUnique({
       where: { id: productId },
-      include: {
-        category: { select: { id: true, name: true } },
-        brand: { select: { id: true, name: true, logoUrl: true } },
-        unit: { select: { id: true, name: true, shortName: true } },
-      },
+      include: productInclude,
     });
 
     if (!sourceProduct) {
@@ -459,20 +626,15 @@ router.post("/:id/duplicate", async (request, response) => {
         categoryId: sourceProduct.category?.id ?? null,
         brandId: sourceProduct.brand?.id ?? null,
         unitId: sourceProduct.unit?.id ?? null,
-        barcode: null,
         price: sourceProduct.price,
         suggestedPrice: sourceProduct.suggestedPrice,
-        packageSize: sourceProduct.packageSize,
+        packageSize: selectPrimaryBarcode(sourceProduct.barcodes)?.packSize ?? sourceProduct.packageSize,
         pictureUrl: sourceProduct.pictureUrl,
         status: sourceProduct.status,
         createdByUserId: auth.user.id,
         updatedByUserId: auth.user.id,
       },
-      include: {
-        category: { select: { id: true, name: true } },
-        brand: { select: { id: true, name: true, logoUrl: true } },
-        unit: { select: { id: true, name: true, shortName: true } },
-      },
+      include: productInclude,
     });
 
     return response.status(201).json({
@@ -510,10 +672,14 @@ router.patch("/:id/status", async (request, response) => {
         status: nextStatus,
         updatedByUserId: auth.user.id,
       },
-      include: {
-        category: { select: { id: true, name: true } },
-        brand: { select: { id: true, name: true, logoUrl: true } },
-        unit: { select: { id: true, name: true, shortName: true } },
+      include: productInclude,
+    });
+
+    await (prisma as any).masterProductBarcode.updateMany({
+      where: { masterProductId: productId },
+      data: {
+        status: toBarcodeStatusFromProductStatus(nextStatus),
+        updatedByUserId: auth.user.id,
       },
     });
 
@@ -547,6 +713,10 @@ router.delete("/:id", async (request, response) => {
     if (!existingProduct) {
       return response.status(404).json({ message: "Product not found." });
     }
+
+    await (prisma as any).masterProductBarcode.deleteMany({
+      where: { masterProductId: productId },
+    });
 
     await (prisma as any).masterProduct.delete({
       where: { id: productId },
