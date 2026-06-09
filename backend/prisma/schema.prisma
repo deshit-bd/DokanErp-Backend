@@ -35,6 +35,51 @@ enum ShopRole {
   SALESMAN
 }
 
+enum OtpPurpose {
+  LOGIN
+  REGISTRATION
+  PASSWORD_RESET
+  PIN_SETUP
+}
+
+enum OtpChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+}
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  CONSUMED
+  CANCELLED
+}
+
+enum UserPinStatus {
+  ACTIVE
+  RESET_REQUIRED
+  LOCKED
+  DISABLED
+}
+
+enum PasswordResetStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum RegistrationDraftStatus {
+  PENDING
+  OTP_SENT
+  OTP_VERIFIED
+  PIN_SET
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
 enum CategoryStatus {
   ACTIVE
   INACTIVE
@@ -155,6 +200,7 @@ model User {
   profileImageUrl String?        @map("profile_image_url")
   passwordHash    String         @map("password_hash")
   status          UserStatus     @default(ACTIVE)
+  phoneVerifiedAt DateTime?      @map("phone_verified_at")
   lastLoginAt     DateTime?      @map("last_login_at")
   createdByUserId String?        @map("created_by_user_id")
   createdAt       DateTime       @default(now()) @map("created_at")
@@ -166,6 +212,9 @@ model User {
   ownedShops      Shop[]         @relation("ShopOwner")
   shopUsers       ShopUser[]
   refreshTokens   RefreshToken[]
+  pin             UserPin?
+  otpVerifications OtpVerification[]
+  passwordResetRequests PasswordResetRequest[]
   categoriesCreated ProductCategory[] @relation("CategoryCreatedBy")
   categoriesUpdated ProductCategory[] @relation("CategoryUpdatedBy")
   categoryLogsPerformed CategoryLog[] @relation("CategoryLogPerformedBy")
@@ -193,6 +242,7 @@ model PlatformUser {
 
 model Shop {
   id              String      @id @default(cuid())
+  shopCode        String?     @unique @map("shop_code") @db.VarChar(30)
   shopName        String      @map("shop_name") @db.VarChar(150)
   ownerUserId     String?     @map("owner_user_id")
   phone           String?     @db.VarChar(30)
@@ -224,7 +274,11 @@ model Shop {
   supplierPayments SupplierPayment[]
   supplierLedgers SupplierLedger[]
   receiptSetting  ShopReceiptSetting?
+  otpVerifications OtpVerification[]
+  passwordResetRequests PasswordResetRequest[]
+  registrationDrafts OwnerRegistrationDraft[]
 
+  @@index([shopName])
   @@map("shops")
 }
 
@@ -259,6 +313,109 @@ model RefreshToken {
   @@index([userId, family])
   @@index([family])
   @@map("refresh_tokens")
+}
+
+model OtpVerification {
+  id           String     @id @default(cuid())
+  userId       String?    @map("user_id")
+  shopId       String?    @map("shop_id")
+  appType      AppType    @map("app_type")
+  purpose      OtpPurpose
+  channel      OtpChannel @default(SMS)
+  recipient    String     @db.VarChar(160)
+  countryCode  String?    @map("country_code") @db.VarChar(8)
+  codeHash     String     @map("code_hash")
+  attempts     Int        @default(0)
+  maxAttempts  Int        @default(5) @map("max_attempts")
+  sentAt       DateTime   @default(now()) @map("sent_at")
+  expiresAt    DateTime   @map("expires_at")
+  verifiedAt   DateTime?  @map("verified_at")
+  consumedAt   DateTime?  @map("consumed_at")
+  status       OtpStatus  @default(PENDING)
+  requestIp    String?    @map("request_ip") @db.VarChar(64)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shop         Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  passwordResetRequest PasswordResetRequest?
+  registrationDraft OwnerRegistrationDraft?
+
+  @@index([recipient, purpose, status])
+  @@index([userId, purpose, status])
+  @@index([shopId, purpose, status])
+  @@index([expiresAt])
+  @@map("otp_verifications")
+}
+
+model UserPin {
+  id            String        @id @default(cuid())
+  userId        String        @unique @map("user_id")
+  pinHash       String        @map("pin_hash")
+  status        UserPinStatus @default(ACTIVE)
+  failedAttempts Int          @default(0) @map("failed_attempts")
+  lockedUntil   DateTime?     @map("locked_until")
+  lastChangedAt DateTime      @default(now()) @map("last_changed_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("user_pins")
+}
+
+model PasswordResetRequest {
+  id                String              @id @default(cuid())
+  userId            String              @map("user_id")
+  shopId            String?             @map("shop_id")
+  appType           AppType             @map("app_type")
+  otpVerificationId String?             @unique @map("otp_verification_id")
+  requestedFor      String              @map("requested_for") @db.VarChar(160)
+  status            PasswordResetStatus @default(PENDING)
+  expiresAt         DateTime            @map("expires_at")
+  completedAt       DateTime?           @map("completed_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop              Shop?               @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  otpVerification   OtpVerification?    @relation(fields: [otpVerificationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([shopId, status])
+  @@index([expiresAt])
+  @@map("password_reset_requests")
+}
+
+model OwnerRegistrationDraft {
+  id                String                  @id @default(cuid())
+  name              String                  @db.VarChar(120)
+  mobile            String                  @db.VarChar(30)
+  email             String?                 @db.VarChar(150)
+  passwordHash      String                  @map("password_hash")
+  shopId            String?                 @map("shop_id")
+  shopName          String                  @map("shop_name") @db.VarChar(150)
+  shopAddress       String                  @map("shop_address")
+  shopCategory      String                  @map("shop_category") @db.VarChar(120)
+  shopLocationLabel String?                 @map("shop_location_label") @db.VarChar(160)
+  latitude          Decimal?                @db.Decimal(10, 7)
+  longitude         Decimal?                @db.Decimal(10, 7)
+  otpVerificationId String?                 @unique @map("otp_verification_id")
+  pinHash           String?                 @map("pin_hash")
+  otpVerifiedAt     DateTime?               @map("otp_verified_at")
+  pinSetAt          DateTime?               @map("pin_set_at")
+  completedAt       DateTime?               @map("completed_at")
+  status            RegistrationDraftStatus @default(PENDING)
+  expiresAt         DateTime                @map("expires_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  shop              Shop?                   @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  otpVerification   OtpVerification?        @relation(fields: [otpVerificationId], references: [id], onDelete: SetNull)
+
+  @@index([mobile, status])
+  @@index([shopName, status])
+  @@index([expiresAt])
+  @@map("owner_registration_drafts")
 }
 
 model ProductCategory {

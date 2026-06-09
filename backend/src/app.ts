@@ -3,6 +3,7 @@ import express from "express";
 import path from "node:path";
 import { AppType } from "@prisma/client";
 
+import { startOtpAutoRenewalJob } from "./auth/otp-renewal";
 import authRoutes from "./routes/auth";
 import bankAccountRoutes from "./routes/bank-accounts";
 import brandRoutes from "./routes/brands";
@@ -53,5 +54,7 @@ app.get("/health", (_request, response) => {
 
 mountApiScope("/web/api", AppType.WEB);
 mountApiScope("/app/api", AppType.MOBILE);
+
+startOtpAutoRenewalJob();
 
 export default app;

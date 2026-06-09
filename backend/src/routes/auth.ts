@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { AppType, UserStatus } from "@prisma/client";
 import { Router } from "express";
 
@@ -20,6 +21,9 @@ import {
 } from "../auth/session";
 
 const router = Router();
+const REGISTRATION_DRAFT_TTL_MS = 30 * 60 * 1000;
+const OTP_TTL_MS = 2 * 60 * 1000;
+const POST_OTP_VERIFIED_TTL_MS = 30 * 60 * 1000;
 
 type LoginBody = {
   identity?: string;
@@ -49,6 +53,51 @@ type RegisterSalesmanBody = {
   password?: string;
 };
 
+type RegisterOwnerDraftBody = {
+  name?: string;
+  mobile?: string;
+  email?: string | null;
+  password?: string;
+  confirmPassword?: string;
+  shopName?: string;
+  shopAddress?: string;
+  shopCategory?: string;
+  shopLocation?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+};
+
+type SendOtpBody = {
+  registrationId?: string;
+  mobile?: string;
+};
+
+type VerifyOtpBody = {
+  registrationId?: string;
+  mobile?: string;
+  otp?: string;
+};
+
+type SetupPinBody = {
+  registrationId?: string;
+  pin?: string;
+  confirmPin?: string;
+};
+
+type CompleteRegistrationBody = {
+  registrationId?: string;
+};
+
+type SendLoginOtpBody = {
+  mobile?: string;
+};
+
+type VerifyLoginOtpBody = {
+  loginRequestId?: string;
+  mobile?: string;
+  otp?: string;
+};
+
 function isMobileApiRequest(request: ScopedRequest) {
   return request.apiClientAppType === AppType.MOBILE;
 }
@@ -59,7 +108,72 @@ function normalizeOptionalText(value?: string | null) {
 }
 
 function validatePasswordRules(password: string) {
-  return password.trim().length >= 8;
+  return password.trim().length >= 4;
+}
+
+function validatePinRules(pin: string) {
+  return /^\d{4}$/.test(pin.trim());
+}
+
+function normalizeMobile(value?: string | null) {
+  return value?.trim() ?? "";
+}
+
+function normalizeNumberInput(value?: string | number | null) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hashValue(value: string) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function generateOtpCode() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function buildShopCode(shopName: string) {
+  const prefix = shopName
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6) || "SHOP";
+
+  return `${prefix}${Date.now().toString().slice(-6)}`;
+}
+
+async function getActiveRegistrationDraft(registrationId: string) {
+  return (prisma as any).ownerRegistrationDraft.findFirst({
+    where: {
+      id: registrationId,
+      completedAt: null,
+      status: {
+        notIn: ["CANCELLED", "EXPIRED", "COMPLETED"],
+      },
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+  });
+}
+
+function getRegistrationDraftExpiryDate() {
+  return new Date(Date.now() + REGISTRATION_DRAFT_TTL_MS);
+}
+
+function getOtpExpiryDate() {
+  return new Date(Date.now() + OTP_TTL_MS);
+}
+
+function getPostOtpVerifiedExpiryDate() {
+  return new Date(Date.now() + POST_OTP_VERIFIED_TTL_MS);
+}
+
+function getOtpExpirySeconds() {
+  return Math.floor(OTP_TTL_MS / 1000);
 }
 
 async function findUserByIdentity(identity: string) {
@@ -205,7 +319,7 @@ router.post("/register-owner", async (request, response) => {
     }
 
     if (!validatePasswordRules(password)) {
-      return response.status(400).json({ message: "Password must be at least 8 characters long." });
+      return response.status(400).json({ message: "Password must be at least 4 characters long." });
     }
 
     if (password !== confirmPassword) {
@@ -350,7 +464,7 @@ router.post("/register-salesman", async (request, response) => {
     }
 
     if (!validatePasswordRules(password)) {
-      return response.status(400).json({ message: "Password must be at least 8 characters long." });
+      return response.status(400).json({ message: "Password must be at least 4 characters long." });
     }
 
     const ownedShop = owner.ownedShops.find(
@@ -426,6 +540,749 @@ router.post("/register-salesman", async (request, response) => {
 
     return response.status(500).json({
       message: "Salesman registration failed. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/register-owner-draft", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This registration route is only available for the mobile app." });
+    }
+
+    const body = request.body as RegisterOwnerDraftBody;
+    const name = body.name?.trim();
+    const mobile = normalizeMobile(body.mobile);
+    const email = normalizeOptionalText(body.email);
+    const password = body.password ?? "";
+    const confirmPassword = body.confirmPassword ?? "";
+    const shopName = body.shopName?.trim();
+    const shopAddress = body.shopAddress?.trim();
+    const shopCategory = body.shopCategory?.trim();
+    const shopLocation = normalizeOptionalText(body.shopLocation);
+    const latitude = normalizeNumberInput(body.latitude);
+    const longitude = normalizeNumberInput(body.longitude);
+
+    if (!name) {
+      return response.status(400).json({ message: "Owner name is required." });
+    }
+
+    if (!mobile) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    if (!validatePasswordRules(password)) {
+      return response.status(400).json({ message: "Password must be at least 4 characters long." });
+    }
+
+    if (password !== confirmPassword) {
+      return response.status(400).json({ message: "Confirm password does not match." });
+    }
+
+    if (!shopName) {
+      return response.status(400).json({ message: "Shop name is required." });
+    }
+
+    if (!shopAddress) {
+      return response.status(400).json({ message: "Shop address is required." });
+    }
+
+    if (!shopCategory) {
+      return response.status(400).json({ message: "Shop category is required." });
+    }
+
+    const [existingUserByPhone, existingUserByEmail, existingShopByName] = await Promise.all([
+      prisma.user.findUnique({
+        where: { phone: mobile },
+        select: { id: true },
+      }),
+      email
+        ? prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      prisma.shop.findFirst({
+        where: { shopName },
+        select: { id: true },
+      }),
+    ]);
+
+    if (existingUserByPhone) {
+      return response.status(409).json({ message: "Mobile number is already in use." });
+    }
+
+    if (existingUserByEmail) {
+      return response.status(409).json({ message: "Email is already in use." });
+    }
+
+    if (existingShopByName) {
+      return response.status(409).json({ message: "Shop name is already in use." });
+    }
+
+    const duplicateDraft = await (prisma as any).ownerRegistrationDraft.findFirst({
+      where: {
+        OR: [{ mobile }, { shopName }],
+        status: {
+          notIn: ["CANCELLED", "EXPIRED", "COMPLETED"],
+        },
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: { id: true, mobile: true, shopName: true },
+    });
+
+    if (duplicateDraft) {
+      return response.status(409).json({
+        message:
+          duplicateDraft.mobile === mobile
+            ? "A pending registration already exists for this mobile number."
+            : "A pending registration already exists for this shop name.",
+      });
+    }
+
+    const draft = await (prisma as any).ownerRegistrationDraft.create({
+      data: {
+        name,
+        mobile,
+        email,
+        passwordHash: password,
+        shopName,
+        shopAddress,
+        shopCategory,
+        shopLocationLabel: shopLocation,
+        latitude,
+        longitude,
+        status: "PENDING",
+        expiresAt: getRegistrationDraftExpiryDate(),
+      },
+      select: {
+        id: true,
+        mobile: true,
+        shopName: true,
+        status: true,
+        expiresAt: true,
+      },
+    });
+
+    return response.status(201).json({
+      message: "Registration draft created successfully.",
+      registrationId: draft.id,
+      draft,
+    });
+  } catch (error) {
+    console.error("Register owner draft route error:", error);
+
+    return response.status(500).json({
+      message: "Registration draft could not be created. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/send-otp", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This OTP route is only available for the mobile app." });
+    }
+
+    const body = request.body as SendOtpBody;
+    const registrationId = body.registrationId?.trim() ?? "";
+    const mobile = normalizeMobile(body.mobile);
+
+    if (!registrationId || !mobile) {
+      return response.status(400).json({ message: "registrationId and mobile are required." });
+    }
+
+    const draft = await getActiveRegistrationDraft(registrationId);
+
+    if (!draft || draft.mobile !== mobile) {
+      return response.status(404).json({ message: "Registration draft not found." });
+    }
+
+    const code = generateOtpCode();
+    const otp = await (prisma as any).otpVerification.create({
+      data: {
+        appType: "MOBILE",
+        purpose: "REGISTRATION",
+        channel: "SMS",
+        recipient: mobile,
+        codeHash: hashValue(code),
+        expiresAt: getOtpExpiryDate(),
+        status: "PENDING",
+      },
+      select: {
+        id: true,
+        expiresAt: true,
+      },
+    });
+
+    await (prisma as any).ownerRegistrationDraft.update({
+      where: { id: draft.id },
+      data: {
+        otpVerificationId: otp.id,
+        status: "OTP_SENT",
+      },
+    });
+
+    console.log(`[auth] OTP for ${mobile} (${draft.id}): ${code}`);
+
+    return response.json({
+      message: "OTP sent successfully.",
+      registrationId: draft.id,
+      expiresAt: otp.expiresAt,
+      demoOtp: code,
+    });
+  } catch (error) {
+    console.error("Send OTP route error:", error);
+
+    return response.status(500).json({
+      message: "OTP could not be sent. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/verify-otp", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This OTP route is only available for the mobile app." });
+    }
+
+    const body = request.body as VerifyOtpBody;
+    const registrationId = body.registrationId?.trim() ?? "";
+    const mobile = normalizeMobile(body.mobile);
+    const otpCode = body.otp?.trim() ?? "";
+
+    if (!registrationId || !mobile || !otpCode) {
+      return response.status(400).json({ message: "registrationId, mobile, and otp are required." });
+    }
+
+    const draft = await (prisma as any).ownerRegistrationDraft.findUnique({
+      where: { id: registrationId },
+      include: {
+        otpVerification: true,
+      },
+    });
+
+    if (!draft || draft.mobile !== mobile) {
+      return response.status(404).json({ message: "Registration draft not found." });
+    }
+
+    const otp = draft.otpVerification;
+
+    if (!otp || otp.status !== "PENDING") {
+      return response.status(400).json({ message: "No active OTP found for this registration." });
+    }
+
+    if (otp.expiresAt <= new Date()) {
+      await (prisma as any).otpVerification.update({
+        where: { id: otp.id },
+        data: { status: "EXPIRED" },
+      });
+
+      return response.status(400).json({ message: "OTP has expired." });
+    }
+
+    const nextAttempts = Number(otp.attempts ?? 0) + 1;
+
+    if (otp.codeHash !== hashValue(otpCode)) {
+      await (prisma as any).otpVerification.update({
+        where: { id: otp.id },
+        data: {
+          attempts: nextAttempts,
+          status: nextAttempts >= Number(otp.maxAttempts ?? 5) ? "CANCELLED" : otp.status,
+        },
+      });
+
+      return response.status(400).json({ message: "Invalid OTP." });
+    }
+
+    const verifiedAt = new Date();
+
+    await prisma.$transaction(async (transaction) => {
+      await (transaction as any).otpVerification.update({
+        where: { id: otp.id },
+        data: {
+          attempts: nextAttempts,
+          verifiedAt,
+          consumedAt: verifiedAt,
+          status: "VERIFIED",
+        },
+      });
+
+      await (transaction as any).ownerRegistrationDraft.update({
+        where: { id: draft.id },
+        data: {
+          otpVerifiedAt: verifiedAt,
+          status: "OTP_VERIFIED",
+          expiresAt: getPostOtpVerifiedExpiryDate(),
+        },
+      });
+    });
+
+    return response.json({
+      message: "OTP verified successfully.",
+      verified: true,
+      registrationId: draft.id,
+    });
+  } catch (error) {
+    console.error("Verify OTP route error:", error);
+
+    return response.status(500).json({
+      message: "OTP could not be verified. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/setup-pin", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This PIN route is only available for the mobile app." });
+    }
+
+    const body = request.body as SetupPinBody;
+    const registrationId = body.registrationId?.trim() ?? "";
+    const pin = body.pin?.trim() ?? "";
+    const confirmPin = body.confirmPin?.trim() ?? "";
+
+    if (!registrationId || !pin || !confirmPin) {
+      return response.status(400).json({ message: "registrationId, pin, and confirmPin are required." });
+    }
+
+    if (!validatePinRules(pin)) {
+      return response.status(400).json({ message: "PIN must be exactly 4 digits." });
+    }
+
+    if (pin !== confirmPin) {
+      return response.status(400).json({ message: "Confirm PIN does not match." });
+    }
+
+    const draft = await getActiveRegistrationDraft(registrationId);
+
+    if (!draft) {
+      return response.status(404).json({ message: "Registration draft not found." });
+    }
+
+    if (!draft.otpVerifiedAt) {
+      return response.status(400).json({ message: "OTP must be verified before setting a PIN." });
+    }
+
+    const pinSetAt = new Date();
+
+    await (prisma as any).ownerRegistrationDraft.update({
+      where: { id: draft.id },
+      data: {
+        pinHash: hashValue(pin),
+        pinSetAt,
+        status: "PIN_SET",
+        expiresAt: getPostOtpVerifiedExpiryDate(),
+      },
+    });
+
+    return response.json({
+      message: "PIN set successfully.",
+      registrationId: draft.id,
+    });
+  } catch (error) {
+    console.error("Setup PIN route error:", error);
+
+    return response.status(500).json({
+      message: "PIN could not be saved. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/complete-registration", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This registration route is only available for the mobile app." });
+    }
+
+    const body = request.body as CompleteRegistrationBody;
+    const registrationId = body.registrationId?.trim() ?? "";
+
+    if (!registrationId) {
+      return response.status(400).json({ message: "registrationId is required." });
+    }
+
+    const draft = await (prisma as any).ownerRegistrationDraft.findUnique({
+      where: { id: registrationId },
+      include: {
+        otpVerification: true,
+      },
+    });
+
+    if (!draft) {
+      return response.status(404).json({ message: "Registration draft not found." });
+    }
+
+    if (!draft.otpVerifiedAt) {
+      return response.status(400).json({ message: "OTP must be verified before completing registration." });
+    }
+
+    if (!draft.pinHash) {
+      return response.status(400).json({ message: "PIN must be set before completing registration." });
+    }
+
+    if (draft.completedAt || draft.status === "COMPLETED") {
+      return response.status(400).json({ message: "Registration has already been completed." });
+    }
+
+    const [existingUserByPhone, existingUserByEmail, existingShopByName] = await Promise.all([
+      prisma.user.findUnique({
+        where: { phone: draft.mobile },
+        select: { id: true },
+      }),
+      draft.email
+        ? prisma.user.findUnique({
+            where: { email: draft.email },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      prisma.shop.findFirst({
+        where: { shopName: draft.shopName },
+        select: { id: true },
+      }),
+    ]);
+
+    if (existingUserByPhone || existingUserByEmail || existingShopByName) {
+      return response.status(409).json({
+        message: "Registration can no longer be completed because the owner or shop already exists.",
+      });
+    }
+
+    const completedAt = new Date();
+
+    const result = await prisma.$transaction(async (transaction) => {
+      const tx = transaction as any;
+      let shopCode = buildShopCode(draft.shopName);
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const existingShop = await tx.shop.findUnique({
+          where: { shopCode },
+          select: { id: true },
+        });
+
+        if (!existingShop) {
+          break;
+        }
+
+        shopCode = buildShopCode(`${draft.shopName}${attempt}`);
+      }
+
+      const user = await tx.user.create({
+        data: {
+          name: draft.name,
+          phone: draft.mobile,
+          email: draft.email,
+          passwordHash: draft.passwordHash,
+          phoneVerifiedAt: draft.otpVerifiedAt,
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      const shop = await tx.shop.create({
+        data: {
+          shopCode,
+          shopName: draft.shopName,
+          ownerUserId: user.id,
+          phone: draft.mobile,
+          email: draft.email,
+          businessType: draft.shopCategory,
+          address: draft.shopAddress,
+          area: draft.shopLocationLabel,
+          status: "ACTIVE",
+        },
+      });
+
+      await tx.shopUser.create({
+        data: {
+          shopId: shop.id,
+          userId: user.id,
+          role: "SHOP_OWNER",
+          isBillable: true,
+        },
+      });
+
+      await tx.userPin.create({
+        data: {
+          userId: user.id,
+          pinHash: draft.pinHash,
+          status: "ACTIVE",
+        },
+      });
+
+      await tx.ownerRegistrationDraft.update({
+        where: { id: draft.id },
+        data: {
+          completedAt,
+          status: "COMPLETED",
+        },
+      });
+
+      return { user, shop };
+    });
+
+    return response.status(201).json({
+      message: "Registration completed successfully.",
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        mobile: result.user.phone,
+        email: result.user.email,
+      },
+      shop: {
+        id: result.shop.id,
+        shopCode: (result.shop as { shopCode?: string | null }).shopCode ?? null,
+        shopName: result.shop.shopName,
+      },
+      redirectTo: "/welcome",
+    });
+  } catch (error) {
+    console.error("Complete registration route error:", error);
+
+    return response.status(500).json({
+      message: "Registration could not be completed. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/send-login-otp", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This OTP route is only available for the mobile app." });
+    }
+
+    const body = request.body as SendLoginOtpBody;
+    const mobile = normalizeMobile(body.mobile);
+
+    if (!mobile) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    const user = await findUserByIdentity(mobile);
+
+    if (!user || user.phone !== mobile || user.status !== UserStatus.ACTIVE) {
+      return response.status(404).json({ message: "No active account found for this mobile number." });
+    }
+
+    const authContext = resolveAuthContext(user, AppType.MOBILE);
+
+    if (!authContext || !isAllowedForAppType(authContext.role, AppType.MOBILE)) {
+      return response.status(403).json({ message: "This account is not allowed to log in to the mobile app." });
+    }
+
+    await (prisma as any).otpVerification.updateMany({
+      where: {
+        userId: user.id,
+        purpose: "LOGIN",
+        status: "PENDING",
+      },
+      data: {
+        status: "CANCELLED",
+      },
+    });
+
+    const code = generateOtpCode();
+    const otp = await (prisma as any).otpVerification.create({
+      data: {
+        userId: user.id,
+        shopId: authContext.shopId ?? null,
+        appType: "MOBILE",
+        purpose: "LOGIN",
+        channel: "SMS",
+        recipient: mobile,
+        codeHash: hashValue(code),
+        expiresAt: getOtpExpiryDate(),
+        status: "PENDING",
+      },
+      select: {
+        id: true,
+        expiresAt: true,
+      },
+    });
+
+    console.log(`[auth] Login OTP for ${mobile} (${otp.id}): ${code}`);
+
+    return response.json({
+      message: "OTP sent successfully.",
+      loginRequestId: otp.id,
+      expiresAt: otp.expiresAt,
+      expiresInSeconds: getOtpExpirySeconds(),
+      demoOtp: code,
+    });
+  } catch (error) {
+    console.error("Send login OTP route error:", error);
+
+    return response.status(500).json({
+      message: "Login OTP could not be sent. Please check server setup and try again.",
+    });
+  }
+});
+
+router.post("/verify-login-otp", async (request, response) => {
+  try {
+    const scopedRequest = request as ScopedRequest;
+
+    if (!isMobileApiRequest(scopedRequest)) {
+      return response.status(404).json({ message: "This OTP route is only available for the mobile app." });
+    }
+
+    const body = request.body as VerifyLoginOtpBody;
+    const loginRequestId = body.loginRequestId?.trim() ?? "";
+    const mobile = normalizeMobile(body.mobile);
+    const otpCode = body.otp?.trim() ?? "";
+
+    if (!loginRequestId || !mobile || !otpCode) {
+      return response.status(400).json({ message: "loginRequestId, mobile, and otp are required." });
+    }
+
+    const otpRecord = await (prisma as any).otpVerification.findUnique({
+      where: { id: loginRequestId },
+      include: {
+        user: {
+          include: {
+            platformUser: true,
+            shopUsers: {
+              include: {
+                shop: true,
+              },
+            },
+            ownedShops: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !otpRecord ||
+      otpRecord.purpose !== "LOGIN" ||
+      otpRecord.appType !== "MOBILE" ||
+      otpRecord.recipient !== mobile
+    ) {
+      return response.status(404).json({ message: "Login OTP request not found." });
+    }
+
+    if (otpRecord.status !== "PENDING") {
+      return response.status(400).json({ message: "No active OTP found for this login request." });
+    }
+
+    if (otpRecord.expiresAt <= new Date()) {
+      await (prisma as any).otpVerification.update({
+        where: { id: otpRecord.id },
+        data: { status: "EXPIRED" },
+      });
+
+      return response.status(400).json({ message: "OTP has expired." });
+    }
+
+    const nextAttempts = Number(otpRecord.attempts ?? 0) + 1;
+
+    if (otpRecord.codeHash !== hashValue(otpCode)) {
+      await (prisma as any).otpVerification.update({
+        where: { id: otpRecord.id },
+        data: {
+          attempts: nextAttempts,
+          status: nextAttempts >= Number(otpRecord.maxAttempts ?? 5) ? "CANCELLED" : otpRecord.status,
+        },
+      });
+
+      return response.status(400).json({ message: "Invalid OTP." });
+    }
+
+    const user = otpRecord.user;
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      return response.status(403).json({ message: "User account is not active." });
+    }
+
+    const authContext = resolveAuthContext(user, AppType.MOBILE);
+
+    if (!authContext || !isAllowedForAppType(authContext.role, AppType.MOBILE)) {
+      return response.status(403).json({ message: "This account is not allowed to log in to the mobile app." });
+    }
+
+    const verifiedAt = new Date();
+    const refreshToken = createRefreshTokenValue();
+    const sessionFamily = createSessionFamily();
+
+    await prisma.$transaction(async (transaction) => {
+      const tx = transaction as any;
+
+      await tx.otpVerification.update({
+        where: { id: otpRecord.id },
+        data: {
+          attempts: nextAttempts,
+          verifiedAt,
+          consumedAt: verifiedAt,
+          status: "VERIFIED",
+        },
+      });
+
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashRefreshToken(refreshToken),
+          family: sessionFamily,
+          appType: "MOBILE",
+          expiresAt: getRefreshTokenExpiryDate(),
+        },
+      });
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          lastLoginAt: verifiedAt,
+          phoneVerifiedAt: user.phoneVerifiedAt ?? verifiedAt,
+        },
+      });
+    });
+
+    const accessToken = createAccessToken({
+      userId: user.id,
+      role: authContext.role,
+      appType: AppType.MOBILE,
+      sessionFamily,
+      shopId: authContext.shopId,
+    });
+
+    setAccessCookie(response, accessToken);
+    setRefreshCookie(response, refreshToken);
+
+    return response.json({
+      message: "Login successful.",
+      authenticated: true,
+      redirectTo: getDefaultRedirect(authContext.role, AppType.MOBILE),
+      role: authContext.role,
+      appType: AppType.MOBILE,
+      user: {
+        id: user.id,
+        name: user.name,
+        mobile: user.phone,
+      },
+      shop: authContext.shopId
+        ? {
+            id: authContext.shopId,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error("Verify login OTP route error:", error);
+
+    return response.status(500).json({
+      message: "Login OTP could not be verified. Please check server setup and try again.",
     });
   }
 });

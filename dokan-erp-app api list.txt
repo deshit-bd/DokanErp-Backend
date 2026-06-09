@@ -1,0 +1,177 @@
+#####################DokanERP Owner Registration Flow######################
+Registration rules:
+- Password must be at least 4 characters
+- PIN must be exactly 4 digits
+- Mobile number must be unique
+- Password and confirm password must match
+- PIN and confirm PIN must match
+Recommended flow:
+1. Registration page-1
+   - owner name
+   - mobile number
+   - password
+   - confirm password
+2. Registration page-2
+   - shop name
+   - shop address
+   - shop category
+   - shop location from live detect
+   - if live location fails, allow manual location entry
+3. Submit registration data
+   - save owner and shop data as pending
+   - do not activate account yet
+4. Send OTP
+   - send OTP to the provided mobile number
+   - OTP expires after 2 minutes
+5. Verify OTP
+   - if OTP is correct, mark mobile as verified
+   - if OTP is wrong or expired, show resend option
+   - resend or renew OTP after 2 minutes
+6. Setup PIN
+   - enter 4-digit PIN
+   - confirm 4-digit PIN
+7. Complete registration
+   - activate owner account
+   - activate shop
+   - save PIN
+8. Welcome page
+   - show success message
+   - continue to dashboard or first-time setup
+Suggested API list:
+1. POST /app/api/auth/register-owner-draft
+Request:
+{
+  "name": "Rahim Uddin",
+  "mobile": "01712345679",
+  "password": "1234",
+  "confirmPassword": "1234",
+  "shopName": "Rahim Grocery Store",
+  "shopAddress": "House 12, Road 5, Mirpur, Dhaka, Bangladesh",
+  "shopCategory": "Grocery",
+  "shopLocation": "Mirpur, Dhaka",
+  "latitude": 23.8103,
+  "longitude": 90.4125
+}
+Response:
+{
+  "message": "Registration draft created.",
+  "registrationId": "reg_xxx",
+  "otpSent": true
+}
+2. POST /app/api/auth/send-otp
+Request:
+{
+  "registrationId": "cmq68jsq70000lxxkm62npxia",
+  "mobile": "01712345679"
+}
+Response:
+{
+  "message": "OTP sent successfully.",
+  "expiresInSeconds": 120
+}
+3. POST /app/api/auth/verify-otp
+Request:
+{
+  "registrationId": "cmq68jsq70000lxxkm62npxia",
+  "mobile": "01712345679",
+  "otp": "2726"
+}
+Response:
+{
+  "message": "OTP verified successfully.",
+  "verified": true
+}
+4. POST /app/api/auth/setup-pin
+Request:
+{
+  "registrationId": "cmq68jsq70000lxxkm62npxia",
+  "pin": "1234",
+  "confirmPin": "1234"
+}
+Response:
+{
+  "message": "PIN set successfully."
+}
+5. POST /app/api/auth/complete-registration
+Request:
+{
+  "registrationId": "cmq68jsq70000lxxkm62npxia"
+}
+Response:
+{
+  "message": "Registration completed successfully.",
+  "user": {
+    "id": "user_xxx",
+    "name": "Owner Name",
+    "mobile": "01XXXXXXXXX"
+  },
+  "shop": {
+    "id": "shop_xxx",
+    "shopName": "My Shop"
+  },
+  "redirectTo": "/welcome"
+}
+Final note:
+- Yes, this flow is correct with your rule:
+  password >= 4
+  pin = 4 digits
+
+###################Mobile OTP Login Flow###################
+
+Simple journey:
+1. Mobile number screen
+2. OTP screen
+3. Dashboard
+
+Rules:
+- Login uses only mobile number
+- OTP expires after 2 minutes
+- Only existing active mobile users can log in
+- OTP is 4 digits
+
+1. POST /app/api/auth/send-login-otp
+Request:
+{
+  "mobile": "01712345679"
+}
+
+Response:
+{
+  "message": "OTP sent successfully.",
+  "loginRequestId": "otp_request_xxx",
+  "expiresAt": "2026-06-09T06:20:00.000Z",
+  "expiresInSeconds": 120,
+  "demoOtp": "1234"
+}
+
+2. POST /app/api/auth/verify-login-otp
+Request:
+{
+  "loginRequestId": "otp_request_xxx",
+  "mobile": "01712345679",
+  "otp": "1234"
+}
+
+Response:
+{
+  "message": "Login successful.",
+  "authenticated": true,
+  "redirectTo": "/shop/dashboard",
+  "role": "SHOP_OWNER",
+  "appType": "MOBILE",
+  "user": {
+    "id": "user_xxx",
+    "name": "Rahim Uddin",
+    "mobile": "01712345679"
+  },
+  "shop": {
+    "id": "shop_xxx"
+  }
+}
+
+Testing steps:
+1. Call send-login-otp with a mobile number that already exists in the users table
+2. Copy loginRequestId from the response
+3. Copy demoOtp from the response or backend console log
+4. Call verify-login-otp with loginRequestId, mobile, and otp
+5. If OTP is correct, login is completed and dashboard redirect is returned
