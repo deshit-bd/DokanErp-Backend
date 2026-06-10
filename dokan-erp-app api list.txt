@@ -42,10 +42,10 @@ Suggested API list:
 Request:
 {
   "name": "Rahim Uddin",
-  "mobile": "01712345679",
+  "mobile": "01712345670",
   "password": "1234",
   "confirmPassword": "1234",
-  "shopName": "Rahim Grocery Store",
+  "shopName": "Rahima Grocery Store",
   "shopAddress": "House 12, Road 5, Mirpur, Dhaka, Bangladesh",
   "shopCategory": "Grocery",
   "shopLocation": "Mirpur, Dhaka",
@@ -54,63 +54,49 @@ Request:
 }
 Response:
 {
-  "message": "Registration draft created.",
-  "registrationId": "reg_xxx",
-  "otpSent": true
+  "message":"Registration draft created successfully.",
+  "registrationId":"cmq7lb0c70000lx8zrgjjy4zk",
+  "draft":{
+            "id":"cmq7lb0c70000lx8zrgjjy4zk",
+            "mobile":"01712345670",
+            "shopName":"Rahima Grocery Store",
+            "status":"PENDING",
+            "expiresAt":"2026-06-10T05:19:59.670Z"
+          }
 }
 2. POST /app/api/auth/send-otp
 Request:
 {
-  "registrationId": "cmq68jsq70000lxxkm62npxia",
-  "mobile": "01712345679"
+  "registrationId": "cmq7lb0c70000lx8zrgjjy4zk",
+  "mobile": "01712345670"
 }
 Response:
-{
-  "message": "OTP sent successfully.",
-  "expiresInSeconds": 120
-}
+{"message":"OTP sent successfully.","registrationId":"cmq7lb0c70000lx8zrgjjy4zk","expiresAt":"2026-06-10T04:58:30.147Z","demoOtp":"4219"}
 3. POST /app/api/auth/verify-otp
 Request:
 {
-  "registrationId": "cmq68jsq70000lxxkm62npxia",
-  "mobile": "01712345679",
-  "otp": "2726"
+  "registrationId": "cmq7lb0c70000lx8zrgjjy4zk",
+  "mobile": "01712345670",
+  "otp": "3247"
 }
 Response:
-{
-  "message": "OTP verified successfully.",
-  "verified": true
-}
+{"message":"OTP verified successfully.","verified":true,"registrationId":"cmq7lb0c70000lx8zrgjjy4zk"}
 4. POST /app/api/auth/setup-pin
 Request:
 {
-  "registrationId": "cmq68jsq70000lxxkm62npxia",
+  "registrationId": "cmq7lb0c70000lx8zrgjjy4zk",
   "pin": "1234",
   "confirmPin": "1234"
 }
 Response:
-{
-  "message": "PIN set successfully."
-}
+{"message":"PIN set successfully.","registrationId":"cmq7lb0c70000lx8zrgjjy4zk"}
 5. POST /app/api/auth/complete-registration
 Request:
 {
-  "registrationId": "cmq68jsq70000lxxkm62npxia"
+  "registrationId": "cmq7lb0c70000lx8zrgjjy4zk"
 }
 Response:
-{
-  "message": "Registration completed successfully.",
-  "user": {
-    "id": "user_xxx",
-    "name": "Owner Name",
-    "mobile": "01XXXXXXXXX"
-  },
-  "shop": {
-    "id": "shop_xxx",
-    "shopName": "My Shop"
-  },
-  "redirectTo": "/welcome"
-}
+{"message":"Registration completed successfully.","user":{"id":"cmq7lpj2y0001lxkpu5h8g5ba","name":"Rahim Uddin","mobile":"01712345670","email":null},"shop":{"id":"cmq7lpj3d0003lxkpx03ur4b0","shopCode":"RAHIMA677141","shopName":"Rahima Grocery Store"},"redirectTo":"/welcome"}
 Final note:
 - Yes, this flow is correct with your rule:
   password >= 4
@@ -175,3 +161,560 @@ Testing steps:
 3. Copy demoOtp from the response or backend console log
 4. Call verify-login-otp with loginRequestId, mobile, and otp
 5. If OTP is correct, login is completed and dashboard redirect is returned
+
+###################Owner Password + OTP Login Flow###################
+
+Journey:
+1. Mobile number + password screen
+2. OTP screen
+3. Dashboard
+
+Rules:
+- Only shop owners use this flow
+- Password must be correct first
+- After password verify, OTP is sent manually by a separate API
+- OTP expires after 2 minutes
+- Exact owner login APIs:
+  - POST /app/api/auth/owners-login
+  - POST /app/api/auth/owners-login-otp
+  - POST /app/api/auth/owners-verify-otp
+
+1. POST /app/api/auth/owners-login
+Request:
+{
+  "mobile": "01712345679",
+  "password": "1234"
+}
+
+Response:
+{
+  "message": "Owner credentials verified successfully.",
+  "verified": true,
+  "requiresOtp": true,
+  "nextStep": "/app/api/auth/owners-login-otp",
+  "owner": {
+    "id": "user_xxx",
+    "name": "Rahim Uddin",
+    "mobile": "01712345679"
+  },
+  "shop": {
+    "id": "shop_xxx"
+  }
+}
+
+2. POST /app/api/auth/owners-login-otp
+Request:
+{
+  "mobile": "01712345679",
+  "password": "1234"
+}
+
+Response:
+{
+  "message": "Password verified. OTP sent successfully.",
+  "loginRequestId": "otp_request_xxx",
+  "expiresAt": "2026-06-10T06:20:00.000Z",
+  "expiresInSeconds": 120,
+  "demoOtp": "1234",
+  "requiresOtp": true
+}
+
+3. POST /app/api/auth/owners-verify-otp
+Request:
+{
+  "loginRequestId": "otp_request_xxx",
+  "mobile": "01712345679",
+  "otp": "1234"
+}
+
+Response:
+{
+  "message": "Login successful.",
+  "authenticated": true,
+  "redirectTo": "/shop/dashboard",
+  "role": "SHOP_OWNER",
+  "appType": "MOBILE",
+  "user": {
+    "id": "user_xxx",
+    "name": "Rahim Uddin",
+    "mobile": "01712345679"
+  },
+  "shop": {
+    "id": "shop_xxx"
+  }
+}
+
+Demo test flow:
+1. Call POST /app/api/auth/owners-login
+2. If verified, call POST /app/api/auth/owners-login-otp
+3. Copy loginRequestId from the response
+4. Copy demoOtp from the response or backend console log
+5. Call POST /app/api/auth/owners-verify-otp
+6. If OTP is correct, owner login is completed
+
+Compatibility note:
+- `POST /app/api/auth/pre-login` still works
+- `POST /app/api/auth/send-owner-login-otp` is the new specific API for owner login OTP
+- `POST /app/api/auth/verify-login-otp` still works
+- `POST /app/api/auth/owners-login` is now the primary owner login API name
+
+###################Supplier List For Specific Shop###################
+
+Purpose:
+- show supplier cards for one shop
+- use `shopCode` or internal shop database id in `shopId`
+- best for mobile supplier list screen
+
+API:
+- GET /app/api/suppliers?shopId=RAHIMA677141
+
+Example request:
+GET http://localhost:4000/app/api/suppliers?shopId=RAHIMA677141
+
+Optional query params:
+- `search=rahim`
+- `status=ACTIVE`
+
+Example response:
+{
+  "shop": {
+    "id": "cmq7lpj3d0003lxkpx03ur4b0",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store",
+    "phone": "01712345670",
+    "address": "House 12, Road 5, Mirpur, Dhaka, Bangladesh",
+    "area": "Mirpur",
+    "district": "Dhaka",
+    "status": "ACTIVE"
+  },
+  "stats": {
+    "total": 5,
+    "active": 5,
+    "inactive": 0,
+    "archived": 0,
+    "totalDue": 124500
+  },
+  "suppliers": [
+    {
+      "id": "supplier_xxx",
+      "supplierCode": "SUP-001",
+      "name": "আলম ট্রেডার্স",
+      "mobile": "01712XXXXXX",
+      "email": null,
+      "address": "Dhaka",
+      "contactPerson": null,
+      "contactPersonMobile": null,
+      "notes": null,
+      "status": "ACTIVE",
+      "statusLabel": "ACTIVE",
+      "avatarLabel": "আ",
+      "totalPurchase": 90000,
+      "totalPaid": 60000,
+      "due": 30000,
+      "balanceType": "DUE",
+      "dueLabel": "Due 30000",
+      "lastActivityAt": "2026-06-10T09:00:00.000Z",
+      "lastActivity": {
+        "id": "ledger_xxx",
+        "entryType": "PURCHASE",
+        "referenceNo": "INV-1001",
+        "debit": 30000,
+        "credit": 0,
+        "notes": "New stock purchase",
+        "entryDate": "2026-06-10T09:00:00.000Z"
+      }
+    }
+  ]
+}
+
+Important:
+- this route needs authenticated owner session
+- if you call it from Postman, first login and keep cookies enabled
+- `shopId` can be:
+  - internal shop id
+  - user-friendly `shopCode` like `RAHIMA677141`
+
+###################Add Supplier For Specific Shop###################
+
+Purpose:
+- add supplier from mobile app supplier form
+- supports owner login session
+- uses shop code or internal shop id
+- creates an opening due ledger entry so the supplier appears immediately in that shop
+
+Backend API:
+- POST /app/api/add-suppliers
+- POST /app/api/suppliers
+
+Frontend proxy API:
+- POST /api/suppliers
+
+Mobile app request example:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "companyOrPersonName": "আলম ট্রেডার্স",
+  "mobile": "01712000000",
+  "address": "ঢাকা ১২০৭",
+  "productType": "চাল, ডাল, তেল",
+  "shortNote": "এরা বেশি বাকিতে বিক্রয় সরবরাহ করে",
+  "sendWhatsAppInvite": true
+}
+```
+
+Optional fields also supported:
+- `email`
+- `name`
+- `dueAmount`
+- `contactPerson`
+- `contactPersonMobile`
+- `supplierCode`
+- `status`
+
+Example backend request:
+POST http://localhost:4000/app/api/add-suppliers
+
+Example frontend request:
+POST http://localhost:3000/api/suppliers
+
+Success response:
+```json
+{
+  "message": "Supplier created successfully.",
+  "shop": {
+    "id": "cmq7lpj3d0003lxkpx03ur4b0",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store"
+  },
+  "supplier": {
+    "id": "supplier_xxx",
+    "supplierCode": "ALAMTR-123456",
+    "name": "আলম ট্রেডার্স",
+    "companyOrPersonName": "আলম ট্রেডার্স",
+    "mobile": "01712000000",
+    "email": null,
+    "address": "ঢাকা ১২০৭",
+    "productType": "চাল, ডাল, তেল",
+    "shortNote": "এরা বেশি বাকিতে বিক্রয় সরবরাহ করে",
+    "contactPerson": "চাল, ডাল, তেল",
+    "contactPersonMobile": null,
+    "notes": "এরা বেশি বাকিতে বিক্রয় সরবরাহ করে",
+    "status": "ACTIVE",
+    "statusLabel": "ACTIVE",
+    "createdAt": "2026-06-10T10:00:00.000Z",
+    "updatedAt": "2026-06-10T10:00:00.000Z"
+  },
+  "openingDue": {
+    "amount": 0,
+    "entryType": "OPENING_DUE",
+    "ledgerId": "ledger_xxx"
+  },
+  "sendWhatsAppInvite": true
+}
+```
+
+If supplier already exists globally:
+```json
+{
+  "message": "Supplier already exists. Duplicate supplier add is blocked.",
+  "shop": {
+    "id": "cmq7lpj3d0003lxkpx03ur4b0",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store"
+  },
+  "supplier": {
+    "id": "supplier_xxx",
+    "supplierCode": "SUP-001",
+    "name": "আলম ট্রেডার্স",
+    "mobile": "01712000000",
+    "email": null,
+    "address": "ঢাকা ১২০৭",
+    "contactPerson": null,
+    "contactPersonMobile": null,
+    "notes": null,
+    "status": "ACTIVE",
+    "statusLabel": "ACTIVE",
+    "createdAt": "2026-06-10T10:00:00.000Z",
+    "updatedAt": "2026-06-10T10:00:00.000Z"
+  },
+}
+```
+
+If duplicate supplier is added again:
+```json
+{
+  "message": "Supplier already exists. Duplicate supplier add is blocked.",
+  "shop": {
+    "id": "cmq7lpj3d0003lxkpx03ur4b0",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store"
+  },
+  "supplier": {
+    "id": "supplier_xxx",
+    "supplierCode": "SUP-001",
+    "name": "আলম ট্রেডার্স",
+    "mobile": "01712000000"
+  }
+}
+```
+
+Validation:
+- `shopId` required for app/shop flow
+- `companyOrPersonName` or `name` required
+- `mobile` required for app/shop flow
+- `dueAmount` must be `0` or more
+- `sendWhatsAppInvite` is optional
+
+Notes:
+- if `supplierCode` is not sent, backend auto-generates one
+- `sendWhatsAppInvite` currently logs the request in backend console
+- after successful create, supplier list API will show this supplier for that shop
+- `/app/api/add-suppliers` and `/app/api/suppliers` currently use the same backend logic
+- app field mapping:
+  - `companyOrPersonName` -> supplier `name`
+  - `productType` -> stored in existing supplier `contactPerson` field
+  - `shortNote` -> stored in existing supplier `notes` field
+
+###################Specific Supplier Details For Specific Shop###################
+
+Purpose:
+- show supplier profile + due summary + recent transactions for one shop
+
+API:
+- GET /app/api/suppliers/:supplierIdOrCode?shopId=RAHIMA677141
+
+Example request using supplier id:
+GET http://localhost:4000/app/api/suppliers/cmq_supplier_001?shopId=RAHIMA677141
+
+Example request using supplier code:
+GET http://localhost:4000/app/api/suppliers/SUP-001?shopId=RAHIMA677141
+
+Example response:
+{
+  "shop": {
+    "id": "cmq7lpj3d0003lxkpx03ur4b0",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store"
+  },
+  "supplier": {
+    "id": "supplier_xxx",
+    "supplierCode": "SUP-001",
+    "name": "আলম ট্রেডার্স",
+    "mobile": "01712XXXXXX",
+    "email": null,
+    "address": "Dhaka",
+    "contactPerson": "Alam",
+    "contactPersonMobile": "01711XXXXXX",
+    "notes": null,
+    "status": "ACTIVE",
+    "statusLabel": "ACTIVE",
+    "summary": {
+      "totalPurchase": 90000,
+      "totalPaid": 60000,
+      "due": 30000,
+      "balanceType": "DUE"
+    },
+    "recentPurchases": [
+      {
+        "id": "purchase_xxx",
+        "invoiceNo": "INV-1001",
+        "purchaseDate": "2026-06-10T09:00:00.000Z",
+        "totalAmount": 30000,
+        "paidAmount": 10000,
+        "dueAmount": 20000,
+        "notes": "Rice and oil"
+      }
+    ],
+    "recentPayments": [
+      {
+        "id": "payment_xxx",
+        "amount": 5000,
+        "paymentMethod": "CASH",
+        "notes": "Partially paid",
+        "paidAt": "2026-06-10T10:00:00.000Z"
+      }
+    ],
+    "recentTransactions": [
+      {
+        "id": "ledger_xxx",
+        "entryType": "PURCHASE",
+        "referenceNo": "INV-1001",
+        "debit": 30000,
+        "credit": 0,
+        "notes": "Rice and oil",
+        "entryDate": "2026-06-10T09:00:00.000Z",
+        "purchaseId": "purchase_xxx",
+        "supplierPaymentId": null
+      }
+    ],
+    "createdAt": "2026-06-09T06:00:00.000Z",
+    "updatedAt": "2026-06-10T10:00:00.000Z"
+  }
+}
+
+Useful related APIs for the same shop:
+- GET /app/api/suppliers/:supplierIdOrCode/dues?shopId=RAHIMA677141
+- GET /app/api/suppliers/:supplierIdOrCode/ledger?shopId=RAHIMA677141
+- GET /app/api/suppliers/:supplierIdOrCode/payments?shopId=RAHIMA677141
+- GET /app/api/suppliers/:supplierIdOrCode/purchases?shopId=RAHIMA677141
+
+###################Salesman Password + OTP Login Flow###################
+
+Journey:
+1. Mobile number + password + shop code screen
+2. OTP screen
+3. Dashboard
+
+Rules:
+- Same as owner login flow
+- Salesman must send shop code in login
+- After password verify, OTP is sent manually by a separate API
+- OTP expires after 2 minutes
+- Exact salesman login APIs:
+  - POST /app/api/auth/salesmans-login
+  - POST /app/api/auth/salesmans-login-otp
+  - POST /app/api/auth/salesmans-verify-otp
+
+1. POST /app/api/auth/salesmans-login
+Request:
+{
+  "mobile": "01712345680",
+  "password": "1234",
+  "shopId": "RAHIMG292804"
+}
+
+Response:
+{
+  "message": "Salesman credentials verified successfully.",
+  "verified": true,
+  "requiresOtp": true,
+  "nextStep": "/app/api/auth/salesmans-login-otp",
+  "salesman": {
+    "id": "user_xxx",
+    "name": "Salesman Name",
+    "mobile": "01712345680"
+  },
+  "shop": {
+    "id": "cmq68nqx90004lxxkbrncleq7",
+    "shopCode": "RAHIMG292804"
+  }
+}
+
+2. POST /app/api/auth/salesmans-login-otp
+Request:
+{
+  "mobile": "01712345680",
+  "password": "1234",
+  "shopId": "RAHIMG292804"
+}
+
+Response:
+{
+  "message": "Password verified. OTP sent successfully.",
+  "loginRequestId": "otp_request_xxx",
+  "expiresAt": "2026-06-10T06:20:00.000Z",
+  "expiresInSeconds": 120,
+  "demoOtp": "1234",
+  "requiresOtp": true
+}
+
+3. POST /app/api/auth/salesmans-verify-otp
+Request:
+{
+  "loginRequestId": "otp_request_xxx",
+  "mobile": "01712345680",
+  "otp": "1234"
+}
+
+Response:
+{
+  "message": "Login successful.",
+  "authenticated": true,
+  "redirectTo": "/shop/dashboard",
+  "role": "SALESMAN",
+  "appType": "MOBILE",
+  "user": {
+    "id": "user_xxx",
+    "name": "Salesman Name",
+    "mobile": "01712345680"
+  },
+  "shop": {
+    "id": "cmq68nqx90004lxxkbrncleq7",
+    "shopCode": "RAHIMG292804"
+  }
+}
+
+Demo test flow:
+1. Call POST /app/api/auth/salesmans-login
+2. If verified, call POST /app/api/auth/salesmans-login-otp
+3. Copy loginRequestId from the response
+4. Copy demoOtp from the response or backend console log
+5. Call POST /app/api/auth/salesmans-verify-otp
+6. If OTP is correct, salesman login is completed
+
+###################Create Salesman API###################
+
+UI fields:
+- shopId
+- name
+- mobile
+- email
+- password
+- pin
+- permissions
+
+Permission switches from the UI:
+- canSell
+- canViewStock
+- canViewReports
+- canChangePrice
+- canCollectDue
+
+API:
+- POST /app/api/auth/register-salesman
+
+Request:
+{
+  "shopId": "RAHIMA677141",
+  "name": "Sabbir Hossain",
+  "mobile": "01711111111",
+  "email": "sabbir@example.com",
+  "password": "1234",
+  "pin": "1234",
+  "permissions": {
+    "canSell": true,
+    "canViewStock": true,
+    "canViewReports": false,
+    "canChangePrice": false,
+    "canCollectDue": false
+  }
+}
+
+Response:
+{"message":"Salesman registered successfully.","user":{"id":"cmq7m1ppm000hlxkpck0qmv7u","name":"Sabbir Hossain","mobile":"01711111111","email":"sabbir@example.com","status":"ACTIVE"},"shop":{"id":"cmq7lpj3d0003lxkpx03ur4b0","shopName":"Rahima Grocery Store"},"role":"SALESMAN","permissions":{"canSell":true,"canViewStock":true,"canViewReports":false,"canChangePrice":false,"canCollectDue":false},"pinRequiredFromSettings":false}
+
+If pin is not sent:
+{
+  "shopId": "RAHIMG292804",
+  "name": "Sabbir",
+  "mobile": "01712345680",
+  "email": "sabbir@example.com",
+  "password": "1234",
+  "permissions": {
+    "canSell": true,
+    "canViewStock": true,
+    "canViewReports": false,
+    "canChangePrice": false,
+    "canCollectDue": false
+  }
+}
+
+Then response should include:
+{
+  "pinRequiredFromSettings": true
+}
+
+Note:
+- shop login should use user-friendly `shopCode`
+- Example shop code: `RAHIMG292804`
+- internal database `id` is still returned for backend use

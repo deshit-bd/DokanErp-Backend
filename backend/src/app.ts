@@ -36,6 +36,7 @@ function mountApiScope(prefix: string, appType: AppType) {
   scopedRouter.use("/purchases", purchaseRoutes);
   scopedRouter.use("/shops", shopRoutes);
   scopedRouter.use("/suppliers", supplierRoutes);
+  scopedRouter.use("/add-suppliers", supplierRoutes);
   scopedRouter.use("/units", unitRoutes);
 
   app.use(prefix, scopedRouter);

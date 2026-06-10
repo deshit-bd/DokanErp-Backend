@@ -1,6 +1,12 @@
 import { Router } from "express";
 
-import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
+import {
+  getAuthenticatedUser,
+  isAuthError,
+  sendAuthError,
+  type AuthenticatedUser,
+  type AuthError,
+} from "../auth/current-user";
 import { prisma } from "../config/prisma";
 
 const router = Router();
@@ -9,6 +15,95 @@ type SupplierStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
 
 function toDisplayStatus(status: SupplierStatusValue) {
   return status.replace(/_/g, " ");
+}
+
+function toMoney(value: unknown) {
+  return Number(value ?? 0);
+}
+
+function toBalanceType(due: number) {
+  return due > 0 ? "DUE" : "CLEAR";
+}
+
+function buildSupplierCodeBase(name: string) {
+  const normalized = name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "")
+    .slice(0, 6);
+
+  return normalized || "SUP";
+}
+
+async function createUniqueSupplierCode(name: string) {
+  const base = buildSupplierCodeBase(name);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const suffix = `${Date.now()}`.slice(-4) + `${Math.floor(Math.random() * 100)}`.padStart(2, "0");
+    const candidate = `${base}-${suffix}`;
+    const existing = await (prisma as any).supplier.findFirst({
+      where: { supplierCode: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return `${base}-${Math.floor(Date.now() / 1000)}`;
+}
+
+async function resolveShopIdentifier(shopIdentifier?: string | null) {
+  const normalized = shopIdentifier?.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return prisma.shop.findFirst({
+    where: {
+      OR: [{ id: normalized }, { shopCode: normalized }],
+    },
+    select: {
+      id: true,
+      shopCode: true,
+      shopName: true,
+      phone: true,
+      address: true,
+      area: true,
+      district: true,
+      status: true,
+    },
+  });
+}
+
+async function resolveSupplierIdentifier(supplierIdentifier?: string | null) {
+  const normalized = supplierIdentifier?.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return (prisma as any).supplier.findFirst({
+    where: {
+      deletedAt: null,
+      OR: [{ id: normalized }, { supplierCode: normalized }],
+    },
+    select: {
+      id: true,
+      supplierCode: true,
+      name: true,
+      mobile: true,
+      email: true,
+      address: true,
+      contactPerson: true,
+      contactPersonMobile: true,
+      notes: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
 }
 
 async function requirePlatformUser(request: Parameters<typeof getAuthenticatedUser>[0]) {
@@ -35,6 +130,13 @@ async function requireFinanceContext(request: Parameters<typeof getAuthenticated
     return auth;
   }
 
+  if (auth.payload.role !== "SHOP_OWNER") {
+    return {
+      status: 403,
+      body: { message: "Only shop owners can access supplier app routes." },
+    };
+  }
+
   const rawShopId =
     auth.payload.shopId ??
     (typeof request.query.shopId === "string" ? request.query.shopId.trim() : "") ??
@@ -48,6 +150,35 @@ async function requireFinanceContext(request: Parameters<typeof getAuthenticated
   }
 
   return { auth, shopId: rawShopId };
+}
+
+async function resolveFinanceShop(
+  request: Parameters<typeof getAuthenticatedUser>[0],
+): Promise<
+  | AuthError
+  | { status: number; body: { message: string } }
+  | { auth: AuthenticatedUser; shop: NonNullable<Awaited<ReturnType<typeof resolveShopIdentifier>>> }
+> {
+  const context = await requireFinanceContext(request);
+
+  if (isAuthError(context as AuthError)) {
+    return context as AuthError;
+  }
+
+  if ("status" in context) {
+    return context;
+  }
+
+  const shop = await resolveShopIdentifier(context.shopId);
+
+  if (!shop) {
+    return {
+      status: 404,
+      body: { message: "Shop not found for the provided shopId/shopCode." },
+    };
+  }
+
+  return { auth: context.auth, shop };
 }
 
 async function buildSupplierFinanceSummary(supplierId: string, shopId: string) {
@@ -76,6 +207,133 @@ async function buildSupplierFinanceSummary(supplierId: string, shopId: string) {
 
 router.get("/", async (request, response) => {
   try {
+    const requestedShopIdentifier = typeof request.query.shopId === "string" ? request.query.shopId.trim() : "";
+
+    if (requestedShopIdentifier) {
+      const context = await resolveFinanceShop(request);
+
+      if (isAuthError(context as AuthError)) {
+        return sendAuthError(response, context as AuthError);
+      }
+
+      if ("status" in context) {
+        return response.status(context.status).json(context.body);
+      }
+
+      const search = typeof request.query.search === "string" ? request.query.search.trim() : "";
+      const status = typeof request.query.status === "string" ? request.query.status.trim().toUpperCase() : "";
+
+      const suppliers = await (prisma as any).supplier.findMany({
+        where: {
+          deletedAt: null,
+          ...(status ? { status } : {}),
+          AND: [
+            {
+              OR: [
+                { purchases: { some: { shopId: context.shop.id } } },
+                { supplierPayments: { some: { shopId: context.shop.id } } },
+                { supplierLedgers: { some: { shopId: context.shop.id } } },
+              ],
+            },
+            ...(search
+              ? [
+                  {
+                    OR: [
+                      { supplierCode: { contains: search, mode: "insensitive" } },
+                      { name: { contains: search, mode: "insensitive" } },
+                      { mobile: { contains: search, mode: "insensitive" } },
+                      { email: { contains: search, mode: "insensitive" } },
+                      { contactPerson: { contains: search, mode: "insensitive" } },
+                      { contactPersonMobile: { contains: search, mode: "insensitive" } },
+                    ],
+                  },
+                ]
+              : []),
+          ],
+        },
+        include: {
+          supplierLedgers: {
+            where: { shopId: context.shop.id },
+            orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+            take: 1,
+            select: {
+              id: true,
+              entryType: true,
+              referenceNo: true,
+              debit: true,
+              credit: true,
+              notes: true,
+              entryDate: true,
+            },
+          },
+        },
+        orderBy: [{ name: "asc" }],
+      });
+
+      const supplierSummaries = await Promise.all(
+        suppliers.map(async (supplier: any) => {
+          const summary = await buildSupplierFinanceSummary(supplier.id, context.shop.id);
+          const due = toMoney(summary.due);
+          const totalPurchase = toMoney(summary.totalPurchase);
+          const totalPaid = toMoney(summary.totalPaid);
+          const lastLedgerEntry = supplier.supplierLedgers[0] ?? null;
+
+          return {
+            id: supplier.id,
+            supplierCode: supplier.supplierCode,
+            name: supplier.name,
+            mobile: supplier.mobile,
+            email: supplier.email,
+            address: supplier.address,
+            contactPerson: supplier.contactPerson,
+            contactPersonMobile: supplier.contactPersonMobile,
+            notes: supplier.notes,
+            status: supplier.status,
+            statusLabel: toDisplayStatus(supplier.status),
+            avatarLabel: supplier.name?.charAt(0)?.toUpperCase() ?? "S",
+            totalPurchase,
+            totalPaid,
+            due,
+            balanceType: toBalanceType(due),
+            dueLabel: due > 0 ? `Due ${due}` : "Paid",
+            lastActivityAt: lastLedgerEntry?.entryDate ?? null,
+            lastActivity: lastLedgerEntry
+              ? {
+                  id: lastLedgerEntry.id,
+                  entryType: lastLedgerEntry.entryType,
+                  referenceNo: lastLedgerEntry.referenceNo,
+                  debit: toMoney(lastLedgerEntry.debit),
+                  credit: toMoney(lastLedgerEntry.credit),
+                  notes: lastLedgerEntry.notes,
+                  entryDate: lastLedgerEntry.entryDate,
+                }
+              : null,
+          };
+        }),
+      );
+
+      return response.json({
+        shop: {
+          id: context.shop.id,
+          shopCode: context.shop.shopCode,
+          shopName: context.shop.shopName,
+          phone: context.shop.phone,
+          address: context.shop.address,
+          area: context.shop.area,
+          district: context.shop.district,
+          status: context.shop.status,
+        },
+        stats: {
+          total: supplierSummaries.length,
+          active: supplierSummaries.filter((item) => item.status === "ACTIVE").length,
+          inactive: supplierSummaries.filter((item) => item.status === "INACTIVE").length,
+          archived: supplierSummaries.filter((item) => item.status === "ARCHIVED").length,
+          totalDue: supplierSummaries.reduce((sum, item) => sum + item.due, 0),
+        },
+        suppliers: supplierSummaries,
+      });
+    }
+
     const auth = await requirePlatformUser(request);
 
     if (isAuthError(auth)) {
@@ -148,40 +406,180 @@ router.get("/", async (request, response) => {
 
 router.post("/", async (request, response) => {
   try {
+    const body = request.body as {
+      shopId?: string;
+      supplierCode?: string;
+      companyOrPersonName?: string;
+      name?: string;
+      mobile?: string | null;
+      email?: string | null;
+      address?: string | null;
+      productType?: string | null;
+      shortNote?: string | null;
+      contactPerson?: string | null;
+      contactPersonMobile?: string | null;
+      notes?: string | null;
+      dueAmount?: number | string | null;
+      sendWhatsAppInvite?: boolean;
+      status?: SupplierStatusValue;
+    };
+
+    const requestedShopIdentifier = body.shopId?.trim() ?? "";
+    const supplierCode = body.supplierCode?.trim();
+    const name = body.name?.trim() || body.companyOrPersonName?.trim();
+    const mobile = body.mobile?.trim() || null;
+    const email = body.email?.trim() || null;
+    const address = body.address?.trim() || null;
+    const productType = body.productType?.trim() || null;
+    const shortNote = body.shortNote?.trim() || null;
+    const contactPerson = body.contactPerson?.trim() || productType;
+    const contactPersonMobile = body.contactPersonMobile?.trim() || null;
+    const notes = body.notes?.trim() || shortNote;
+    const dueAmount = Number(body.dueAmount ?? 0);
+    const sendWhatsAppInvite = Boolean(body.sendWhatsAppInvite);
+    const status = body.status ?? "ACTIVE";
+
+    if (!name) {
+      return response.status(400).json({ message: "Supplier name is required." });
+    }
+
+    if (requestedShopIdentifier) {
+      const context = await resolveFinanceShop(request);
+
+      if (isAuthError(context as AuthError)) {
+        return sendAuthError(response, context as AuthError);
+      }
+
+      if ("status" in context) {
+        return response.status(context.status).json(context.body);
+      }
+
+      if (!mobile) {
+        return response.status(400).json({ message: "Supplier mobile number is required." });
+      }
+
+      if (!Number.isFinite(dueAmount) || dueAmount < 0) {
+        return response.status(400).json({ message: "dueAmount must be a valid positive number or 0." });
+      }
+
+      const generatedSupplierCode = supplierCode || (await createUniqueSupplierCode(name));
+
+      const existingSupplier = await (prisma as any).supplier.findFirst({
+        where: {
+          deletedAt: null,
+          OR: [
+            { supplierCode: generatedSupplierCode },
+            { mobile },
+            { name },
+          ],
+        },
+        select: {
+          id: true,
+          supplierCode: true,
+          name: true,
+          mobile: true,
+          email: true,
+          address: true,
+          contactPerson: true,
+          contactPersonMobile: true,
+          notes: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (existingSupplier) {
+        return response.status(409).json({
+          message: "Supplier already exists. Duplicate supplier add is blocked.",
+          shop: {
+            id: context.shop.id,
+            shopCode: context.shop.shopCode,
+            shopName: context.shop.shopName,
+          },
+          supplier: {
+            id: existingSupplier.id,
+            supplierCode: existingSupplier.supplierCode,
+            name: existingSupplier.name,
+            companyOrPersonName: existingSupplier.name,
+            mobile: existingSupplier.mobile,
+          },
+        });
+      }
+
+      const supplier = await (prisma as any).supplier.create({
+        data: {
+          supplierCode: generatedSupplierCode,
+          name,
+          mobile,
+          email,
+          address,
+          contactPerson,
+          contactPersonMobile,
+          notes,
+          status,
+        },
+      });
+
+      const openingDueEntry = await (prisma as any).supplierLedger.create({
+        data: {
+          shopId: context.shop.id,
+          supplierId: supplier.id,
+          entryType: "OPENING_DUE",
+          referenceNo: supplier.supplierCode,
+          debit: dueAmount,
+          credit: 0,
+          notes: notes || (dueAmount > 0 ? "Opening due added during supplier creation." : "Supplier created for this shop."),
+          entryDate: new Date(),
+        },
+      });
+
+      if (sendWhatsAppInvite && mobile) {
+        console.log(`[supplier] WhatsApp invite requested for ${mobile} (${supplier.id}) in shop ${context.shop.id}`);
+      }
+
+      return response.status(201).json({
+        message: "Supplier created successfully.",
+        shop: {
+          id: context.shop.id,
+          shopCode: context.shop.shopCode,
+          shopName: context.shop.shopName,
+        },
+        supplier: {
+          id: supplier.id,
+          supplierCode: supplier.supplierCode,
+          name: supplier.name,
+          companyOrPersonName: supplier.name,
+          mobile: supplier.mobile,
+          email: supplier.email,
+          address: supplier.address,
+          productType: supplier.contactPerson,
+          shortNote: supplier.notes,
+          contactPerson: supplier.contactPerson,
+          contactPersonMobile: supplier.contactPersonMobile,
+          notes: supplier.notes,
+          status: supplier.status,
+          statusLabel: toDisplayStatus(supplier.status),
+          createdAt: supplier.createdAt,
+          updatedAt: supplier.updatedAt,
+        },
+        openingDue: {
+          amount: dueAmount,
+          entryType: openingDueEntry.entryType,
+          ledgerId: openingDueEntry.id,
+        },
+        sendWhatsAppInvite,
+      });
+    }
+
     const auth = await requirePlatformUser(request);
 
     if (isAuthError(auth)) {
       return sendAuthError(response, auth);
     }
 
-    const body = request.body as {
-      supplierCode?: string;
-      name?: string;
-      mobile?: string | null;
-      email?: string | null;
-      address?: string | null;
-      contactPerson?: string | null;
-      contactPersonMobile?: string | null;
-      notes?: string | null;
-      status?: SupplierStatusValue;
-    };
-
-    const supplierCode = body.supplierCode?.trim();
-    const name = body.name?.trim();
-    const mobile = body.mobile?.trim() || null;
-    const email = body.email?.trim() || null;
-    const address = body.address?.trim() || null;
-    const contactPerson = body.contactPerson?.trim() || null;
-    const contactPersonMobile = body.contactPersonMobile?.trim() || null;
-    const notes = body.notes?.trim() || null;
-    const status = body.status ?? "ACTIVE";
-
     if (!supplierCode) {
       return response.status(400).json({ message: "Supplier code is required." });
-    }
-
-    if (!name) {
-      return response.status(400).json({ message: "Supplier name is required." });
     }
 
     const existingSupplier = await (prisma as any).supplier.findFirst({
@@ -246,6 +644,139 @@ router.post("/", async (request, response) => {
 
 router.get("/:id", async (request, response) => {
   try {
+    const requestedShopIdentifier = typeof request.query.shopId === "string" ? request.query.shopId.trim() : "";
+
+    if (requestedShopIdentifier) {
+      const context = await resolveFinanceShop(request);
+
+      if (isAuthError(context as AuthError)) {
+        return sendAuthError(response, context as AuthError);
+      }
+
+      if ("status" in context) {
+        return response.status(context.status).json(context.body);
+      }
+
+      const supplier = await resolveSupplierIdentifier(request.params.id);
+
+      if (!supplier) {
+        return response.status(404).json({ message: "Supplier not found." });
+      }
+
+      const [summary, purchases, payments, ledgerEntries] = await Promise.all([
+        buildSupplierFinanceSummary(supplier.id, context.shop.id),
+        (prisma as any).purchase.findMany({
+          where: {
+            shopId: context.shop.id,
+            supplierId: supplier.id,
+          },
+          orderBy: [{ purchaseDate: "desc" }, { createdAt: "desc" }],
+          take: 5,
+          select: {
+            id: true,
+            invoiceNo: true,
+            purchaseDate: true,
+            totalAmount: true,
+            paidAmount: true,
+            dueAmount: true,
+            notes: true,
+          },
+        }),
+        (prisma as any).supplierPayment.findMany({
+          where: {
+            shopId: context.shop.id,
+            supplierId: supplier.id,
+          },
+          orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+          take: 5,
+          select: {
+            id: true,
+            amount: true,
+            paymentMethod: true,
+            notes: true,
+            paidAt: true,
+          },
+        }),
+        (prisma as any).supplierLedger.findMany({
+          where: {
+            shopId: context.shop.id,
+            supplierId: supplier.id,
+          },
+          orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+          take: 10,
+          select: {
+            id: true,
+            entryType: true,
+            referenceNo: true,
+            debit: true,
+            credit: true,
+            notes: true,
+            entryDate: true,
+            purchaseId: true,
+            supplierPaymentId: true,
+          },
+        }),
+      ]);
+
+      const due = toMoney(summary.due);
+
+      return response.json({
+        shop: {
+          id: context.shop.id,
+          shopCode: context.shop.shopCode,
+          shopName: context.shop.shopName,
+        },
+        supplier: {
+          id: supplier.id,
+          supplierCode: supplier.supplierCode,
+          name: supplier.name,
+          mobile: supplier.mobile,
+          email: supplier.email,
+          address: supplier.address,
+          contactPerson: supplier.contactPerson,
+          contactPersonMobile: supplier.contactPersonMobile,
+          notes: supplier.notes,
+          status: supplier.status,
+          statusLabel: toDisplayStatus(supplier.status),
+          summary: {
+            totalPurchase: toMoney(summary.totalPurchase),
+            totalPaid: toMoney(summary.totalPaid),
+            due,
+            balanceType: toBalanceType(due),
+          },
+          recentPurchases: purchases.map((purchase: any) => ({
+            id: purchase.id,
+            invoiceNo: purchase.invoiceNo,
+            purchaseDate: purchase.purchaseDate,
+            totalAmount: toMoney(purchase.totalAmount),
+            paidAmount: toMoney(purchase.paidAmount),
+            dueAmount: toMoney(purchase.dueAmount),
+            notes: purchase.notes,
+          })),
+          recentPayments: payments.map((payment: any) => ({
+            id: payment.id,
+            amount: toMoney(payment.amount),
+            paymentMethod: payment.paymentMethod,
+            notes: payment.notes,
+            paidAt: payment.paidAt,
+          })),
+          recentTransactions: ledgerEntries.map((entry: any) => ({
+            id: entry.id,
+            entryType: entry.entryType,
+            referenceNo: entry.referenceNo,
+            debit: toMoney(entry.debit),
+            credit: toMoney(entry.credit),
+            notes: entry.notes,
+            entryDate: entry.entryDate,
+            purchaseId: entry.purchaseId,
+            supplierPaymentId: entry.supplierPaymentId,
+          })),
+          createdAt: supplier.createdAt,
+          updatedAt: supplier.updatedAt,
+        },
+      });
+    }
+
     const auth = await requirePlatformUser(request);
 
     if (isAuthError(auth)) {
@@ -485,20 +1016,25 @@ router.get("/:id/dues", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
-    const supplier = await (prisma as any).supplier.findFirst({
-      where: { id: request.params.id, deletedAt: null },
-      select: { id: true },
-    });
+    const supplier = await resolveSupplierIdentifier(request.params.id);
 
     if (!supplier) {
       return response.status(404).json({ message: "Supplier not found." });
     }
 
-    const summary = await buildSupplierFinanceSummary(request.params.id, context.shopId);
+    const shop = await resolveShopIdentifier(context.shopId);
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found for the provided shopId/shopCode." });
+    }
+
+    const summary = await buildSupplierFinanceSummary(supplier.id, shop.id);
 
     return response.json({
-      supplierId: request.params.id,
-      shopId: context.shopId,
+      supplierId: supplier.id,
+      supplierCode: supplier.supplierCode,
+      shopId: shop.id,
+      shopCode: shop.shopCode,
       totalPurchase: summary.totalPurchase,
       totalPaid: summary.totalPaid,
       due: summary.due,
@@ -522,10 +1058,22 @@ router.get("/:id/ledger", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
+    const supplier = await resolveSupplierIdentifier(request.params.id);
+
+    if (!supplier) {
+      return response.status(404).json({ message: "Supplier not found." });
+    }
+
+    const shop = await resolveShopIdentifier(context.shopId);
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found for the provided shopId/shopCode." });
+    }
+
     const ledgerEntries = await (prisma as any).supplierLedger.findMany({
       where: {
-        supplierId: request.params.id,
-        shopId: context.shopId,
+        supplierId: supplier.id,
+        shopId: shop.id,
       },
       orderBy: [{ entryDate: "asc" }, { createdAt: "asc" }],
     });
@@ -533,8 +1081,10 @@ router.get("/:id/ledger", async (request, response) => {
     let balance = 0;
 
     return response.json({
-      supplierId: request.params.id,
-      shopId: context.shopId,
+      supplierId: supplier.id,
+      supplierCode: supplier.supplierCode,
+      shopId: shop.id,
+      shopCode: shop.shopCode,
       ledger: ledgerEntries.map((entry: any) => {
         balance += Number(entry.debit ?? 0) - Number(entry.credit ?? 0);
 
@@ -589,19 +1139,22 @@ router.post("/:id/payments", async (request, response) => {
       return response.status(400).json({ message: "A valid payment amount is required." });
     }
 
-    const supplier = await (prisma as any).supplier.findFirst({
-      where: { id: request.params.id, deletedAt: null },
-      select: { id: true, supplierCode: true },
-    });
+    const supplier = await resolveSupplierIdentifier(request.params.id);
 
     if (!supplier) {
       return response.status(404).json({ message: "Supplier not found." });
     }
 
+    const shop = await resolveShopIdentifier(context.shopId);
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found for the provided shopId/shopCode." });
+    }
+
     const payment = await (prisma as any).supplierPayment.create({
       data: {
-        shopId: context.shopId,
-        supplierId: request.params.id,
+        shopId: shop.id,
+        supplierId: supplier.id,
         amount,
         paymentMethod,
         moneyBoxId,
@@ -612,8 +1165,8 @@ router.post("/:id/payments", async (request, response) => {
 
     await (prisma as any).supplierLedger.create({
       data: {
-        shopId: context.shopId,
-        supplierId: request.params.id,
+        shopId: shop.id,
+        supplierId: supplier.id,
         supplierPaymentId: payment.id,
         entryType: "PAYMENT",
         referenceNo: supplier.supplierCode,
@@ -656,17 +1209,31 @@ router.get("/:id/payments", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
+    const supplier = await resolveSupplierIdentifier(request.params.id);
+
+    if (!supplier) {
+      return response.status(404).json({ message: "Supplier not found." });
+    }
+
+    const shop = await resolveShopIdentifier(context.shopId);
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found for the provided shopId/shopCode." });
+    }
+
     const payments = await (prisma as any).supplierPayment.findMany({
       where: {
-        supplierId: request.params.id,
-        shopId: context.shopId,
+        supplierId: supplier.id,
+        shopId: shop.id,
       },
       orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
     });
 
     return response.json({
-      supplierId: request.params.id,
-      shopId: context.shopId,
+      supplierId: supplier.id,
+      supplierCode: supplier.supplierCode,
+      shopId: shop.id,
+      shopCode: shop.shopCode,
       payments: payments.map((payment: any) => ({
         id: payment.id,
         amount: Number(payment.amount),
@@ -696,10 +1263,22 @@ router.get("/:id/purchases", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
+    const supplier = await resolveSupplierIdentifier(request.params.id);
+
+    if (!supplier) {
+      return response.status(404).json({ message: "Supplier not found." });
+    }
+
+    const shop = await resolveShopIdentifier(context.shopId);
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found for the provided shopId/shopCode." });
+    }
+
     const purchases = await (prisma as any).purchase.findMany({
       where: {
-        supplierId: request.params.id,
-        shopId: context.shopId,
+        supplierId: supplier.id,
+        shopId: shop.id,
       },
       include: {
         items: {
@@ -714,8 +1293,10 @@ router.get("/:id/purchases", async (request, response) => {
     });
 
     return response.json({
-      supplierId: request.params.id,
-      shopId: context.shopId,
+      supplierId: supplier.id,
+      supplierCode: supplier.supplierCode,
+      shopId: shop.id,
+      shopCode: shop.shopCode,
       purchases: purchases.map((purchase: any) => ({
         id: purchase.id,
         invoiceNo: purchase.invoiceNo,

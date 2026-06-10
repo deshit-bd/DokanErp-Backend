@@ -292,10 +292,27 @@ model ShopUser {
 
   shop           Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salesmanPermission SalesmanPermission?
 
   @@unique([shopId, userId])
   @@index([shopId, role])
   @@map("shop_users")
+}
+
+model SalesmanPermission {
+  id             String   @id @default(cuid())
+  shopUserId     String   @unique @map("shop_user_id")
+  canSell        Boolean  @default(false) @map("can_sell")
+  canViewStock   Boolean  @default(false) @map("can_view_stock")
+  canViewReports Boolean  @default(false) @map("can_view_reports")
+  canChangePrice Boolean  @default(false) @map("can_change_price")
+  canCollectDue  Boolean  @default(false) @map("can_collect_due")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  shopUser       ShopUser @relation(fields: [shopUserId], references: [id], onDelete: Cascade)
+
+  @@map("salesman_permissions")
 }
 
 model RefreshToken {
