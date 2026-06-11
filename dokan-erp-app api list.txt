@@ -1,4 +1,185 @@
-#####################DokanERP Owner Registration Flow######################
+#####################DokanERP API LIST######################
+
+###################Customer Registration / Customer Master APIs###################
+
+Customer vs Owner:
+- customer is the buyer/client of a shop
+- owner is the merchant/shop owner who creates and manages the shop
+- customer creation does not create login access
+- owner registration creates the merchant account and shop
+
+Rule:
+- customer master data is global
+- customer create is not shop-wise
+- future customer purchase / due / payment data should be shop-wise
+
+1. POST /app/api/customers
+Request:
+```json
+{
+  "companyOrPersonName": "Karim Store Buyer",
+  "mobile": "01712000001",
+  "address": "Mirpur, Dhaka",
+  "shortNote": "Regular retail customer"
+}
+```
+
+Optional fields:
+- `customerCode`
+- `name`
+- `email`
+- `notes`
+- `status`
+
+Response:
+```json
+{
+  "message": "Customer created successfully.",
+  "customer": {
+    "id": "customer_xxx",
+    "customerCode": "KARIMS-123456",
+    "name": "Karim Store Buyer",
+    "companyOrPersonName": "Karim Store Buyer",
+    "mobile": "01712000001",
+    "email": null,
+    "address": "Mirpur, Dhaka",
+    "shortNote": "Regular retail customer",
+    "notes": "Regular retail customer",
+    "status": "ACTIVE",
+    "statusLabel": "ACTIVE",
+    "createdAt": "2026-06-11T06:00:00.000Z",
+    "updatedAt": "2026-06-11T06:00:00.000Z"
+  }
+}
+```
+
+Duplicate response:
+```json
+{
+  "message": "Customer already exists. Duplicate customer add is blocked.",
+  "customer": {
+    "id": "customer_xxx",
+    "customerCode": "CUS-001",
+    "name": "Karim Store Buyer",
+    "companyOrPersonName": "Karim Store Buyer",
+    "mobile": "01712000001"
+  }
+}
+```
+
+2. GET /app/api/customers
+Example:
+```http
+GET http://localhost:4000/app/api/customers
+```
+
+3. GET /app/api/customers/:customerIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers/CUS-001
+```
+
+Customer notes:
+- this section is only for customer master data
+- customer is not the shop owner
+- customer does not use `register-owner-draft`
+- customer is created globally, then customer purchase/due/payment is tracked shop-wise
+
+###################Shop-wise Customer Sales / Due / Payment APIs###################
+
+These APIs are shop-wise and use the global customer master as the customer source.
+
+1. GET /app/api/customers?shopId=:shopIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers?shopId=SHOP-001
+```
+
+Response shape:
+- `shop`
+- `stats.totalSales`
+- `stats.totalPaid`
+- `stats.totalDue`
+- `customers[].totalSales`
+- `customers[].totalPaid`
+- `customers[].due`
+
+2. POST /app/api/customers/sales
+Request:
+```json
+{
+  "shopId": "shop_xxx",
+  "customerId": "customer_xxx",
+  "invoiceNo": "SAL-240611-001",
+  "paidAmount": 500,
+  "paymentMethod": "cash",
+  "notes": "Partial payment received",
+  "items": [
+    {
+      "masterProductId": "product_xxx",
+      "quantity": 2,
+      "salePrice": 150
+    },
+    {
+      "masterProductId": "product_yyy",
+      "quantity": 1,
+      "salePrice": 200
+    }
+  ]
+}
+```
+
+Notes:
+- creates a shop-wise customer sale
+- creates customer ledger entries
+- if `paidAmount > 0`, also creates a customer payment entry
+
+3. GET /app/api/customers/:customerIdOrCode?shopId=:shopIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers/CUS-001?shopId=SHOP-001
+```
+
+Response shape:
+- `shop`
+- `customer.finance`
+- `customer.recentSales`
+- `customer.recentPayments`
+- `customer.recentTransactions`
+
+4. GET /app/api/customers/:customerIdOrCode/sales?shopId=:shopIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers/CUS-001/sales?shopId=SHOP-001
+```
+
+5. POST /app/api/customers/:customerIdOrCode/payments
+Request:
+```json
+{
+  "shopId": "shop_xxx",
+  "amount": 300,
+  "paymentMethod": "cash",
+  "referenceNo": "COLLECT-240611-001",
+  "notes": "Due collection"
+}
+```
+
+Notes:
+- payment cannot be greater than the current outstanding due
+
+6. GET /app/api/customers/:customerIdOrCode/ledger?shopId=:shopIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers/CUS-001/ledger?shopId=SHOP-001
+```
+
+Ledger note:
+- debit increases customer due
+- credit reduces customer due
+
+#####################Owner Registration Flow######################
+
 Registration rules:
 - Password must be at least 4 characters
 - PIN must be exactly 4 digits
@@ -558,6 +739,180 @@ Useful related APIs for the same shop:
 - GET /app/api/suppliers/:supplierIdOrCode/payments?shopId=RAHIMA677141
 - GET /app/api/suppliers/:supplierIdOrCode/purchases?shopId=RAHIMA677141
 
+###################Create Purchase For Specific Shop###################
+
+Purpose:
+- create supplier purchase
+- add purchase items from master product ids
+- auto attach those products to shop_products if not already configured
+- support `Cash`, `bKash`, `Nagad`, `Card`, and `Due`
+
+API:
+- POST /app/api/purchases
+
+Example request for cash:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "invoiceNo": "PO-10032",
+  "purchaseDate": "2026-06-11T10:30:00.000Z",
+  "paymentMethod": "CASH",
+  "paidAmount": 2500,
+  "notes": "আজকের ক্রয়",
+  "items": [
+    {
+      "masterProductId": "prod_rice",
+      "quantity": 24,
+      "purchasePrice": 56
+    }
+  ]
+}
+```
+
+Example request for due:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "invoiceNo": "PO-10033",
+  "paymentMethod": "DUE",
+  "paidAmount": 0,
+  "items": [
+    {
+      "masterProductId": "prod_oil",
+      "quantity": 12,
+      "purchasePrice": 145
+    }
+  ]
+}
+```
+
+Example request for bKash / Nagad:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "paymentMethod": "BKASH",
+  "paidAmount": 3200,
+  "paymentDetails": {
+    "senderNumber": "01712345678",
+    "transactionId": "BKX99887766"
+  },
+  "items": [
+    {
+      "masterProductId": "prod_rice",
+      "quantity": 10,
+      "purchasePrice": 50
+    }
+  ]
+}
+```
+
+Example request for card:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "paymentMethod": "CARD",
+  "paidAmount": 3200,
+  "paymentDetails": {
+    "cardHolderName": "Abdul Karim",
+    "cardLast4": "4589",
+    "cardType": "Visa",
+    "approvalCode": "APR77821"
+  },
+  "items": [
+    {
+      "masterProductId": "prod_rice",
+      "quantity": 10,
+      "purchasePrice": 50
+    }
+  ]
+}
+```
+
+Validation rules:
+- `CASH`: no extra input required
+- `BKASH` / `NAGAD`: `senderNumber` and `transactionId` required
+- `CARD`: `cardHolderName`, `cardLast4`, `cardType`, and `approvalCode` or `transactionId` required
+- `DUE`: `paidAmount` must be `0`
+
+Success response shape:
+```json
+{
+  "message": "Purchase created successfully.",
+  "purchase": {
+    "id": "purchase_xxx",
+    "shopId": "cmq_shop_001",
+    "supplierId": "supplier_xxx",
+    "invoiceNo": "PO-10032",
+    "purchaseDate": "2026-06-11T10:30:00.000Z",
+    "totalAmount": 3200,
+    "paidAmount": 3200,
+    "dueAmount": 0,
+    "paymentMethod": "BKASH",
+    "paymentDetails": {
+      "senderNumber": "01712345678",
+      "transactionId": "BKX99887766"
+    },
+    "notes": "আজকের ক্রয়",
+    "items": []
+  }
+}
+```
+
+###################Supplier Payment Method Details###################
+
+Purpose:
+- pay existing supplier due
+- support extra payment fields in supplier payment modal/API
+
+API:
+- POST /app/api/suppliers/:supplierIdOrCode/payments?shopId=RAHIMA677141
+
+Cash request:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "amount": 1500,
+  "paymentMethod": "CASH",
+  "notes": "ক্যাশে পরিশোধ"
+}
+```
+
+bKash / Nagad request:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "amount": 1500,
+  "paymentMethod": "BKASH",
+  "paymentDetails": {
+    "senderNumber": "01712345678",
+    "transactionId": "BKX99887766"
+  }
+}
+```
+
+Card request:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "amount": 1500,
+  "paymentMethod": "CARD",
+  "paymentDetails": {
+    "cardHolderName": "Abdul Karim",
+    "cardLast4": "4589",
+    "cardType": "Visa",
+    "approvalCode": "APR77821"
+  }
+}
+```
+
+Notes:
+- `DUE` is not valid for supplier payment API because this API records a real payment
+- supplier payment responses now return `paymentDetails`
+
 ###################Salesman Password + OTP Login Flow###################
 
 Journey:
@@ -718,3 +1073,368 @@ Note:
 - shop login should use user-friendly `shopCode`
 - Example shop code: `RAHIMG292804`
 - internal database `id` is still returned for backend use
+
+###################Inventory Layout APIs###################
+
+Purpose:
+- these APIs support the owner inventory layout flow
+- advanced rack mode uses: `zone -> rack -> shelf -> bin`
+- all inventory layout data is shop-wise
+- mobile owner screens now call these endpoints
+
+UI binding note:
+- rack mode summary cards come from `GET /app/api/inventory/dashboard`
+- normal mode summary cards and product list come from `GET /app/api/inventory/general-store`
+
+Auth rule:
+- these endpoints require logged-in `SHOP_OWNER` mobile session
+- use owner login first so auth cookie is available
+
+1. GET /app/api/inventory/mode
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/mode
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "shop_xxx",
+    "shopCode": "RAHIMG292804",
+    "shopName": "Rahima Grocery Store",
+    "status": "ACTIVE"
+  },
+  "mode": "RACK",
+  "configured": true
+}
+```
+
+2. POST /app/api/inventory/mode
+Request:
+```json
+{
+  "mode": "RACK"
+}
+```
+
+Response:
+```json
+{
+  "message": "Inventory mode saved successfully.",
+  "setting": {
+    "id": "inv_setting_xxx",
+    "shopId": "shop_xxx",
+    "mode": "RACK"
+  },
+  "configured": true
+}
+```
+
+3. GET /app/api/inventory/dashboard
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/dashboard
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "shop_xxx",
+    "shopCode": "RAHIMG292804",
+    "shopName": "Rahima Grocery Store",
+    "status": "ACTIVE"
+  },
+  "mode": "RACK",
+  "configured": true,
+  "summary": {
+    "zones": 5,
+    "racks": 12,
+    "shelves": 36,
+    "bins": 115
+  },
+  "alerts": {
+    "attentionCount": 3
+  }
+}
+```
+
+4. GET /app/api/inventory/attention
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/attention
+```
+
+Response shape:
+- `bins[].code`
+- `bins[].productName`
+- `bins[].status`
+- `bins[].quantityLabel`
+- `bins[].daysLabel`
+
+5. GET /app/api/inventory/general-store
+Purpose:
+- used for `GENERAL` / normal inventory mode
+- no zone
+- no rack
+- no shelf
+- no bin
+- all shop products are stored in one location: `Main Store`
+
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/general-store
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "shop_xxx",
+    "shopCode": "RAHIMG292804",
+    "shopName": "Rahima Grocery Store",
+    "status": "ACTIVE"
+  },
+  "store": {
+    "id": "main-store",
+    "name": "Main Store",
+    "mode": "GENERAL"
+  },
+  "summary": {
+    "totalProducts": 12,
+    "lowStockProducts": 2,
+    "outOfStockProducts": 1
+  },
+  "products": [
+    {
+      "id": "shop_product_xxx",
+      "masterProductId": "product_xxx",
+      "name": "Miniket Rice (25kg)",
+      "sku": "PROD-RICE-25",
+      "packageSize": "25kg Sack",
+      "stock": 40,
+      "salePrice": 1650,
+      "status": "IN_STOCK"
+    },
+    {
+      "id": "shop_product_yyy",
+      "masterProductId": "product_yyy",
+      "name": "Fresh Sugar (1kg)",
+      "sku": "PROD-SUG-1",
+      "packageSize": "1kg Packet",
+      "stock": 3,
+      "salePrice": 135,
+      "status": "LOW"
+    }
+  ]
+}
+```
+
+General mode note:
+- this is the proper API for normal inventory mode
+- if mode is `GENERAL`, use `general-store`
+- do not show rack/bin workflow for this mode
+- `Main Store` is the only storage location in this mode
+
+6. GET /app/api/inventory/zones
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/zones
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "shop_xxx",
+    "shopCode": "RAHIMG292804",
+    "shopName": "Rahima Grocery Store",
+    "status": "ACTIVE"
+  },
+  "zones": [
+    {
+      "id": "zone_xxx",
+      "name": "গ্রোসারি জোন",
+      "subtitle": "চাল, ডাল, মশলা এবং রান্নার পণ্য",
+      "icon": "map",
+      "rackCount": 3,
+      "shelfCount": 12,
+      "binCount": 48,
+      "createdAt": "2026-06-11T09:00:00.000Z",
+      "updatedAt": "2026-06-11T09:00:00.000Z"
+    }
+  ]
+}
+```
+
+7. POST /app/api/inventory/zones
+Request:
+```json
+{
+  "name": "গ্রোসারি জোন",
+  "subtitle": "চাল, ডাল, মশলা এবং রান্নার পণ্য",
+  "icon": "map"
+}
+```
+
+Response:
+```json
+{
+  "message": "Inventory zone created successfully.",
+  "zone": {
+    "id": "zone_xxx",
+    "name": "গ্রোসারি জোন",
+    "subtitle": "চাল, ডাল, মশলা এবং রান্নার পণ্য",
+    "icon": "map",
+    "rackCount": 0,
+    "shelfCount": 0,
+    "binCount": 0,
+    "createdAt": "2026-06-11T09:10:00.000Z",
+    "updatedAt": "2026-06-11T09:10:00.000Z"
+  }
+}
+```
+
+8. GET /app/api/inventory/racks
+Optional query:
+- `zoneId`
+
+Examples:
+```http
+GET http://localhost:4000/app/api/inventory/racks
+GET http://localhost:4000/app/api/inventory/racks?zoneId=zone_xxx
+```
+
+9. POST /app/api/inventory/racks
+Request:
+```json
+{
+  "zoneId": "zone_xxx",
+  "name": "র্যাক A",
+  "note": "চাল, ডাল ঠিক",
+  "shelfCount": 8,
+  "binsPerShelf": 8,
+  "autoGenerate": true
+}
+```
+
+Response:
+```json
+{
+  "message": "Inventory rack created successfully.",
+  "rack": {
+    "id": "rack_xxx",
+    "zoneId": "zone_xxx",
+    "name": "র্যাক A",
+    "note": "চাল, ডাল ঠিক",
+    "shelfCount": 8,
+    "totalBins": 64,
+    "usedBins": 0,
+    "createdAt": "2026-06-11T09:20:00.000Z",
+    "updatedAt": "2026-06-11T09:20:00.000Z"
+  },
+  "shelves": [
+    {
+      "id": "shelf_xxx",
+      "zoneId": "zone_xxx",
+      "rackId": "rack_xxx",
+      "name": "র্যাক A - Shelf 1",
+      "totalBins": 8,
+      "usedBins": 0
+    }
+  ],
+  "bins": [
+    {
+      "id": "bin_xxx",
+      "zoneId": "zone_xxx",
+      "rackId": "rack_xxx",
+      "shelfId": "shelf_xxx",
+      "code": "গ-A-S1-B1",
+      "productName": "খালি",
+      "status": "EMPTY",
+      "quantityLabel": "খালি",
+      "daysLabel": "খালি"
+    }
+  ]
+}
+```
+
+Notes:
+- if `autoGenerate=true`, backend auto-creates shelves and bins
+- bin code format is generated automatically
+- shelf names are generated uniquely, for example:
+  - `Rack A - Shelf 1`
+  - `Rack A - Shelf 2`
+  - `Rack A - Shelf 3`
+- if no zone exists yet, create a zone first before calling `POST /app/api/inventory/racks`
+
+10. GET /app/api/inventory/shelves
+Optional query:
+- `zoneId`
+- `rackId`
+
+Examples:
+```http
+GET http://localhost:4000/app/api/inventory/shelves?zoneId=zone_xxx
+GET http://localhost:4000/app/api/inventory/shelves?zoneId=zone_xxx&rackId=rack_xxx
+```
+
+11. GET /app/api/inventory/bins
+Optional query:
+- `zoneId`
+- `rackId`
+- `shelfId`
+
+Examples:
+```http
+GET http://localhost:4000/app/api/inventory/bins?zoneId=zone_xxx
+GET http://localhost:4000/app/api/inventory/bins?zoneId=zone_xxx&rackId=rack_xxx&shelfId=shelf_xxx
+```
+
+12. POST /app/api/inventory/bins
+Request:
+```json
+{
+  "zoneId": "zone_xxx",
+  "rackId": "rack_xxx",
+  "shelfId": "shelf_xxx",
+  "code": "A-A-S2-B2",
+  "productName": "চিনি",
+  "status": "LOW",
+  "quantityLabel": "২ পিস",
+  "daysLabel": "২ দিন"
+}
+```
+
+Response:
+```json
+{
+  "message": "Inventory bin created successfully.",
+  "bin": {
+    "id": "bin_xxx",
+    "zoneId": "zone_xxx",
+    "rackId": "rack_xxx",
+    "shelfId": "shelf_xxx",
+    "code": "A-A-S2-B2",
+    "productName": "চিনি",
+    "status": "LOW",
+    "quantityLabel": "২ পিস",
+    "daysLabel": "২ দিন",
+    "createdAt": "2026-06-11T09:40:00.000Z",
+    "updatedAt": "2026-06-11T09:40:00.000Z"
+  }
+}
+```
+
+Inventory testing order:
+1. login as owner
+2. call `POST /app/api/inventory/mode`
+3. if mode is `GENERAL`, call `GET /app/api/inventory/general-store`
+4. if mode is `RACK`, call `POST /app/api/inventory/zones`
+5. then call `POST /app/api/inventory/racks`
+6. then call `GET /app/api/inventory/dashboard`
+7. then call `GET /app/api/inventory/zones`
+8. then call `GET /app/api/inventory/racks?zoneId=...`
+9. then call `GET /app/api/inventory/shelves?zoneId=...`
+10. then call `GET /app/api/inventory/bins?zoneId=...`

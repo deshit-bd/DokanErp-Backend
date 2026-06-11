@@ -12,6 +12,14 @@ import { prisma } from "../config/prisma";
 const router = Router();
 
 type SupplierStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
+type PaymentMetaInput = {
+  senderNumber?: string | null;
+  transactionId?: string | null;
+  cardHolderName?: string | null;
+  cardLast4?: string | null;
+  cardType?: string | null;
+  approvalCode?: string | null;
+};
 
 function toDisplayStatus(status: SupplierStatusValue) {
   return status.replace(/_/g, " ");
@@ -19,6 +27,72 @@ function toDisplayStatus(status: SupplierStatusValue) {
 
 function toMoney(value: unknown) {
   return Number(value ?? 0);
+}
+
+function normalizeText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeSupplierPayment(
+  paymentMethodRaw: unknown,
+  paymentMetaRaw: PaymentMetaInput | null | undefined,
+) {
+  const paymentMethod = normalizeText(paymentMethodRaw).toUpperCase() || "CASH";
+
+  if (paymentMethod === "CASH" || paymentMethod === "BANK") {
+    return { paymentMethod, paymentMeta: null as Record<string, string> | null };
+  }
+
+  const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
+
+  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
+    const senderNumber = normalizeText(paymentMeta.senderNumber);
+    const transactionId = normalizeText(paymentMeta.transactionId);
+
+    if (!senderNumber || !transactionId) {
+      return { error: `${paymentMethod} payments require senderNumber and transactionId.` };
+    }
+
+    return {
+      paymentMethod,
+      paymentMeta: {
+        senderNumber,
+        transactionId,
+      },
+    };
+  }
+
+  if (paymentMethod === "CARD") {
+    const cardHolderName = normalizeText(paymentMeta.cardHolderName);
+    const cardLast4 = normalizeText(paymentMeta.cardLast4);
+    const cardType = normalizeText(paymentMeta.cardType);
+    const approvalCode = normalizeText(paymentMeta.approvalCode);
+    const transactionId = normalizeText(paymentMeta.transactionId);
+
+    if (!cardHolderName || !cardLast4 || !cardType || (!approvalCode && !transactionId)) {
+      return {
+        error:
+          "Card payments require cardHolderName, cardLast4, cardType, and approvalCode or transactionId.",
+      };
+    }
+
+    return {
+      paymentMethod,
+      paymentMeta: {
+        cardHolderName,
+        cardLast4,
+        cardType,
+        approvalCode: approvalCode || undefined,
+        transactionId: transactionId || undefined,
+      },
+    };
+  }
+
+  if (paymentMethod === "DUE") {
+    return { error: "DUE is not a valid method for supplier payment collection." };
+  }
+
+  return { paymentMethod, paymentMeta: null as Record<string, string> | null };
 }
 
 function toBalanceType(due: number) {
@@ -693,6 +767,7 @@ router.get("/:id", async (request, response) => {
             id: true,
             amount: true,
             paymentMethod: true,
+            paymentMeta: true,
             notes: true,
             paidAt: true,
           },
@@ -757,6 +832,7 @@ router.get("/:id", async (request, response) => {
             id: payment.id,
             amount: toMoney(payment.amount),
             paymentMethod: payment.paymentMethod,
+            paymentDetails: payment.paymentMeta ?? null,
             notes: payment.notes,
             paidAt: payment.paidAt,
           })),
@@ -1124,19 +1200,25 @@ router.post("/:id/payments", async (request, response) => {
     const body = request.body as {
       amount?: number | string;
       paymentMethod?: string | null;
+      paymentDetails?: PaymentMetaInput | null;
       moneyBoxId?: string | null;
       notes?: string | null;
       paidAt?: string | null;
     };
 
     const amount = Number(body.amount);
-    const paymentMethod = body.paymentMethod?.trim() || null;
     const moneyBoxId = body.moneyBoxId?.trim() || null;
     const notes = body.notes?.trim() || null;
     const paidAt = body.paidAt ? new Date(body.paidAt) : new Date();
 
     if (!Number.isFinite(amount) || amount <= 0) {
       return response.status(400).json({ message: "A valid payment amount is required." });
+    }
+
+    const paymentInfo = normalizeSupplierPayment(body.paymentMethod, body.paymentDetails);
+
+    if ("error" in paymentInfo) {
+      return response.status(400).json({ message: paymentInfo.error });
     }
 
     const supplier = await resolveSupplierIdentifier(request.params.id);
@@ -1156,7 +1238,8 @@ router.post("/:id/payments", async (request, response) => {
         shopId: shop.id,
         supplierId: supplier.id,
         amount,
-        paymentMethod,
+        paymentMethod: paymentInfo.paymentMethod,
+        paymentMeta: paymentInfo.paymentMeta,
         moneyBoxId,
         notes,
         paidAt,
@@ -1185,6 +1268,7 @@ router.post("/:id/payments", async (request, response) => {
         supplierId: payment.supplierId,
         amount: Number(payment.amount),
         paymentMethod: payment.paymentMethod,
+        paymentDetails: payment.paymentMeta ?? null,
         moneyBoxId: payment.moneyBoxId,
         notes: payment.notes,
         paidAt: payment.paidAt,
@@ -1238,6 +1322,7 @@ router.get("/:id/payments", async (request, response) => {
         id: payment.id,
         amount: Number(payment.amount),
         paymentMethod: payment.paymentMethod,
+        paymentDetails: payment.paymentMeta ?? null,
         moneyBoxId: payment.moneyBoxId,
         notes: payment.notes,
         paidAt: payment.paidAt,

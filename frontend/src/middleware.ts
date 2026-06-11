@@ -83,6 +83,8 @@ function clearAccessCookie(response: NextResponse) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const isSuperAdminPath = pathname.startsWith("/super-admin");
+  const isShopPath = pathname.startsWith("/shop");
 
   const isPublicPath =
     pathname === "/" ||
@@ -111,20 +113,31 @@ export async function middleware(request: NextRequest) {
     return clearAccessCookie(NextResponse.redirect(new URL("/login", request.url)));
   }
 
-  if (pathname === "/login" || pathname === "/super-admin/login") {
-    const redirectPath = payload.appType === "WEB" ? "/super-admin/dashboard" : "/shop/dashboard";
-    return NextResponse.redirect(new URL(redirectPath, request.url));
+  if (pathname === "/login") {
+    if (payload.appType === "WEB") {
+      return NextResponse.redirect(new URL("/super-admin/dashboard", request.url));
+    }
+
+    return clearAccessCookie(NextResponse.redirect(new URL("/super-admin/login", request.url)));
   }
 
-  if (pathname.startsWith("/super-admin")) {
+  if (pathname === "/super-admin/login") {
+    if (payload.appType === "WEB") {
+      return NextResponse.redirect(new URL("/super-admin/dashboard", request.url));
+    }
+
+    return clearAccessCookie(NextResponse.next());
+  }
+
+  if (isSuperAdminPath) {
     if (payload.appType !== "WEB" || (payload.role !== "SUPER_ADMIN" && payload.role !== "ADMIN")) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return clearAccessCookie(NextResponse.redirect(new URL("/super-admin/login", request.url)));
     }
   }
 
-  if (pathname.startsWith("/shop")) {
+  if (isShopPath) {
     if (payload.appType !== "MOBILE" || (payload.role !== "SHOP_OWNER" && payload.role !== "SALESMAN")) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return clearAccessCookie(NextResponse.redirect(new URL("/login", request.url)));
     }
   }
 

@@ -185,9 +185,34 @@ enum SupplierStatus {
   ARCHIVED
 }
 
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum InventoryMode {
+  GENERAL
+  RACK
+}
+
+enum InventoryBinStatus {
+  EMPTY
+  LOW
+  FULL
+  EXPIRED
+}
+
 enum SupplierLedgerEntryType {
   OPENING_DUE
   PURCHASE
+  PAYMENT
+  ADJUSTMENT
+}
+
+enum CustomerLedgerEntryType {
+  OPENING_DUE
+  SALE
   PAYMENT
   ADJUSTMENT
 }
@@ -269,14 +294,23 @@ model Shop {
   invoices        Invoice[]
   payments        Payment[]
   purchases       Purchase[]
+  shopProducts    ShopProduct[]
   moneyBoxes      MoneyBox[]
   bankAccounts    BankAccount[]
+  customerSales   CustomerSale[]
+  customerPayments CustomerPayment[]
+  customerLedgers CustomerLedger[]
   supplierPayments SupplierPayment[]
   supplierLedgers SupplierLedger[]
   receiptSetting  ShopReceiptSetting?
   otpVerifications OtpVerification[]
   passwordResetRequests PasswordResetRequest[]
   registrationDrafts OwnerRegistrationDraft[]
+  inventorySetting ShopInventorySetting?
+  inventoryZones  InventoryZone[]
+  inventoryRacks  InventoryRack[]
+  inventoryShelves InventoryShelf[]
+  inventoryBins   InventoryBin[]
 
   @@index([shopName])
   @@map("shops")
@@ -480,6 +514,8 @@ model MasterProduct {
   barcodes        MasterProductBarcode[]
   templateItems   ProductTemplateItem[]
   purchaseItems   PurchaseItem[]
+  customerSaleItems CustomerSaleItem[]
+  shopProducts    ShopProduct[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -558,6 +594,127 @@ model ProductTemplate {
   @@map("product_templates")
 }
 
+model ShopProduct {
+  id              String         @id @default(cuid())
+  shopId          String         @map("shop_id")
+  masterProductId String         @map("master_product_id")
+  openingStock    Decimal        @default(0) @map("opening_stock") @db.Decimal(12, 3)
+  salePrice       Decimal?       @map("sale_price") @db.Decimal(10, 2)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  masterProduct   MasterProduct  @relation(fields: [masterProductId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, masterProductId])
+  @@index([shopId])
+  @@index([masterProductId])
+  @@map("shop_products")
+}
+
+model ShopInventorySetting {
+  id        String        @id @default(cuid())
+  shopId     String        @unique @map("shop_id")
+  mode      InventoryMode @default(GENERAL)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  shop       Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("shop_inventory_settings")
+}
+
+model InventoryZone {
+  id         String    @id @default(cuid())
+  shopId      String    @map("shop_id")
+  name       String    @db.VarChar(120)
+  subtitle   String?   @db.VarChar(255)
+  icon       String?   @db.VarChar(40)
+  sortOrder  Int       @default(0) @map("sort_order")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  shop        Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  racks      InventoryRack[]
+  shelves    InventoryShelf[]
+  bins       InventoryBin[]
+
+  @@unique([shopId, name])
+  @@index([shopId, sortOrder])
+  @@map("inventory_zones")
+}
+
+model InventoryRack {
+  id         String    @id @default(cuid())
+  shopId      String    @map("shop_id")
+  zoneId      String    @map("zone_id")
+  name       String    @db.VarChar(120)
+  note       String?
+  shelfCount Int       @default(0) @map("shelf_count")
+  totalBins  Int       @default(0) @map("total_bins")
+  usedBins   Int       @default(0) @map("used_bins")
+  sortOrder  Int       @default(0) @map("sort_order")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  shop        Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  zone       InventoryZone    @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  shelves    InventoryShelf[]
+  bins       InventoryBin[]
+
+  @@unique([shopId, zoneId, name])
+  @@index([shopId, zoneId, sortOrder])
+  @@map("inventory_racks")
+}
+
+model InventoryShelf {
+  id         String    @id @default(cuid())
+  shopId      String    @map("shop_id")
+  zoneId      String    @map("zone_id")
+  rackId      String    @map("rack_id")
+  name       String    @db.VarChar(120)
+  totalBins  Int       @default(0) @map("total_bins")
+  usedBins   Int       @default(0) @map("used_bins")
+  sortOrder  Int       @default(0) @map("sort_order")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  shop        Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  zone       InventoryZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  rack       InventoryRack @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  bins       InventoryBin[]
+
+  @@unique([shopId, rackId, name])
+  @@index([shopId, zoneId, rackId, sortOrder])
+  @@map("inventory_shelves")
+}
+
+model InventoryBin {
+  id          String             @id @default(cuid())
+  shopId       String             @map("shop_id")
+  zoneId       String             @map("zone_id")
+  rackId       String             @map("rack_id")
+  shelfId      String             @map("shelf_id")
+  code        String             @db.VarChar(80)
+  productName String?            @map("product_name") @db.VarChar(160)
+  status      InventoryBinStatus @default(EMPTY)
+  quantityLabel String?          @map("quantity_label") @db.VarChar(40)
+  daysLabel   String?            @map("days_label") @db.VarChar(40)
+  sortOrder   Int                @default(0) @map("sort_order")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  shop         Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  zone        InventoryZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  rack        InventoryRack   @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  shelf       InventoryShelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, code])
+  @@index([shopId, zoneId, rackId, shelfId, sortOrder])
+  @@index([shopId, status])
+  @@map("inventory_bins")
+}
+
 model ProductTemplateItem {
   id              String          @id @default(cuid())
   templateId      String          @map("template_id")
@@ -594,6 +751,27 @@ model Supplier {
   @@map("suppliers")
 }
 
+model Customer {
+  id              String         @id @default(cuid())
+  customerCode    String         @unique @map("customer_code") @db.VarChar(50)
+  name            String         @db.VarChar(160)
+  mobile          String?        @db.VarChar(30)
+  email           String?        @db.VarChar(150)
+  address         String?
+  notes           String?
+  status          CustomerStatus @default(ACTIVE)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  sales           CustomerSale[]
+  payments        CustomerPayment[]
+  ledgerEntries   CustomerLedger[]
+
+  @@index([status])
+  @@map("customers")
+}
+
 model Purchase {
   id              String           @id @default(cuid())
   shopId          String           @map("shop_id")
@@ -604,6 +782,7 @@ model Purchase {
   paidAmount      Decimal          @default(0) @map("paid_amount") @db.Decimal(10, 2)
   dueAmount       Decimal          @default(0) @map("due_amount") @db.Decimal(10, 2)
   paymentMethod   String?          @map("payment_method") @db.VarChar(50)
+  paymentMeta     Json?            @map("payment_meta")
   notes           String?
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
@@ -635,12 +814,77 @@ model PurchaseItem {
   @@map("purchase_items")
 }
 
+model CustomerSale {
+  id              String         @id @default(cuid())
+  shopId          String         @map("shop_id")
+  customerId      String         @map("customer_id")
+  invoiceNo       String?        @map("invoice_no") @db.VarChar(80)
+  saleDate        DateTime       @default(now()) @map("sale_date")
+  totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
+  paidAmount      Decimal        @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  dueAmount       Decimal        @default(0) @map("due_amount") @db.Decimal(10, 2)
+  paymentMethod   String?        @map("payment_method") @db.VarChar(50)
+  notes           String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items           CustomerSaleItem[]
+  ledgerEntries   CustomerLedger[]
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([saleDate])
+  @@map("customer_sales")
+}
+
+model CustomerSaleItem {
+  id              String         @id @default(cuid())
+  customerSaleId  String         @map("customer_sale_id")
+  masterProductId String         @map("master_product_id")
+  quantity        Decimal        @db.Decimal(12, 3)
+  salePrice       Decimal        @map("sale_price") @db.Decimal(10, 2)
+  totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
+
+  customerSale    CustomerSale   @relation(fields: [customerSaleId], references: [id], onDelete: Cascade)
+  masterProduct   MasterProduct  @relation(fields: [masterProductId], references: [id], onDelete: Restrict)
+
+  @@index([customerSaleId])
+  @@index([masterProductId])
+  @@map("customer_sale_items")
+}
+
+model CustomerPayment {
+  id              String         @id @default(cuid())
+  shopId          String         @map("shop_id")
+  customerId      String         @map("customer_id")
+  amount          Decimal        @db.Decimal(10, 2)
+  paymentMethod   String?        @map("payment_method") @db.VarChar(50)
+  moneyBoxId      String?        @map("money_box_id") @db.VarChar(80)
+  referenceNo     String?        @map("reference_no") @db.VarChar(80)
+  notes           String?
+  paidAt          DateTime       @default(now()) @map("paid_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  moneyBox        MoneyBox?      @relation(fields: [moneyBoxId], references: [id], onDelete: SetNull)
+  ledgerEntries   CustomerLedger[]
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([paidAt])
+  @@map("customer_payments")
+}
+
 model SupplierPayment {
   id              String         @id @default(cuid())
   shopId          String         @map("shop_id")
   supplierId      String         @map("supplier_id")
   amount          Decimal        @db.Decimal(10, 2)
   paymentMethod   String?        @map("payment_method") @db.VarChar(50)
+  paymentMeta     Json?          @map("payment_meta")
   moneyBoxId      String?        @map("money_box_id") @db.VarChar(80)
   notes           String?
   paidAt          DateTime       @default(now()) @map("paid_at")
@@ -671,6 +915,7 @@ model MoneyBox {
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
   shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customerPayments CustomerPayment[]
   supplierPayments SupplierPayment[]
 
   @@index([shopId])
@@ -727,6 +972,31 @@ model SupplierLedger {
   @@index([purchaseId])
   @@index([supplierPaymentId])
   @@map("supplier_ledgers")
+}
+
+model CustomerLedger {
+  id                String                  @id @default(cuid())
+  shopId            String                  @map("shop_id")
+  customerId        String                  @map("customer_id")
+  entryType         CustomerLedgerEntryType @map("entry_type")
+  customerSaleId    String?                 @map("customer_sale_id")
+  customerPaymentId String?                 @map("customer_payment_id")
+  referenceNo       String?                 @map("reference_no") @db.VarChar(80)
+  debit             Decimal                 @default(0) @db.Decimal(10, 2)
+  credit            Decimal                 @default(0) @db.Decimal(10, 2)
+  notes             String?
+  entryDate         DateTime                @default(now()) @map("entry_date")
+  createdAt         DateTime                @default(now()) @map("created_at")
+
+  shop              Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer          Customer                @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerSale      CustomerSale?           @relation(fields: [customerSaleId], references: [id], onDelete: SetNull)
+  customerPayment   CustomerPayment?        @relation(fields: [customerPaymentId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, customerId, entryDate])
+  @@index([customerSaleId])
+  @@index([customerPaymentId])
+  @@map("customer_ledgers")
 }
 
 model CategoryLog {

@@ -19,6 +19,7 @@ import {
   setAccessCookie,
   setRefreshCookie,
 } from "../auth/session";
+import { canAddSalesmanInCurrentTier, ensureShopSubscription, evaluateShopSubscriptionAccess } from "../subscription/access";
 
 const router = Router();
 const REGISTRATION_DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -816,6 +817,8 @@ router.post("/register-owner", async (request, response) => {
         },
       });
 
+      await ensureShopSubscription(shop.id, tx, new Date());
+
       return { user, shop };
     });
 
@@ -923,6 +926,15 @@ router.post("/register-salesman", async (request, response) => {
 
     if (!ownedShop) {
       return response.status(403).json({ message: "You can only add salesmen to your own active shop." });
+    }
+
+    const salesmanAccess = await canAddSalesmanInCurrentTier(ownedShop.id);
+
+    if (!salesmanAccess.allowed) {
+      return response.status(salesmanAccess.access?.tier === "BLOCKED" ? 402 : 403).json({
+        message: salesmanAccess.message,
+        subscription: salesmanAccess.access,
+      });
     }
 
     const [existingUserByPhone, existingUserByEmail] = await Promise.all([
@@ -1475,6 +1487,8 @@ router.post("/complete-registration", async (request, response) => {
         },
       });
 
+      await ensureShopSubscription(shop.id, tx, completedAt);
+
       await tx.userPin.create({
         data: {
           userId: user.id,
@@ -1494,6 +1508,29 @@ router.post("/complete-registration", async (request, response) => {
       return { user, shop };
     });
 
+    const refreshToken = createRefreshTokenValue();
+    const sessionFamily = createSessionFamily();
+    await prisma.refreshToken.create({
+      data: {
+        userId: result.user.id,
+        tokenHash: hashRefreshToken(refreshToken),
+        family: sessionFamily,
+        appType: AppType.MOBILE,
+        expiresAt: getRefreshTokenExpiryDate(),
+      },
+    });
+
+    const accessToken = createAccessToken({
+      userId: result.user.id,
+      role: "SHOP_OWNER",
+      appType: AppType.MOBILE,
+      sessionFamily,
+      shopId: result.shop.id,
+    });
+
+    setAccessCookie(response, accessToken);
+    setRefreshCookie(response, refreshToken);
+
     return response.status(201).json({
       message: "Registration completed successfully.",
       user: {
@@ -1507,6 +1544,8 @@ router.post("/complete-registration", async (request, response) => {
         shopCode: (result.shop as { shopCode?: string | null }).shopCode ?? null,
         shopName: result.shop.shopName,
       },
+      role: "SHOP_OWNER",
+      appType: AppType.MOBILE,
       redirectTo: "/welcome",
     });
   } catch (error) {
@@ -1838,6 +1877,18 @@ router.post("/login", async (request, response) => {
         });
     }
 
+    if (appType === AppType.MOBILE && authContext.shopId) {
+      const subscriptionAccess = await evaluateShopSubscriptionAccess(authContext.shopId);
+
+      if (!subscriptionAccess.allowed) {
+        clearAuthCookies(response);
+        return response.status(402).json({
+          message: subscriptionAccess.message,
+          subscription: subscriptionAccess,
+        });
+      }
+    }
+
     const refreshToken = createRefreshTokenValue();
     const sessionFamily = createSessionFamily();
     const refreshTokenRecord = await prisma.refreshToken.create({
@@ -1941,6 +1992,19 @@ router.post("/refresh", async (request, response) => {
     await revokeRefreshFamily(tokenRecord.family);
     clearAuthCookies(response);
     return response.status(403).json({ message: "Login access is no longer allowed." });
+  }
+
+  if (tokenRecord.appType === AppType.MOBILE && "shopId" in authContext && authContext.shopId) {
+    const subscriptionAccess = await evaluateShopSubscriptionAccess(authContext.shopId);
+
+    if (!subscriptionAccess.allowed) {
+      await revokeRefreshFamily(tokenRecord.family);
+      clearAuthCookies(response);
+      return response.status(402).json({
+        message: subscriptionAccess.message,
+        subscription: subscriptionAccess,
+      });
+    }
   }
 
   await prisma.refreshToken.update({

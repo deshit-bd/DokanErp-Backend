@@ -136,6 +136,15 @@ async function main() {
     },
   });
 
+  const billingDate = new Date();
+  billingDate.setHours(0, 0, 0, 0);
+
+  const trialStartedAt = new Date(billingDate);
+  trialStartedAt.setDate(trialStartedAt.getDate() - 2);
+
+  const trialEndsAt = new Date(trialStartedAt);
+  trialEndsAt.setDate(trialEndsAt.getDate() + 1);
+
   await prisma.shopUser.upsert({
     where: {
       shopId_userId: {
@@ -173,6 +182,77 @@ async function main() {
       isBillable: true,
     },
   });
+
+  const subscription = await prisma.subscription.upsert({
+    where: { shopId: shop.id },
+    update: {
+      status: "ACTIVE",
+      trialStartedAt,
+      trialEndsAt,
+      billingStartedAt: billingDate,
+      dailyRatePerAccount: 10,
+      graceEndsAt: null,
+    },
+    create: {
+      shopId: shop.id,
+      status: "ACTIVE",
+      trialStartedAt,
+      trialEndsAt,
+      billingStartedAt: billingDate,
+      dailyRatePerAccount: 10,
+    },
+  });
+
+  const invoice = await prisma.invoice.upsert({
+    where: {
+      shopId_billingDate: {
+        shopId: shop.id,
+        billingDate,
+      },
+    },
+    update: {
+      subscriptionId: subscription.id,
+      billableAccounts: 2,
+      ratePerAccount: 10,
+      totalAmount: 20,
+      paidAmount: 20,
+      status: "PAID",
+    },
+    create: {
+      subscriptionId: subscription.id,
+      shopId: shop.id,
+      billingDate,
+      billableAccounts: 2,
+      ratePerAccount: 10,
+      totalAmount: 20,
+      paidAmount: 20,
+      status: "PAID",
+    },
+  });
+
+  const existingSuccessfulPayment = await prisma.payment.findFirst({
+    where: {
+      invoiceId: invoice.id,
+      status: "SUCCESS",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!existingSuccessfulPayment) {
+    await prisma.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        shopId: shop.id,
+        amount: 20,
+        method: "seed",
+        trxId: "seed-subscription-payment",
+        status: "SUCCESS",
+        paidAt: new Date(),
+      },
+    });
+  }
 
   const beveragesCategory = await prisma.productCategory.upsert({
     where: { name: "Beverages" },

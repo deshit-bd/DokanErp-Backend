@@ -2,8 +2,89 @@ import { Router } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import { canAddProductsToShop } from "../subscription/access";
 
 const router = Router();
+
+type PaymentMetaInput = {
+  senderNumber?: string | null;
+  transactionId?: string | null;
+  cardHolderName?: string | null;
+  cardLast4?: string | null;
+  cardType?: string | null;
+  approvalCode?: string | null;
+};
+
+function normalizeText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizePurchasePayment(
+  paymentMethodRaw: unknown,
+  paidAmount: number,
+  paymentMetaRaw: PaymentMetaInput | null | undefined,
+) {
+  const paymentMethod = normalizeText(paymentMethodRaw).toUpperCase() || null;
+
+  if (paymentMethod === "DUE" && paidAmount > 0) {
+    return { error: "Due purchases must have paidAmount set to 0." };
+  }
+
+  if (paidAmount > 0 && !paymentMethod) {
+    return { error: "paymentMethod is required when paidAmount is greater than 0." };
+  }
+
+  if (!paymentMethod || paymentMethod === "CASH" || paymentMethod === "DUE" || paymentMethod === "BANK") {
+    return { paymentMethod, paymentMeta: null as Record<string, string> | null };
+  }
+
+  const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
+
+  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
+    const senderNumber = normalizeText(paymentMeta.senderNumber);
+    const transactionId = normalizeText(paymentMeta.transactionId);
+
+    if (!senderNumber || !transactionId) {
+      return { error: `${paymentMethod} payments require senderNumber and transactionId.` };
+    }
+
+    return {
+      paymentMethod,
+      paymentMeta: {
+        senderNumber,
+        transactionId,
+      },
+    };
+  }
+
+  if (paymentMethod === "CARD") {
+    const cardHolderName = normalizeText(paymentMeta.cardHolderName);
+    const cardLast4 = normalizeText(paymentMeta.cardLast4);
+    const cardType = normalizeText(paymentMeta.cardType);
+    const approvalCode = normalizeText(paymentMeta.approvalCode);
+    const transactionId = normalizeText(paymentMeta.transactionId);
+
+    if (!cardHolderName || !cardLast4 || !cardType || (!approvalCode && !transactionId)) {
+      return {
+        error:
+          "Card payments require cardHolderName, cardLast4, cardType, and approvalCode or transactionId.",
+      };
+    }
+
+    return {
+      paymentMethod,
+      paymentMeta: {
+        cardHolderName,
+        cardLast4,
+        cardType,
+        approvalCode: approvalCode || undefined,
+        transactionId: transactionId || undefined,
+      },
+    };
+  }
+
+  return { paymentMethod, paymentMeta: null as Record<string, string> | null };
+}
 
 async function requirePurchaseContext(request: Parameters<typeof getAuthenticatedUser>[0]) {
   const auth = await getAuthenticatedUser(request);
@@ -44,6 +125,7 @@ router.post("/", async (request, response) => {
       invoiceNo?: string | null;
       paidAmount?: number | string | null;
       paymentMethod?: string | null;
+      paymentDetails?: PaymentMetaInput | null;
       notes?: string | null;
       purchaseDate?: string | null;
       items?: Array<{
@@ -85,6 +167,12 @@ router.post("/", async (request, response) => {
       return response.status(400).json({ message: "Paid amount must be a valid number." });
     }
 
+    const paymentInfo = normalizePurchasePayment(body.paymentMethod, paidAmount, body.paymentDetails);
+
+    if ("error" in paymentInfo) {
+      return response.status(400).json({ message: paymentInfo.error });
+    }
+
     const masterProducts = await (prisma as any).masterProduct.findMany({
       where: {
         id: { in: normalizedItems.map((item) => item.masterProductId) },
@@ -94,6 +182,20 @@ router.post("/", async (request, response) => {
 
     if (masterProducts.length !== normalizedItems.length) {
       return response.status(400).json({ message: "One or more purchase products do not exist." });
+    }
+
+    const productAccess = await canAddProductsToShop(
+      context.shopId,
+      normalizedItems.map((item) => item.masterProductId),
+    );
+
+    if (!productAccess.allowed) {
+      return response.status(productAccess.access?.tier === "BLOCKED" ? 402 : 403).json({
+        message: productAccess.message,
+        subscription: productAccess.access,
+        currentProductCount: productAccess.currentProductCount,
+        nextProductCount: productAccess.nextProductCount,
+      });
     }
 
     if (body.supplierId) {
@@ -112,6 +214,23 @@ router.post("/", async (request, response) => {
     const purchaseDate = body.purchaseDate ? new Date(body.purchaseDate) : new Date();
 
     const purchase = await (prisma as any).$transaction(async (tx: any) => {
+      for (const item of normalizedItems) {
+        await tx.shopProduct.upsert({
+          where: {
+            shopId_masterProductId: {
+              shopId: context.shopId,
+              masterProductId: item.masterProductId,
+            },
+          },
+          update: {},
+          create: {
+            shopId: context.shopId,
+            masterProductId: item.masterProductId,
+            openingStock: 0,
+          },
+        });
+      }
+
       const createdPurchase = await tx.purchase.create({
         data: {
           shopId: context.shopId,
@@ -121,7 +240,8 @@ router.post("/", async (request, response) => {
           totalAmount,
           paidAmount,
           dueAmount,
-          paymentMethod: body.paymentMethod?.trim() || null,
+          paymentMethod: paymentInfo.paymentMethod,
+          paymentMeta: paymentInfo.paymentMeta,
           notes: body.notes?.trim() || null,
           items: {
             create: normalizedItems.map((item) => ({
@@ -167,7 +287,8 @@ router.post("/", async (request, response) => {
               shopId: context.shopId,
               supplierId: createdPurchase.supplierId,
               amount: paidAmount,
-              paymentMethod: body.paymentMethod?.trim() || null,
+              paymentMethod: paymentInfo.paymentMethod,
+              paymentMeta: paymentInfo.paymentMeta,
               notes: body.notes?.trim() || null,
               paidAt: purchaseDate,
             },
@@ -205,6 +326,7 @@ router.post("/", async (request, response) => {
         paidAmount: Number(purchase.paidAmount),
         dueAmount: Number(purchase.dueAmount),
         paymentMethod: purchase.paymentMethod,
+        paymentDetails: purchase.paymentMeta ?? null,
         notes: purchase.notes,
         items: purchase.items.map((item: any) => ({
           id: item.id,
@@ -271,6 +393,7 @@ router.get("/", async (request, response) => {
         paidAmount: Number(purchase.paidAmount),
         dueAmount: Number(purchase.dueAmount),
         paymentMethod: purchase.paymentMethod,
+        paymentDetails: purchase.paymentMeta ?? null,
         notes: purchase.notes,
         items: purchase.items.map((item: any) => ({
           id: item.id,
@@ -335,6 +458,7 @@ router.get("/:id", async (request, response) => {
         paidAmount: Number(purchase.paidAmount),
         dueAmount: Number(purchase.dueAmount),
         paymentMethod: purchase.paymentMethod,
+        paymentDetails: purchase.paymentMeta ?? null,
         notes: purchase.notes,
         items: purchase.items.map((item: any) => ({
           id: item.id,
