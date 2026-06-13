@@ -111,7 +111,7 @@ router.get("/quick-setup/catalog", async (request, response) => {
         },
       }),
       (prisma as any).shopProduct.findMany({
-        where: { shopId: context.shop.id },
+        where: { shopId: context.shop.id, masterProductId: { not: null } },
         include: {
           masterProduct: {
             select: {
@@ -163,6 +163,273 @@ router.get("/quick-setup/catalog", async (request, response) => {
     return response.status(503).json({
       message: "Quick setup products could not be loaded right now.",
     });
+  }
+});
+
+router.get("/products", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const shopProducts = await (prisma as any).shopProduct.findMany({
+      where: { shopId: context.shop.id },
+      include: {
+        masterProduct: {
+          select: {
+            id: true,
+            sku: true,
+            name: true,
+            packageSize: true,
+            pictureUrl: true,
+            price: true,
+            suggestedPrice: true,
+            status: true,
+          },
+        },
+        approvalRequest: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }],
+    });
+
+    const configuredMasterProductIds = shopProducts.map((item: any) => item.masterProductId);
+
+    const masterProducts = await (prisma as any).masterProduct.findMany({
+      where: {
+        status: "ACTIVE",
+        ...(configuredMasterProductIds.length
+          ? { id: { notIn: configuredMasterProductIds } }
+          : {}),
+      },
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        packageSize: true,
+        pictureUrl: true,
+        price: true,
+        suggestedPrice: true,
+        status: true,
+      },
+      orderBy: [{ name: "asc" }],
+      take: 100,
+    });
+
+    return response.json({
+      shop: context.shop,
+      products: [
+        ...shopProducts.map((item: any) => ({
+          id: item.source === "SHOP_LOCAL" ? item.id : item.masterProductId,
+          shopProductId: item.id,
+          masterProductId: item.masterProductId,
+          sku: item.masterProduct?.sku ?? item.localBarcode ?? item.id,
+          name: item.masterProduct?.name ?? item.localName ?? "Unnamed product",
+          packageSize: item.masterProduct?.packageSize ?? item.localUnit ?? item.masterProduct?.sku ?? item.id,
+          pictureUrl: item.masterProduct?.pictureUrl ?? item.localPictureUrl ?? null,
+          price: toMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price),
+          purchasePrice: toMoney(item.purchasePrice ?? item.masterProduct?.price),
+          suggestedPrice: toMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price),
+          stock: Number(item.openingStock ?? 0),
+          lowStockLimit: Number(item.lowStockLimit ?? 0),
+          category: item.localCategory ?? "",
+          brand: item.localBrand ?? null,
+          unit: item.localUnit ?? null,
+          barcode: item.localBarcode ?? null,
+          status: item.masterProduct?.status ?? "ACTIVE",
+          approvalStatus: item.approvalRequest?.status ?? null,
+          source: item.source,
+        })),
+        ...masterProducts.map((item: any) => ({
+          id: item.id,
+          shopProductId: null,
+          masterProductId: item.id,
+          sku: item.sku,
+          name: item.name,
+          packageSize: item.packageSize ?? item.sku,
+          pictureUrl: item.pictureUrl ?? null,
+          price: toMoney(item.suggestedPrice ?? item.price),
+          purchasePrice: toMoney(item.price),
+          suggestedPrice: toMoney(item.suggestedPrice ?? item.price),
+          stock: 0,
+          category: "",
+          status: item.status,
+          source: "MASTER",
+        })),
+      ],
+    });
+  } catch (error) {
+    console.error("Failed to load shop products.", error);
+
+    return response.status(503).json({
+      message: "Shop products could not be loaded right now.",
+    });
+  }
+});
+
+router.post("/products/local", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      name?: string;
+      category?: string | null;
+      brand?: string | null;
+      unit?: string | null;
+      barcode?: string | null;
+      pictureUrl?: string | null;
+      salePrice?: number | string | null;
+      purchasePrice?: number | string | null;
+      openingStock?: number | string | null;
+      lowStockLimit?: number | string | null;
+    };
+
+    const name = body.name?.trim();
+    const category = body.category?.trim() || null;
+    const brand = body.brand?.trim() || null;
+    const unit = body.unit?.trim() || null;
+    const barcode = body.barcode?.trim() || null;
+    const pictureUrl = body.pictureUrl?.trim() || null;
+    const salePrice = body.salePrice == null || body.salePrice === "" ? null : Number(body.salePrice);
+    const purchasePrice = body.purchasePrice == null || body.purchasePrice === "" ? null : Number(body.purchasePrice);
+    const openingStock = body.openingStock == null || body.openingStock === "" ? 0 : Number(body.openingStock);
+    const lowStockLimit = body.lowStockLimit == null || body.lowStockLimit === "" ? 0 : Number(body.lowStockLimit);
+
+    if (!name) {
+      return response.status(400).json({ message: "Product name is required." });
+    }
+
+    if (!category) {
+      return response.status(400).json({ message: "Category is required." });
+    }
+
+    if (!unit) {
+      return response.status(400).json({ message: "Unit is required." });
+    }
+
+    if (!Number.isFinite(openingStock) || openingStock < 0) {
+      return response.status(400).json({ message: "Opening stock must be a valid number." });
+    }
+
+    if (!Number.isFinite(lowStockLimit) || lowStockLimit < 0) {
+      return response.status(400).json({ message: "Low stock limit must be a valid number." });
+    }
+
+    if (salePrice != null && (!Number.isFinite(salePrice) || salePrice < 0)) {
+      return response.status(400).json({ message: "Sale price must be a valid number." });
+    }
+
+    if (purchasePrice != null && (!Number.isFinite(purchasePrice) || purchasePrice < 0)) {
+      return response.status(400).json({ message: "Purchase price must be a valid number." });
+    }
+
+    const existingLocalBarcode = barcode
+      ? await (prisma as any).shopProduct.findFirst({
+          where: {
+            shopId: context.shop.id,
+            OR: [{ localBarcode: barcode }, { masterProduct: { barcodes: { some: { barcode } } } }],
+          },
+          select: { id: true },
+        })
+      : null;
+
+    if (existingLocalBarcode) {
+      return response.status(409).json({ message: "Barcode already exists in this shop." });
+    }
+
+    const created = await (prisma as any).$transaction(async (tx: any) => {
+      const requestRow = await tx.masterProductRequest.create({
+        data: {
+          shopId: context.shop.id,
+          createdByUserId: context.auth.user.id,
+          name,
+          category,
+          brand,
+          unit,
+          barcode,
+          pictureUrl,
+          purchasePrice,
+          salePrice,
+          openingStock,
+          lowStockLimit,
+          status: "PENDING",
+        },
+      });
+
+      const shopProduct = await tx.shopProduct.create({
+        data: {
+          shopId: context.shop.id,
+          source: "SHOP_LOCAL",
+          localName: name,
+          localCategory: category,
+          localBrand: brand,
+          localUnit: unit,
+          localBarcode: barcode,
+          localPictureUrl: pictureUrl,
+          openingStock,
+          lowStockLimit,
+          salePrice,
+          purchasePrice,
+          approvalRequestId: requestRow.id,
+        },
+      });
+
+      const linkedRequest = await tx.masterProductRequest.update({
+        where: { id: requestRow.id },
+        data: { shopProductId: shopProduct.id },
+      });
+
+      return { shopProduct, request: linkedRequest };
+    });
+
+    return response.status(201).json({
+      message: "Shop product created successfully and sent for admin approval.",
+      product: {
+        id: created.shopProduct.id,
+        shopProductId: created.shopProduct.id,
+        masterProductId: null,
+        name,
+        sku: barcode || created.shopProduct.id,
+        packageSize: unit,
+        pictureUrl,
+        price: salePrice,
+        purchasePrice,
+        suggestedPrice: salePrice,
+        stock: openingStock,
+        lowStockLimit,
+        category,
+        brand,
+        unit,
+        barcode,
+        source: "SHOP_LOCAL",
+        approvalStatus: "PENDING",
+      },
+      approvalRequest: {
+        id: created.request.id,
+        status: created.request.status,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create local shop product.", error);
+    return response.status(503).json({ message: "Local shop product could not be created right now." });
   }
 });
 
@@ -388,6 +655,85 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
     return response.status(503).json({
       message: "Quick setup pricing could not be saved right now.",
     });
+  }
+});
+
+router.patch("/products/:shopProductId", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const { shopProductId } = request.params;
+    const body = request.body as {
+      stock?: number;
+      price?: number;
+      lowStockLimit?: number;
+    };
+
+    const shopProduct = await (prisma as any).shopProduct.findUnique({
+      where: { id: shopProductId },
+    });
+
+    if (!shopProduct || shopProduct.shopId !== context.shop.id) {
+      return response.status(404).json({ message: "Shop product not found." });
+    }
+
+    const updateData: any = {};
+    if (body.stock !== undefined) {
+      updateData.openingStock = body.stock;
+    }
+    if (body.price !== undefined) {
+      updateData.salePrice = body.price;
+    }
+    if (body.lowStockLimit !== undefined) {
+      updateData.lowStockLimit = body.lowStockLimit;
+    }
+
+    const updated = await (prisma as any).shopProduct.update({
+      where: { id: shopProductId },
+      data: updateData,
+      include: {
+        masterProduct: true,
+        approvalRequest: {
+          select: {
+            id: true,
+            status: true,
+          }
+        }
+      }
+    });
+
+    return response.json({
+      message: "Shop product updated successfully.",
+      product: {
+        id: updated.source === "SHOP_LOCAL" ? updated.id : updated.masterProductId,
+        shopProductId: updated.id,
+        masterProductId: updated.masterProductId,
+        sku: updated.masterProduct?.sku ?? updated.localBarcode ?? updated.id,
+        name: updated.masterProduct?.name ?? updated.localName ?? "Unnamed product",
+        packageSize: updated.masterProduct?.packageSize ?? updated.localUnit ?? updated.id,
+        pictureUrl: updated.masterProduct?.pictureUrl ?? updated.localPictureUrl ?? null,
+        price: toMoney(updated.salePrice ?? updated.masterProduct?.suggestedPrice ?? updated.masterProduct?.price),
+        purchasePrice: toMoney(updated.purchasePrice ?? updated.masterProduct?.price),
+        stock: Number(updated.openingStock ?? 0),
+        lowStockLimit: Number(updated.lowStockLimit ?? 0),
+        category: updated.localCategory ?? "",
+        brand: updated.localBrand ?? null,
+        unit: updated.localUnit ?? null,
+        barcode: updated.localBarcode ?? null,
+        approvalStatus: updated.approvalRequest?.status ?? null,
+      }
+    });
+  } catch (error) {
+    console.error("Failed to update shop product:", error);
+    return response.status(503).json({ message: "Failed to update shop product." });
   }
 });
 

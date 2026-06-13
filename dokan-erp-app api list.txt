@@ -1,5 +1,290 @@
 #####################DokanERP API LIST######################
 
+###################Shop Local Product + Admin Approval APIs###################
+
+Use case:
+- shop owner can create a new product and start using it immediately in that specific shop
+- the same product should not become a global master product automatically
+- admin approval is required before it is added to `master_products`
+
+Data rule:
+- immediate save goes to `shop_products`
+- approval queue goes to `master_product_requests`
+- after admin approval, backend creates the official `master_products` row and links the existing `shop_product` to it
+
+1. POST /app/api/shops/products/local
+Request:
+```json
+{
+  "shopId": "cmq97s07v000olx9ggnsov6v3",
+  "name": "লাবা সাবান ১০০গ্রী",
+  "category": "Soap",
+  "brand": "Unilever",
+  "unit": "পিস",
+  "barcode": "1234567890123",
+  "pictureUrl": "data:image/png;base64,...",
+  "salePrice": 55,
+  "purchasePrice": 45,
+  "openingStock": 8,
+  "lowStockLimit": 5
+}
+```
+
+Response:
+```json
+{
+  "message": "Shop product created successfully and sent for admin approval.",
+  "product": {
+    "id": "shop_product_xxx",
+    "shopProductId": "shop_product_xxx",
+    "masterProductId": null,
+    "name": "লাবা সাবান ১০০গ্রী",
+    "sku": "1234567890123",
+    "packageSize": "পিস",
+    "pictureUrl": "data:image/png;base64,...",
+    "price": 55,
+    "purchasePrice": 45,
+    "suggestedPrice": 55,
+    "stock": 8,
+    "lowStockLimit": 5,
+    "category": "Soap",
+    "brand": "Unilever",
+    "unit": "পিস",
+    "barcode": "1234567890123",
+    "source": "SHOP_LOCAL",
+    "approvalStatus": "PENDING"
+  },
+  "approvalRequest": {
+    "id": "request_xxx",
+    "status": "PENDING"
+  }
+}
+```
+
+Notes:
+- usable in that shop immediately
+- visible in shop product list
+- sent to admin for global master approval
+
+2. GET /app/api/shops/products
+Response notes:
+- returns configured shop products plus optional master-db suggestions
+- shop-local products return:
+  - `source = SHOP_LOCAL`
+  - `approvalStatus = PENDING | APPROVED | REJECTED`
+- approved master-linked shop products return:
+  - `source = MASTER`
+
+3. GET /app/api/products/approval-requests
+Admin only
+
+Example:
+```http
+GET http://localhost:4000/app/api/products/approval-requests
+GET http://localhost:4000/app/api/products/approval-requests?status=PENDING
+```
+
+Response shape:
+- `requests[].id`
+- `requests[].shopId`
+- `requests[].shopName`
+- `requests[].shopCode`
+- `requests[].shopProductId`
+- `requests[].masterProductId`
+- `requests[].name`
+- `requests[].category`
+- `requests[].brand`
+- `requests[].unit`
+- `requests[].barcode`
+- `requests[].pictureUrl`
+- `requests[].purchasePrice`
+- `requests[].salePrice`
+- `requests[].openingStock`
+- `requests[].lowStockLimit`
+- `requests[].status`
+- `requests[].rejectionReason`
+
+4. PATCH /app/api/products/approval-requests/:requestId/approve
+Admin only
+
+Example:
+```http
+PATCH http://localhost:4000/app/api/products/approval-requests/request_xxx/approve
+```
+
+Response:
+```json
+{
+  "message": "Approval request approved and master product created successfully.",
+  "product": {
+    "id": "master_product_xxx",
+    "sku": "LABASA-123456",
+    "name": "লাবা সাবান ১০০গ্রী",
+    "status": "ACTIVE"
+  }
+}
+```
+
+Approval notes:
+- creates new row in `master_products`
+- creates/syncs barcode in `master_product_barcodes`
+- links the existing `shop_product` to the new `masterProductId`
+- changes `shop_product.source` to `MASTER`
+
+5. PATCH /app/api/products/approval-requests/:requestId/reject
+Admin only
+
+Request:
+```json
+{
+  "reason": "Duplicate product already exists in master database"
+}
+```
+
+Response:
+```json
+{
+  "message": "Approval request rejected successfully.",
+  "request": {
+    "id": "request_xxx",
+    "status": "REJECTED",
+    "rejectionReason": "Duplicate product already exists in master database"
+  }
+}
+```
+
+
+###################Purchase Details / Due Payment / Return APIs###################
+
+1. GET /app/api/purchases?shopId=:shopId
+Example:
+```http
+GET http://localhost:4000/app/api/purchases?shopId=cmq97s07v000olx9ggnsov6v3
+```
+
+Response notes:
+- returns shop-wise purchases
+- includes supplier summary
+- includes item lines
+- includes return summary fields:
+  - `returnedAmount`
+  - `effectivePayableAmount`
+  - `remainingDueAmount`
+  - `refundableAmount`
+
+2. GET /app/api/purchases/:purchaseId?shopId=:shopId
+Example:
+```http
+GET http://localhost:4000/app/api/purchases/cmqpurchase001?shopId=cmq97s07v000olx9ggnsov6v3
+```
+
+Response shape:
+- `purchase.id`
+- `purchase.invoiceNo`
+- `purchase.purchaseDate`
+- `purchase.status`
+- `purchase.supplierName`
+- `purchase.paymentMethod`
+- `purchase.subtotalAmount`
+- `purchase.discountAmount`
+- `purchase.extraChargeAmount`
+- `purchase.totalAmount`
+- `purchase.paidAmount`
+- `purchase.dueAmount`
+- `purchase.returnedAmount`
+- `purchase.remainingDueAmount`
+- `purchase.items[]`
+- `purchase.returns[]`
+
+3. POST /app/api/purchases
+Request:
+```json
+{
+  "shopId": "cmq97s07v000olx9ggnsov6v3",
+  "supplierId": "cmq9b3m0t0613lxglo6yxij6b",
+  "invoiceNo": "PUR-260613-101",
+  "discountAmount": 10,
+  "extraChargeAmount": 10,
+  "paidAmount": 400,
+  "paymentMethod": "CASH",
+  "paymentDetails": null,
+  "invoiceFileName": null,
+  "notes": "Morning purchase",
+  "items": [
+    {
+      "masterProductId": "cmq3qiahw0005lxru9rwwzl9",
+      "quantity": 10,
+      "purchasePrice": 42,
+      "batchNo": null,
+      "expiryDate": "2026-06-30"
+    }
+  ]
+}
+```
+
+Notes:
+- owner creates direct `APPROVED` purchase
+- salesman creates `PENDING_APPROVAL` purchase
+- approved purchase updates stock and supplier ledger
+
+4. POST /app/api/purchases/:purchaseId/payments?shopId=:shopId
+Request:
+```json
+{
+  "amount": 200,
+  "paymentMethod": "BKASH",
+  "paymentDetails": {
+    "senderNumber": "01711000000",
+    "transactionId": "TXN-2001"
+  },
+  "notes": "Partial due payment"
+}
+```
+
+Notes:
+- only approved purchases can receive due payments
+- payment amount cannot be greater than `remainingDueAmount`
+- creates `supplier_payments` row
+- creates supplier ledger `PAYMENT` credit row
+- updates purchase `paidAmount` and `dueAmount`
+
+5. GET /app/api/purchases/:purchaseId/returns?shopId=:shopId
+Example:
+```http
+GET http://localhost:4000/app/api/purchases/cmqpurchase001/returns?shopId=cmq97s07v000olx9ggnsov6v3
+```
+
+Response shape:
+- `purchaseId`
+- `returns[]`
+- `returnedAmount`
+- `refundableAmount`
+
+6. POST /app/api/purchases/:purchaseId/returns?shopId=:shopId
+Request:
+```json
+{
+  "refundMethod": "ADJUST_WITH_DUE",
+  "notes": "Damaged product return",
+  "items": [
+    {
+      "purchaseItemId": "cmqpurchaseitem001",
+      "quantity": 2,
+      "reason": "Damaged"
+    }
+  ]
+}
+```
+
+Notes:
+- only approved purchases can be returned
+- return quantity cannot exceed remaining unreturned quantity
+- creates `purchase_returns` and `purchase_return_items`
+- approved return reduces stock from `shop_products`
+- approved return creates supplier ledger `PURCHASE_RETURN` credit row
+- purchase `dueAmount` is recalculated after return
+
+
 ###################Customer Registration / Customer Master APIs###################
 
 Customer vs Owner:
@@ -741,13 +1026,154 @@ Useful related APIs for the same shop:
 
 ###################Create Purchase For Specific Shop###################
 
-Purpose:
-- create supplier purchase
-- add purchase items from master product ids
-- auto attach those products to shop_products if not already configured
-- support `Cash`, `bKash`, `Nagad`, `Card`, and `Due`
+Mobile purchase flow connected to backend:
+1. Open `New Purchase`
+2. Load supplier list: `GET /app/api/suppliers?shopId=:shopId`
+3. If supplier not found, create supplier: `POST /app/api/suppliers`
+4. Auto-select supplier in app
+5. Add products from `master_products`
+6. Submit purchase: `POST /app/api/purchases`
+7. Refresh purchase list: `GET /app/api/purchases?shopId=:shopId`
+8. Optional purchase details screen: `GET /app/api/purchases/:purchaseId`
 
-API:
+Purchase APIs used by mobile `ক্রয়` section:
+- GET /app/api/suppliers?shopId=RAHIMA677141
+- POST /app/api/suppliers
+- POST /app/api/purchases
+- GET /app/api/purchases?shopId=RAHIMA677141
+- GET /app/api/purchases/:purchaseId
+- PATCH /app/api/purchases/:purchaseId/approve
+- PATCH /app/api/purchases/:purchaseId/reject
+- GET /app/api/suppliers/:supplierIdOrCode/purchases?shopId=RAHIMA677141
+- GET /app/api/suppliers/:supplierIdOrCode/ledger?shopId=RAHIMA677141
+
+Backend + database connection summary:
+- supplier is saved in table: `suppliers`
+- new supplier opening due is saved in table: `supplier_ledger`
+- purchase header is saved in table: `purchases`
+- purchase line items are saved in table: `purchase_items`
+- selected master products are auto-attached to shop in table: `shop_products`
+- if paid amount > 0, payment row is saved in table: `supplier_payments`
+- supplier ledger gets:
+  - one `PURCHASE` debit entry for total purchase amount
+  - one `PAYMENT` credit entry if payment was made during purchase
+
+Prisma models touched by purchase submit:
+- `Supplier`
+- `Purchase`
+- `PurchaseItem`
+- `ShopProduct`
+- `SupplierPayment`
+- `SupplierLedger`
+
+Main fields used from database:
+- `suppliers.id`
+- `suppliers.supplier_code`
+- `master_products.id`
+- `purchases.shop_id`
+- `purchases.supplier_id`
+- `purchases.invoice_no`
+- `purchases.purchase_date`
+- `purchases.total_amount`
+- `purchases.paid_amount`
+- `purchases.due_amount`
+- `purchases.payment_method`
+- `purchases.payment_meta`
+- `purchase_items.purchase_id`
+- `purchase_items.master_product_id`
+- `purchase_items.quantity`
+- `purchase_items.purchase_price`
+- `purchase_items.total_amount`
+
+Important backend behavior for `POST /app/api/purchases`:
+- validates `shopId`
+- validates `supplierId` if sent
+- requires at least 1 item
+- each item must have:
+  - `masterProductId`
+  - `quantity > 0`
+  - `purchasePrice >= 0`
+- each item may also include:
+  - `batchNo`
+  - `expiryDate`
+- checks product ids exist in `master_products`
+- auto creates missing `shop_products` rows by `(shopId, masterProductId)`
+- calculates backend totals from item rows
+- if creator role is `SHOP_OWNER`:
+  - purchase is created as `APPROVED`
+  - stock is added to `shop_products.opening_stock`
+  - supplier ledger and payment rows are posted immediately
+- if creator role is `SALESMAN`:
+  - purchase is created as `PENDING_APPROVAL`
+  - stock is NOT added yet
+  - supplier ledger is NOT posted yet
+  - shop owner must approve or reject
+
+Purchase status values:
+- `DRAFT`
+- `PENDING_APPROVAL`
+- `APPROVED`
+- `REJECTED`
+
+Important backend behavior for `POST /app/api/suppliers` from purchase flow:
+- supplier name required
+- supplier mobile required when creating for a shop
+- supports optional:
+  - `email`
+  - `address`
+  - `productType`
+  - `shortNote`
+  - `dueAmount`
+- blocks duplicate supplier by `supplierCode`, `mobile`, or `name`
+- writes opening due into `supplier_ledger` with entry type `OPENING_DUE`
+
+Purchase list API:
+- GET /app/api/purchases?shopId=RAHIMA677141
+
+Example response:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "purchases": [
+    {
+      "id": "purchase_xxx",
+      "supplierId": "supplier_xxx",
+      "supplierName": "Abul Khair Group",
+      "supplierCode": "SUP-001",
+      "invoiceNo": "PO-10032",
+      "purchaseDate": "2026-06-11T10:30:00.000Z",
+      "status": "PENDING_APPROVAL",
+      "statusLabel": "PENDING APPROVAL",
+      "subtotalAmount": 3270,
+      "discountAmount": 100,
+      "extraChargeAmount": 30,
+      "totalAmount": 3200,
+      "paidAmount": 2500,
+      "dueAmount": 700,
+      "paymentMethod": "CASH",
+      "paymentDetails": null,
+      "invoiceFileName": "invoice-10032.jpg",
+      "notes": "আজকের ক্রয়",
+      "items": [
+        {
+          "id": "purchase_item_xxx",
+          "masterProductId": "prod_rice",
+          "name": "Miniket Rice (25kg)",
+          "sku": "PROD-RICE-25",
+          "quantity": 24,
+          "purchasePrice": 56,
+          "totalAmount": 1344
+        }
+      ]
+    }
+  ]
+}
+```
+
+Single purchase details API:
+- GET /app/api/purchases/:purchaseId
+
+Create purchase API:
 - POST /app/api/purchases
 
 Example request for cash:
@@ -759,12 +1185,19 @@ Example request for cash:
   "purchaseDate": "2026-06-11T10:30:00.000Z",
   "paymentMethod": "CASH",
   "paidAmount": 2500,
-  "notes": "আজকের ক্রয়",
+  "notes": "আজকের ক্রয় | Discount: 100 | Extra Charges: 80 | Invoice File: invoice-10032.jpg",
   "items": [
     {
       "masterProductId": "prod_rice",
       "quantity": 24,
-      "purchasePrice": 56
+      "purchasePrice": 56,
+      "batchNo": "BATCH-240611-A",
+      "expiryDate": "2027-06-11T00:00:00.000Z"
+    },
+    {
+      "masterProductId": "prod_oil",
+      "quantity": 12,
+      "purchasePrice": 145
     }
   ]
 }
@@ -778,6 +1211,7 @@ Example request for due:
   "invoiceNo": "PO-10033",
   "paymentMethod": "DUE",
   "paidAmount": 0,
+  "notes": "সম্পূর্ণ বাকি",
   "items": [
     {
       "masterProductId": "prod_oil",
@@ -834,11 +1268,45 @@ Example request for card:
 
 Validation rules:
 - `CASH`: no extra input required
+- `BANK`: no extra input required
 - `BKASH` / `NAGAD`: `senderNumber` and `transactionId` required
 - `CARD`: `cardHolderName`, `cardLast4`, `cardType`, and `approvalCode` or `transactionId` required
 - `DUE`: `paidAmount` must be `0`
+- backend calculates `totalAmount` from items
+- backend calculates `dueAmount = totalAmount - paidAmount`
 
-Success response shape:
+Approve pending purchase:
+- PATCH /app/api/purchases/:purchaseId/approve?shopId=RAHIMA677141
+
+Reject pending purchase:
+- PATCH /app/api/purchases/:purchaseId/reject?shopId=RAHIMA677141
+
+Reject request body example:
+```json
+{
+  "reason": "Wrong quantity entered by salesman"
+}
+```
+
+Create supplier from purchase screen:
+- POST /app/api/suppliers
+
+Example request:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "companyOrPersonName": "Akij Foods Supplier",
+  "mobile": "01722334455",
+  "email": "supplier@example.com",
+  "address": "Tejgaon, Dhaka",
+  "productType": "Beverages, Snacks",
+  "shortNote": "[CreditLimit: 5000] Monday delivery",
+  "dueAmount": 1200,
+  "sendWhatsAppInvite": true
+}
+```
+
+Success response shape for purchase create:
 ```json
 {
   "message": "Purchase created successfully.",
@@ -846,18 +1314,34 @@ Success response shape:
     "id": "purchase_xxx",
     "shopId": "cmq_shop_001",
     "supplierId": "supplier_xxx",
+    "supplierCode": "SUP-001",
     "invoiceNo": "PO-10032",
     "purchaseDate": "2026-06-11T10:30:00.000Z",
+    "status": "APPROVED",
+    "statusLabel": "APPROVED",
+    "subtotalAmount": 3270,
+    "discountAmount": 100,
+    "extraChargeAmount": 30,
     "totalAmount": 3200,
-    "paidAmount": 3200,
-    "dueAmount": 0,
-    "paymentMethod": "BKASH",
-    "paymentDetails": {
-      "senderNumber": "01712345678",
-      "transactionId": "BKX99887766"
-    },
+    "paidAmount": 2500,
+    "dueAmount": 700,
+    "paymentMethod": "CASH",
+    "paymentDetails": null,
+    "invoiceFileName": "invoice-10032.jpg",
     "notes": "আজকের ক্রয়",
-    "items": []
+    "items": [
+      {
+        "id": "purchase_item_xxx",
+        "masterProductId": "prod_rice",
+        "name": "Miniket Rice (25kg)",
+        "sku": "PROD-RICE-25",
+        "batchNo": "BATCH-240611-A",
+        "expiryDate": "2027-06-11T00:00:00.000Z",
+        "quantity": 24,
+        "purchasePrice": 56,
+        "totalAmount": 1344
+      }
+    ]
   }
 }
 ```

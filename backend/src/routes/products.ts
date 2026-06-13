@@ -202,6 +202,16 @@ function productVisualType(name: string, categoryName: string | null) {
   return source.includes("oil") ? "oil" : "sugar";
 }
 
+function buildGeneratedSku(name: string) {
+  const prefix =
+    name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 6) || "PROD";
+
+  return `${prefix}-${Date.now().toString().slice(-6)}`;
+}
+
 function mapProduct(product: ProductRow) {
   return toProductResponse(product);
 }
@@ -647,6 +657,172 @@ router.post("/:id/duplicate", async (request, response) => {
     return response.status(503).json({
       message: "Product could not be duplicated right now.",
     });
+  }
+});
+
+router.get("/approval-requests", async (request, response) => {
+  try {
+    const auth = await requirePlatformUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    const status = typeof request.query.status === "string" ? request.query.status.trim().toUpperCase() : "";
+
+    const requests = await (prisma as any).masterProductRequest.findMany({
+      where: status && ["PENDING", "APPROVED", "REJECTED"].includes(status) ? { status } : {},
+      include: {
+        shop: {
+          select: { id: true, shopName: true, shopCode: true },
+        },
+      },
+      orderBy: [{ createdAt: "desc" }],
+    });
+
+    return response.json({
+      requests: requests.map((item: any) => ({
+        id: item.id,
+        shopId: item.shopId,
+        shopName: item.shop?.shopName ?? null,
+        shopCode: item.shop?.shopCode ?? null,
+        shopProductId: item.shopProductId,
+        masterProductId: item.masterProductId,
+        name: item.name,
+        category: item.category,
+        brand: item.brand,
+        unit: item.unit,
+        barcode: item.barcode,
+        pictureUrl: item.pictureUrl,
+        purchasePrice: normalizeMoney(item.purchasePrice),
+        salePrice: normalizeMoney(item.salePrice),
+        openingStock: normalizeMoney(item.openingStock),
+        lowStockLimit: normalizeMoney(item.lowStockLimit),
+        status: item.status,
+        rejectionReason: item.rejectionReason,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+    });
+  } catch (error) {
+    console.error("Failed to load master product approval requests.", error);
+    return response.status(503).json({ message: "Approval requests could not be loaded right now." });
+  }
+});
+
+router.patch("/approval-requests/:id/approve", async (request, response) => {
+  try {
+    const auth = await requirePlatformUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    const approvalRequest = await (prisma as any).masterProductRequest.findUnique({
+      where: { id: request.params.id },
+    });
+
+    if (!approvalRequest) {
+      return response.status(404).json({ message: "Approval request not found." });
+    }
+
+    if (approvalRequest.status === "APPROVED" && approvalRequest.masterProductId) {
+      const existingProduct = await loadProductById(approvalRequest.masterProductId);
+      return response.json({
+        message: "Approval request already approved.",
+        product: existingProduct ? mapProduct(existingProduct) : null,
+      });
+    }
+
+    const result = await (prisma as any).$transaction(async (tx: any) => {
+      const sku = buildGeneratedSku(approvalRequest.name);
+      const createdProduct = await tx.masterProduct.create({
+        data: {
+          sku,
+          name: approvalRequest.name,
+          packageSize: approvalRequest.unit,
+          description: approvalRequest.category,
+          pictureUrl: approvalRequest.pictureUrl,
+          price: approvalRequest.purchasePrice,
+          suggestedPrice: approvalRequest.salePrice,
+          status: "ACTIVE",
+          createdByUserId: auth.user.id,
+          updatedByUserId: auth.user.id,
+        },
+        select: { id: true },
+      });
+
+      await syncProductBarcodeRecord({
+        barcode: approvalRequest.barcode,
+        packageSize: approvalRequest.unit,
+        productId: createdProduct.id,
+        productStatus: "ACTIVE",
+        userId: auth.user.id,
+      });
+
+      await tx.masterProductRequest.update({
+        where: { id: approvalRequest.id },
+        data: {
+          status: "APPROVED",
+          reviewedByUserId: auth.user.id,
+          masterProductId: createdProduct.id,
+          rejectionReason: null,
+        },
+      });
+
+      if (approvalRequest.shopProductId) {
+        await tx.shopProduct.update({
+          where: { id: approvalRequest.shopProductId },
+          data: {
+            masterProductId: createdProduct.id,
+            source: "MASTER",
+          },
+        });
+      }
+
+      return loadProductById(createdProduct.id);
+    });
+
+    return response.json({
+      message: "Approval request approved and master product created successfully.",
+      product: result ? mapProduct(result as ProductRow) : null,
+    });
+  } catch (error) {
+    console.error("Failed to approve master product request.", error);
+    return response.status(503).json({ message: "Approval request could not be approved right now." });
+  }
+});
+
+router.patch("/approval-requests/:id/reject", async (request, response) => {
+  try {
+    const auth = await requirePlatformUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    const reason = (request.body as { reason?: string | null } | undefined)?.reason?.trim() || null;
+
+    const approvalRequest = await (prisma as any).masterProductRequest.update({
+      where: { id: request.params.id },
+      data: {
+        status: "REJECTED",
+        reviewedByUserId: auth.user.id,
+        rejectionReason: reason,
+      },
+    });
+
+    return response.json({
+      message: "Approval request rejected successfully.",
+      request: {
+        id: approvalRequest.id,
+        status: approvalRequest.status,
+        rejectionReason: approvalRequest.rejectionReason,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to reject master product request.", error);
+    return response.status(503).json({ message: "Approval request could not be rejected right now." });
   }
 });
 

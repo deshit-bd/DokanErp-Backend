@@ -119,6 +119,12 @@ function mapBin(bin: any) {
   };
 }
 
+function deriveBinStatusFromQuantity(quantity: number): InventoryBinStatusValue {
+  if (quantity <= 0) return "EMPTY";
+  if (quantity <= 2) return "LOW";
+  return "FULL";
+}
+
 async function getInventoryCounts(shopId: string) {
   const [zoneCount, rackCount, shelfCount, binCount] = await Promise.all([
     (prisma as any).inventoryZone.count({ where: { shopId } }),
@@ -741,6 +747,172 @@ router.post("/bins", async (request, response) => {
   } catch (error) {
     console.error("Failed to create inventory bin.", error);
     return response.status(503).json({ message: "Inventory bin could not be created right now." });
+  }
+});
+
+router.post("/placements", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      items?: Array<{
+        purchaseItemId?: string;
+        masterProductId?: string;
+        quantity?: number | string;
+        zoneId?: string;
+        rackId?: string;
+        shelfId?: string;
+        binId?: string;
+        batchNo?: string | null;
+        expiryDate?: string | null;
+        productName?: string | null;
+      }>;
+    };
+
+    const items = Array.isArray(body.items) ? body.items : [];
+
+    if (items.length === 0) {
+      return response.status(400).json({ message: "At least one placement item is required." });
+    }
+
+    const normalizedItems = items.map((item) => ({
+      purchaseItemId: item.purchaseItemId?.trim() || null,
+      masterProductId: item.masterProductId?.trim() || "",
+      quantity: Number(item.quantity ?? 0),
+      zoneId: item.zoneId?.trim() || "",
+      rackId: item.rackId?.trim() || "",
+      shelfId: item.shelfId?.trim() || "",
+      binId: item.binId?.trim() || "",
+      batchNo: item.batchNo?.trim() || null,
+      expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+      productName: item.productName?.trim() || null,
+    }));
+
+    if (
+      normalizedItems.some(
+        (item) =>
+          !item.masterProductId ||
+          !item.zoneId ||
+          !item.rackId ||
+          !item.shelfId ||
+          !item.binId ||
+          !Number.isFinite(item.quantity) ||
+          item.quantity <= 0,
+      )
+    ) {
+      return response.status(400).json({ message: "Each placement requires product, quantity, zone, rack, shelf, and bin." });
+    }
+
+    const placements = await (prisma as any).$transaction(async (tx: any) => {
+      const results = [];
+
+      for (const item of normalizedItems) {
+        const bin = await tx.inventoryBin.findFirst({
+          where: {
+            id: item.binId,
+            shopId: context.shop.id,
+            zoneId: item.zoneId,
+            rackId: item.rackId,
+            shelfId: item.shelfId,
+          },
+        });
+
+        if (!bin) {
+          throw new Error("Selected bin was not found in this shop location.");
+        }
+
+        let purchaseItem = null;
+        if (item.purchaseItemId) {
+          purchaseItem = await tx.purchaseItem.findFirst({
+            where: {
+              id: item.purchaseItemId,
+              masterProductId: item.masterProductId,
+              purchase: {
+                shopId: context.shop.id,
+              },
+            },
+            include: {
+              masterProduct: {
+                select: { name: true },
+              },
+            },
+          });
+
+          if (!purchaseItem) {
+            throw new Error("Purchase item was not found for this shop.");
+          }
+        }
+
+        const placement = await tx.inventoryBinItem.create({
+          data: {
+            shopId: context.shop.id,
+            binId: item.binId,
+            masterProductId: item.masterProductId,
+            purchaseItemId: item.purchaseItemId,
+            quantity: item.quantity,
+            batchNo: item.batchNo,
+            expiryDate: item.expiryDate,
+            notes: "Assigned after purchase approval.",
+          },
+        });
+
+        const quantityLabel = `${item.quantity} পিস`;
+        const productName = item.productName || purchaseItem?.masterProduct?.name || bin.productName || "স্টক";
+        const nextStatus = deriveBinStatusFromQuantity(item.quantity);
+
+        await tx.inventoryBin.update({
+          where: { id: item.binId },
+          data: {
+            productName,
+            quantityLabel,
+            status: nextStatus,
+            daysLabel: item.expiryDate ? "মেয়াদ সেট" : "নতুন স্টক",
+          },
+        });
+
+        if (bin.status === "EMPTY") {
+          await tx.inventoryRack.update({
+            where: { id: item.rackId },
+            data: { usedBins: { increment: 1 } },
+          });
+          await tx.inventoryShelf.update({
+            where: { id: item.shelfId },
+            data: { usedBins: { increment: 1 } },
+          });
+        }
+
+        results.push({
+          id: placement.id,
+          binId: item.binId,
+          purchaseItemId: item.purchaseItemId,
+          masterProductId: item.masterProductId,
+          quantity: Number(placement.quantity),
+          batchNo: placement.batchNo,
+          expiryDate: placement.expiryDate,
+          productName,
+        });
+      }
+
+      return results;
+    });
+
+    return response.status(201).json({
+      message: "Purchase items assigned to inventory successfully.",
+      placements,
+    });
+  } catch (error) {
+    console.error("Failed to assign purchase items to inventory.", error);
+    return response.status(503).json({
+      message: error instanceof Error ? error.message : "Inventory placement could not be saved right now.",
+    });
   }
 });
 

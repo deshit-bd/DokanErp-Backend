@@ -296,19 +296,25 @@ router.get("/", async (request, response) => {
 
       const search = typeof request.query.search === "string" ? request.query.search.trim() : "";
       const status = typeof request.query.status === "string" ? request.query.status.trim().toUpperCase() : "";
+      const scope = typeof request.query.scope === "string" ? request.query.scope.trim().toLowerCase() : "finance";
+      const financeOnly = scope !== "all";
 
       const suppliers = await (prisma as any).supplier.findMany({
         where: {
           deletedAt: null,
           ...(status ? { status } : {}),
           AND: [
-            {
-              OR: [
-                { purchases: { some: { shopId: context.shop.id } } },
-                { supplierPayments: { some: { shopId: context.shop.id } } },
-                { supplierLedgers: { some: { shopId: context.shop.id } } },
-              ],
-            },
+            ...(financeOnly
+              ? [
+                  {
+                    OR: [
+                      { purchases: { some: { shopId: context.shop.id } } },
+                      { supplierPayments: { some: { shopId: context.shop.id } } },
+                      { supplierLedgers: { some: { shopId: context.shop.id } } },
+                    ],
+                  },
+                ]
+              : []),
             ...(search
               ? [
                   {
@@ -564,8 +570,61 @@ router.post("/", async (request, response) => {
       });
 
       if (existingSupplier) {
-        return response.status(409).json({
-          message: "Supplier already exists. Duplicate supplier add is blocked.",
+        const alreadyLinkedToShop = await (prisma as any).supplier.findFirst({
+          where: {
+            id: existingSupplier.id,
+            OR: [
+              { purchases: { some: { shopId: context.shop.id } } },
+              { supplierPayments: { some: { shopId: context.shop.id } } },
+              { supplierLedgers: { some: { shopId: context.shop.id } } },
+            ],
+          },
+          select: { id: true },
+        });
+
+        if (alreadyLinkedToShop) {
+          return response.status(409).json({
+            message: "Supplier already added for this shop.",
+            shop: {
+              id: context.shop.id,
+              shopCode: context.shop.shopCode,
+              shopName: context.shop.shopName,
+            },
+            supplier: {
+              id: existingSupplier.id,
+              supplierCode: existingSupplier.supplierCode,
+              name: existingSupplier.name,
+              companyOrPersonName: existingSupplier.name,
+              mobile: existingSupplier.mobile,
+            },
+          });
+        }
+
+        const openingDueEntry = await (prisma as any).supplierLedger.create({
+          data: {
+            shopId: context.shop.id,
+            supplierId: existingSupplier.id,
+            entryType: "OPENING_DUE",
+            referenceNo: existingSupplier.supplierCode,
+            debit: dueAmount,
+            credit: 0,
+            notes:
+              notes ||
+              (dueAmount > 0
+                ? "Opening due added while linking existing global supplier to shop."
+                : "Existing global supplier linked to this shop."),
+            entryDate: new Date(),
+          },
+        });
+
+        if (sendWhatsAppInvite && mobile) {
+          console.log(
+            `[supplier] WhatsApp invite requested for existing supplier ${mobile} (${existingSupplier.id}) in shop ${context.shop.id}`,
+          );
+        }
+
+        return response.status(200).json({
+          message: "Existing global supplier linked to this shop successfully.",
           shop: {
             id: context.shop.id,
             shopCode: context.shop.shopCode,
@@ -577,7 +636,24 @@ router.post("/", async (request, response) => {
             name: existingSupplier.name,
             companyOrPersonName: existingSupplier.name,
             mobile: existingSupplier.mobile,
+            email: existingSupplier.email,
+            address: existingSupplier.address,
+            productType: existingSupplier.contactPerson,
+            shortNote: existingSupplier.notes,
+            contactPerson: existingSupplier.contactPerson,
+            contactPersonMobile: existingSupplier.contactPersonMobile,
+            notes: existingSupplier.notes,
+            status: existingSupplier.status,
+            statusLabel: toDisplayStatus(existingSupplier.status),
+            createdAt: existingSupplier.createdAt,
+            updatedAt: existingSupplier.updatedAt,
           },
+          openingDue: {
+            amount: dueAmount,
+            entryType: openingDueEntry.entryType,
+            ledgerId: openingDueEntry.id,
+          },
+          sendWhatsAppInvite,
         });
       }
 

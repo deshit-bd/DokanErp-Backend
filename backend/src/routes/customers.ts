@@ -181,26 +181,28 @@ async function resolveShopMoneyBox(shopId: string, moneyBoxId?: string | null) {
 }
 
 async function buildCustomerFinanceSummary(customerId: string, shopId: string) {
-  const [sales, payments] = await Promise.all([
-    (prisma as any).customerSale.findMany({
-      where: { customerId, shopId },
-      select: { totalAmount: true, paidAmount: true, dueAmount: true },
-    }),
-    (prisma as any).customerPayment.findMany({
-      where: { customerId, shopId },
-      select: { amount: true },
-    }),
-  ]);
+  const ledgerEntries = await (prisma as any).customerLedger.findMany({
+    where: { customerId, shopId },
+    select: { debit: true, credit: true, entryType: true },
+  });
 
-  const totalSales = sales.reduce((sum: number, row: { totalAmount: unknown }) => sum + Number(row.totalAmount ?? 0), 0);
-  const totalPaidFromSales = sales.reduce((sum: number, row: { paidAmount: unknown }) => sum + Number(row.paidAmount ?? 0), 0);
-  const totalDue = sales.reduce((sum: number, row: { dueAmount: unknown }) => sum + Number(row.dueAmount ?? 0), 0);
-  const totalPaid = payments.reduce((sum: number, row: { amount: unknown }) => sum + Number(row.amount ?? 0), totalPaidFromSales);
+  const totalDebit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
+  const totalCredit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
+  
+  const totalSales = ledgerEntries
+    .filter((entry: any) => entry.entryType === "SALE")
+    .reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
+    
+  const totalPaid = ledgerEntries
+    .filter((entry: any) => entry.entryType === "PAYMENT")
+    .reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
+
+  const due = Math.max(0, totalDebit - totalCredit);
 
   return {
     totalSales,
     totalPaid,
-    due: totalDue,
+    due,
   };
 }
 
@@ -245,13 +247,24 @@ router.get("/", async (request, response) => {
           deletedAt: null,
           ...(status ? { status } : {}),
           AND: [
-            {
-              OR: [
-                { sales: { some: { shopId: context.shop.id } } },
-                { payments: { some: { shopId: context.shop.id } } },
-                { ledgerEntries: { some: { shopId: context.shop.id } } },
-              ],
-            },
+            ...(search
+              ? []
+              : [
+                  {
+                    OR: [
+                      { sales: { some: { shopId: context.shop.id } } },
+                      { payments: { some: { shopId: context.shop.id } } },
+                      { ledgerEntries: { some: { shopId: context.shop.id } } },
+                      {
+                        AND: [
+                          { sales: { none: {} } },
+                          { payments: { none: {} } },
+                          { ledgerEntries: { none: {} } },
+                        ],
+                      },
+                    ],
+                  },
+                ]),
             ...(search
               ? [
                   {
@@ -393,15 +406,17 @@ router.get("/", async (request, response) => {
 
 router.post("/", async (request, response) => {
   try {
-    const auth = await requireCustomerAccess(request);
+    const context = await resolveFinanceShop(request);
 
-    if (isAuthError(auth as any)) {
-      return sendAuthError(response, auth as any);
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
     }
 
-    if ("status" in auth) {
-      return response.status(auth.status).json(auth.body);
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
     }
+
+    const { shop } = context;
 
     const body = request.body as {
       customerCode?: string;
@@ -413,6 +428,7 @@ router.post("/", async (request, response) => {
       shortNote?: string | null;
       notes?: string | null;
       status?: CustomerStatusValue;
+      openingDue?: number | string | null;
     };
 
     const customerCode = body.customerCode?.trim();
@@ -464,6 +480,22 @@ router.post("/", async (request, response) => {
         address,
         notes,
         status,
+      },
+    });
+
+    const openingDue = Number(body.openingDue ?? 0);
+
+    // Create a ledger entry to bind this customer to the shop and record opening balance
+    await (prisma as any).customerLedger.create({
+      data: {
+        shopId: shop.id,
+        customerId: customer.id,
+        entryType: "OPENING_DUE",
+        referenceNo: `REG-${customer.customerCode}`,
+        debit: openingDue,
+        credit: 0,
+        notes: openingDue > 0 ? "প্রারম্ভিক বকেয়া" : "গ্রাহক নিবন্ধন",
+        entryDate: new Date(),
       },
     });
 
