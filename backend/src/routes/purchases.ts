@@ -36,6 +36,112 @@ function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function resolveShopIdentifier(shopIdentifier?: string | null) {
+  const normalized = shopIdentifier?.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return prisma.shop.findFirst({
+    where: {
+      OR: [{ id: normalized }, { shopCode: normalized }],
+    },
+    select: {
+      id: true,
+      shopCode: true,
+      shopName: true,
+    },
+  });
+}
+
+async function resolveShopMoneyBox(tx: any, shopId: string, moneyBoxId?: string | null) {
+  const normalizedMoneyBoxId = moneyBoxId?.trim();
+
+  if (!normalizedMoneyBoxId) {
+    return null;
+  }
+
+  return tx.moneyBox.findFirst({
+    where: {
+      id: normalizedMoneyBoxId,
+      shopId,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      boxName: true,
+      code: true,
+      type: true,
+      currentBalance: true,
+    },
+  });
+}
+
+async function resolveDefaultMoneyBoxByType(tx: any, shopId: string, type?: string | null) {
+  const normalizedType = normalizeText(type).toUpperCase();
+
+  if (!normalizedType || !["CASH", "BKASH", "NAGAD"].includes(normalizedType)) {
+    return null;
+  }
+
+  return tx.moneyBox.findFirst({
+    where: {
+      shopId,
+      type: normalizedType,
+      status: "ACTIVE",
+    },
+    orderBy: [{ createdAt: "asc" }],
+    select: {
+      id: true,
+      boxName: true,
+      code: true,
+      type: true,
+      currentBalance: true,
+    },
+  });
+}
+
+async function resolveShopBankAccount(tx: any, shopId: string, bankAccountId?: string | null) {
+  const normalizedBankAccountId = bankAccountId?.trim();
+
+  if (!normalizedBankAccountId) {
+    return null;
+  }
+
+  return tx.bankAccount.findFirst({
+    where: {
+      id: normalizedBankAccountId,
+      shopId,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      accountName: true,
+      bankName: true,
+      accountNumber: true,
+      currentBalance: true,
+    },
+  });
+}
+
+async function resolveDefaultBankAccount(tx: any, shopId: string) {
+  return tx.bankAccount.findFirst({
+    where: {
+      shopId,
+      status: "ACTIVE",
+    },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      accountName: true,
+      bankName: true,
+      accountNumber: true,
+      currentBalance: true,
+    },
+  });
+}
+
 function normalizePurchasePayment(
   paymentMethodRaw: unknown,
   paidAmount: number,
@@ -122,7 +228,16 @@ async function requirePurchaseContext(request: Parameters<typeof getAuthenticate
     };
   }
 
-  return { auth, shopId: rawShopId };
+  const shop = await resolveShopIdentifier(rawShopId);
+
+  if (!shop) {
+    return {
+      status: 404,
+      body: { message: "Shop not found for the provided shopId/shopCode." },
+    };
+  }
+
+  return { auth, shopId: shop.id, requestedShopId: rawShopId, shop };
 }
 
 function toPurchaseStatusLabel(status: PurchaseStatusValue) {
@@ -136,8 +251,10 @@ async function applyApprovedPurchaseEffects(params: {
   items: NormalizedPurchaseItem[];
   paymentMethod: string | null;
   paymentMeta: Record<string, unknown> | null;
+  moneyBoxId?: string | null;
+  bankAccountId?: string | null;
 }) {
-  const { tx, shopId, purchase, items, paymentMethod, paymentMeta } = params;
+  const { tx, shopId, purchase, items, paymentMethod, paymentMeta, moneyBoxId, bankAccountId } = params;
 
   for (const item of items) {
     await tx.shopProduct.update({
@@ -206,10 +323,34 @@ async function applyApprovedPurchaseEffects(params: {
       amount: purchase.paidAmount,
       paymentMethod,
       paymentMeta,
+      moneyBoxId: moneyBoxId ?? null,
+      bankAccountId: bankAccountId ?? null,
       notes: purchase.notes,
       paidAt: purchase.purchaseDate,
     },
   });
+
+  if (moneyBoxId && ["CASH", "BKASH", "NAGAD"].includes(paymentMethod || "")) {
+    await tx.moneyBox.update({
+      where: { id: moneyBoxId },
+      data: {
+        currentBalance: {
+          decrement: purchase.paidAmount,
+        },
+      },
+    });
+  }
+
+  if (bankAccountId && paymentMethod === "BANK") {
+    await tx.bankAccount.update({
+      where: { id: bankAccountId },
+      data: {
+        currentBalance: {
+          decrement: purchase.paidAmount,
+        },
+      },
+    });
+  }
 
   await tx.supplierLedger.create({
     data: {
@@ -356,6 +497,8 @@ router.post("/", async (request, response) => {
       paidAmount?: number | string | null;
       paymentMethod?: string | null;
       paymentDetails?: PaymentMetaInput | null;
+      moneyBoxId?: string | null;
+      bankAccountId?: string | null;
       invoiceFileName?: string | null;
       notes?: string | null;
       purchaseDate?: string | null;
@@ -479,6 +622,39 @@ router.post("/", async (request, response) => {
       context.auth.payload.role === "SALESMAN" ? "PENDING_APPROVAL" : "APPROVED";
 
     const purchase = await (prisma as any).$transaction(async (tx: any) => {
+      const selectedMoneyBox = await resolveShopMoneyBox(tx, context.shopId, body.moneyBoxId);
+      const defaultMoneyBox = !selectedMoneyBox
+        ? await resolveDefaultMoneyBoxByType(tx, context.shopId, paymentInfo.paymentMethod)
+        : null;
+      const effectiveMoneyBox = selectedMoneyBox ?? defaultMoneyBox;
+
+      if (body.moneyBoxId && !selectedMoneyBox) {
+        throw new Error("MONEY_BOX_NOT_FOUND");
+      }
+
+      const selectedBankAccount = await resolveShopBankAccount(tx, context.shopId, body.bankAccountId);
+      const defaultBankAccount =
+        paymentInfo.paymentMethod === "BANK" && !selectedBankAccount
+          ? await resolveDefaultBankAccount(tx, context.shopId)
+          : null;
+      const effectiveBankAccount = selectedBankAccount ?? defaultBankAccount;
+
+      if (body.bankAccountId && !selectedBankAccount) {
+        throw new Error("BANK_ACCOUNT_NOT_FOUND");
+      }
+
+      if (paidAmount > 0 && paymentInfo.paymentMethod === "BANK" && !effectiveBankAccount) {
+        throw new Error("BANK_ACCOUNT_NOT_FOUND");
+      }
+
+      if (
+        paidAmount > 0 &&
+        ["CASH", "BKASH", "NAGAD"].includes(paymentInfo.paymentMethod || "") &&
+        !effectiveMoneyBox
+      ) {
+        throw new Error("MONEY_BOX_NOT_FOUND");
+      }
+
       for (const item of normalizedItems) {
         await tx.shopProduct.upsert({
           where: {
@@ -540,6 +716,8 @@ router.post("/", async (request, response) => {
           items: normalizedItems,
           paymentMethod: paymentInfo.paymentMethod,
           paymentMeta: paymentInfo.paymentMeta,
+          moneyBoxId: effectiveMoneyBox?.id ?? null,
+          bankAccountId: effectiveBankAccount?.id ?? null,
         });
       }
 
@@ -555,6 +733,14 @@ router.post("/", async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to create purchase.", error);
+
+    if (error instanceof Error && error.message === "MONEY_BOX_NOT_FOUND") {
+      return response.status(400).json({ message: "No active money box found for this purchase method." });
+    }
+
+    if (error instanceof Error && error.message === "BANK_ACCOUNT_NOT_FOUND") {
+      return response.status(400).json({ message: "No active bank account found for this shop." });
+    }
 
     return response.status(503).json({ message: "Purchase could not be created right now." });
   }
@@ -591,6 +777,7 @@ router.get("/", async (request, response) => {
 
     return response.json({
       shopId: context.shopId,
+      shopCode: context.shop.shopCode,
       purchases: purchases.map(mapPurchaseResponse),
     });
   } catch (error) {
@@ -643,6 +830,8 @@ router.post("/:id/payments", async (request, response) => {
       amount?: number | string;
       paymentMethod?: string | null;
       paymentDetails?: PaymentMetaInput | null;
+      moneyBoxId?: string | null;
+      bankAccountId?: string | null;
       notes?: string | null;
       paidAt?: string | null;
     };
@@ -662,6 +851,35 @@ router.post("/:id/payments", async (request, response) => {
     }
 
     const result = await (prisma as any).$transaction(async (tx: any) => {
+      const selectedMoneyBox = await resolveShopMoneyBox(tx, context.shopId, body.moneyBoxId);
+      const defaultMoneyBox = !selectedMoneyBox
+        ? await resolveDefaultMoneyBoxByType(tx, context.shopId, paymentInfo.paymentMethod)
+        : null;
+      const effectiveMoneyBox = selectedMoneyBox ?? defaultMoneyBox;
+
+      if (body.moneyBoxId && !selectedMoneyBox) {
+        throw new Error("MONEY_BOX_NOT_FOUND");
+      }
+
+      const selectedBankAccount = await resolveShopBankAccount(tx, context.shopId, body.bankAccountId);
+      const defaultBankAccount =
+        paymentInfo.paymentMethod === "BANK" && !selectedBankAccount
+          ? await resolveDefaultBankAccount(tx, context.shopId)
+          : null;
+      const effectiveBankAccount = selectedBankAccount ?? defaultBankAccount;
+
+      if (body.bankAccountId && !selectedBankAccount) {
+        throw new Error("BANK_ACCOUNT_NOT_FOUND");
+      }
+
+      if (paymentInfo.paymentMethod === "BANK" && !effectiveBankAccount) {
+        throw new Error("BANK_ACCOUNT_NOT_FOUND");
+      }
+
+      if (["CASH", "BKASH", "NAGAD"].includes(paymentInfo.paymentMethod || "") && !effectiveMoneyBox) {
+        throw new Error("MONEY_BOX_NOT_FOUND");
+      }
+
       const purchase = await tx.purchase.findFirst({
         where: { id: request.params.id, shopId: context.shopId },
         include: { ...buildPurchaseInclude() },
@@ -693,10 +911,34 @@ router.post("/:id/payments", async (request, response) => {
           amount,
           paymentMethod: paymentInfo.paymentMethod,
           paymentMeta: paymentInfo.paymentMeta,
+          moneyBoxId: effectiveMoneyBox?.id ?? null,
+          bankAccountId: effectiveBankAccount?.id ?? null,
           notes,
           paidAt,
         },
       });
+
+      if (effectiveMoneyBox && ["CASH", "BKASH", "NAGAD"].includes(paymentInfo.paymentMethod || "")) {
+        await tx.moneyBox.update({
+          where: { id: effectiveMoneyBox.id },
+          data: {
+            currentBalance: {
+              decrement: amount,
+            },
+          },
+        });
+      }
+
+      if (effectiveBankAccount && paymentInfo.paymentMethod === "BANK") {
+        await tx.bankAccount.update({
+          where: { id: effectiveBankAccount.id },
+          data: {
+            currentBalance: {
+              decrement: amount,
+            },
+          },
+        });
+      }
 
       await tx.supplierLedger.create({
         data: {
@@ -743,6 +985,15 @@ router.post("/:id/payments", async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to record purchase payment.", error);
+
+    if (error instanceof Error && error.message === "MONEY_BOX_NOT_FOUND") {
+      return response.status(400).json({ message: "No active money box found for this payment method." });
+    }
+
+    if (error instanceof Error && error.message === "BANK_ACCOUNT_NOT_FOUND") {
+      return response.status(400).json({ message: "No active bank account found for this shop." });
+    }
+
     return response.status(503).json({
       message: error instanceof Error ? error.message : "Purchase payment could not be recorded right now.",
     });

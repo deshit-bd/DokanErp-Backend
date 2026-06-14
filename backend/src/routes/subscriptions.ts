@@ -7,6 +7,75 @@ import { countBillableAccounts, ensureDailyInvoice, evaluateShopSubscriptionAcce
 
 const router = Router();
 
+function toMoney(value: unknown) {
+  return Number(Number(value ?? 0).toFixed(2));
+}
+
+async function resolveShopIdentifier(shopIdentifier?: string | null) {
+  const normalized = shopIdentifier?.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return prisma.shop.findFirst({
+    where: {
+      OR: [{ id: normalized }, { shopCode: normalized }],
+    },
+    select: {
+      id: true,
+      shopCode: true,
+      shopName: true,
+      status: true,
+    },
+  });
+}
+
+function mapInvoice(invoice: {
+  id: string;
+  billingDate: Date;
+  billableAccounts: number;
+  ratePerAccount: unknown;
+  totalAmount: unknown;
+  paidAmount: unknown;
+  status: string;
+}) {
+  return {
+    id: invoice.id,
+    billingDate: invoice.billingDate,
+    billableAccounts: invoice.billableAccounts,
+    ratePerAccount: toMoney(invoice.ratePerAccount),
+    totalAmount: toMoney(invoice.totalAmount),
+    paidAmount: toMoney(invoice.paidAmount),
+    amountDue: toMoney(Number(invoice.totalAmount) - Number(invoice.paidAmount)),
+    status: invoice.status,
+  };
+}
+
+function mapPayment(payment: {
+  id: string;
+  invoiceId: string;
+  amount: unknown;
+  method: string | null;
+  trxId: string | null;
+  status: string;
+  paidAt: Date | null;
+  createdAt: Date;
+  invoice?: { billingDate: Date } | null;
+}) {
+  return {
+    id: payment.id,
+    invoiceId: payment.invoiceId,
+    amount: toMoney(payment.amount),
+    method: payment.method,
+    trxId: payment.trxId,
+    status: payment.status,
+    paidAt: payment.paidAt,
+    createdAt: payment.createdAt,
+    billingDate: payment.invoice?.billingDate ?? null,
+  };
+}
+
 async function requireOwnerSubscriptionContext(request: Parameters<typeof getAuthenticatedUser>[0]) {
   const auth = await getAuthenticatedUser(request);
 
@@ -63,6 +132,69 @@ async function requireOwnerSubscriptionContext(request: Parameters<typeof getAut
   };
 }
 
+router.get("/", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    if (!["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      return response.status(403).json({ message: "You do not have permission to view subscriptions." });
+    }
+
+    const requestedShopId = typeof request.query.shopId === "string" ? request.query.shopId.trim() : "";
+
+    if (!requestedShopId) {
+      return response.status(400).json({ message: "shopId is required for subscription lookup." });
+    }
+
+    const shop = await resolveShopIdentifier(requestedShopId);
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found for the provided shopId/shopCode." });
+    }
+
+    const access = await evaluateShopSubscriptionAccess(shop.id);
+    const invoice = access.billingDate ? await ensureDailyInvoice(shop.id) : null;
+
+    const [recentInvoices, recentPayments] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { shopId: shop.id },
+        orderBy: [{ billingDate: "desc" }, { createdAt: "desc" }],
+        take: 6,
+      }),
+      prisma.payment.findMany({
+        where: { shopId: shop.id },
+        include: {
+          invoice: {
+            select: {
+              billingDate: true,
+            },
+          },
+        },
+        orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+        take: 6,
+      }),
+    ]);
+
+    return response.json({
+      shop,
+      subscription: access,
+      invoice: invoice ? mapInvoice(invoice) : null,
+      recentInvoices: recentInvoices.map(mapInvoice),
+      recentPayments: recentPayments.map(mapPayment),
+    });
+  } catch (error) {
+    console.error("Failed to load admin subscription view.", error);
+
+    return response.status(503).json({
+      message: "Subscription data could not be loaded right now.",
+    });
+  }
+});
+
 router.get("/me", async (request, response) => {
   try {
     const context = await requireOwnerSubscriptionContext(request);
@@ -82,15 +214,7 @@ router.get("/me", async (request, response) => {
       shop: context.shop,
       subscription: access,
       invoice: invoice
-        ? {
-            id: invoice.id,
-            billingDate: invoice.billingDate,
-            billableAccounts: invoice.billableAccounts,
-            ratePerAccount: Number(invoice.ratePerAccount),
-            totalAmount: Number(invoice.totalAmount),
-            paidAmount: Number(invoice.paidAmount),
-            status: invoice.status,
-          }
+        ? mapInvoice(invoice)
         : null,
     });
   } catch (error) {

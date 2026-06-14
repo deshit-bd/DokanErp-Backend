@@ -330,6 +330,7 @@ model Shop {
   bankAccounts    BankAccount[]
   customerSales   CustomerSale[]
   customerPayments CustomerPayment[]
+  expenses        Expense[]
   customerLedgers CustomerLedger[]
   supplierPayments SupplierPayment[]
   supplierLedgers SupplierLedger[]
@@ -695,13 +696,23 @@ model MasterProductRequest {
 }
 
 model ShopInventorySetting {
-  id        String        @id @default(cuid())
-  shopId     String        @unique @map("shop_id")
-  mode      InventoryMode @default(GENERAL)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id                    String        @id @default(cuid())
+  shopId                String        @unique @map("shop_id")
+  mode                  InventoryMode @default(GENERAL)
+  lowStockDefault       Int           @default(10) @map("low_stock_default")
+  lowStockGrocery       Int           @default(5) @map("low_stock_grocery")
+  autoLowStockAlert     Boolean       @default(true) @map("auto_low_stock_alert")
+  reduceStockOnSale     Boolean       @default(true) @map("reduce_stock_on_sale")
+  allowNegativeStock    Boolean       @default(false) @map("allow_negative_stock")
+  requireBinAssignment  Boolean       @default(false) @map("require_bin_assignment")
+  showBinDuringSale     Boolean       @default(true) @map("show_bin_during_sale")
+  demandBasedReorder    Boolean       @default(false) @map("demand_based_reorder")
+  manualStockApproval   Boolean       @default(false) @map("manual_stock_approval")
+  stockMethod           String        @default("FIFO") @map("stock_method")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
 
-  shop       Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop                  Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@map("shop_inventory_settings")
 }
@@ -867,6 +878,7 @@ model Customer {
   email           String?        @db.VarChar(150)
   address         String?
   notes           String?
+  storeCredit     Decimal        @default(0) @map("store_credit") @db.Decimal(10, 2)
   status          CustomerStatus @default(ACTIVE)
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
@@ -1000,6 +1012,12 @@ model CustomerSale {
   paidAmount      Decimal        @default(0) @map("paid_amount") @db.Decimal(10, 2)
   dueAmount       Decimal        @default(0) @map("due_amount") @db.Decimal(10, 2)
   paymentMethod   String?        @map("payment_method") @db.VarChar(50)
+  status          String         @default("ACTIVE") @db.VarChar(30)
+  cancelledAt     DateTime?      @map("cancelled_at")
+  cancelReason    String?        @map("cancel_reason")
+  refundMethod    String?        @map("refund_method") @db.VarChar(50)
+  refundAmount    Decimal        @default(0) @map("refund_amount") @db.Decimal(10, 2)
+  cancelNotes     String?        @map("cancel_notes")
   notes           String?
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
@@ -1037,6 +1055,7 @@ model CustomerPayment {
   customerId      String         @map("customer_id")
   amount          Decimal        @db.Decimal(10, 2)
   paymentMethod   String?        @map("payment_method") @db.VarChar(50)
+  paymentMeta     Json?          @map("payment_meta")
   moneyBoxId      String?        @map("money_box_id") @db.VarChar(80)
   referenceNo     String?        @map("reference_no") @db.VarChar(80)
   notes           String?
@@ -1062,6 +1081,7 @@ model SupplierPayment {
   paymentMethod   String?        @map("payment_method") @db.VarChar(50)
   paymentMeta     Json?          @map("payment_meta")
   moneyBoxId      String?        @map("money_box_id") @db.VarChar(80)
+  bankAccountId   String?        @map("bank_account_id")
   notes           String?
   paidAt          DateTime       @default(now()) @map("paid_at")
   createdAt       DateTime       @default(now()) @map("created_at")
@@ -1069,11 +1089,13 @@ model SupplierPayment {
   shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
   supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   moneyBox        MoneyBox?      @relation(fields: [moneyBoxId], references: [id], onDelete: SetNull)
+  bankAccount     BankAccount?   @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
   ledgerEntries   SupplierLedger[]
 
   @@index([shopId])
   @@index([supplierId])
   @@index([paidAt])
+  @@index([bankAccountId])
   @@map("supplier_payments")
 }
 
@@ -1093,6 +1115,7 @@ model MoneyBox {
   shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
   customerPayments CustomerPayment[]
   supplierPayments SupplierPayment[]
+  expenses        Expense[]
 
   @@index([shopId])
   @@index([shopId, status])
@@ -1117,6 +1140,8 @@ model BankAccount {
   updatedAt      DateTime          @updatedAt @map("updated_at")
 
   shop           Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  expenses       Expense[]
+  supplierPayments SupplierPayment[]
 
   @@unique([bankName, accountNumber])
   @@index([shopId])
@@ -1173,6 +1198,30 @@ model CustomerLedger {
   @@index([customerSaleId])
   @@index([customerPaymentId])
   @@map("customer_ledgers")
+}
+
+model Expense {
+  id            String       @id @default(cuid())
+  shopId        String       @map("shop_id")
+  category      String       @db.VarChar(80)
+  amount        Decimal      @db.Decimal(10, 2)
+  expenseDate   DateTime     @default(now()) @map("expense_date")
+  description   String?
+  paymentMethod String?      @map("payment_method") @db.VarChar(30)
+  moneyBoxId    String?      @map("money_box_id") @db.VarChar(80)
+  bankAccountId String?      @map("bank_account_id")
+  status        String       @default("PAID") @db.VarChar(30)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  shop          Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  moneyBox      MoneyBox?    @relation(fields: [moneyBoxId], references: [id], onDelete: SetNull)
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, expenseDate])
+  @@index([moneyBoxId])
+  @@index([bankAccountId])
+  @@map("expenses")
 }
 
 model CategoryLog {

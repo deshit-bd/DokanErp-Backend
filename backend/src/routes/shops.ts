@@ -10,6 +10,96 @@ function toMoney(value: unknown) {
   return Number(value ?? 0);
 }
 
+function normalizeOptionalText(value: unknown) {
+  const text = `${value ?? ""}`.trim();
+  return text || null;
+}
+
+function mapShopSettingsResponse(params: {
+  shop: {
+    id: string;
+    shopCode: string | null;
+    shopName: string;
+    businessType: string | null;
+    phone: string | null;
+    address: string | null;
+    logoUrl: string | null;
+    status: string;
+    receiptSetting?: {
+      showLogo: boolean;
+      showAddress: boolean;
+      showPhone: boolean;
+      showVatInfo: boolean;
+    } | null;
+    inventorySetting?: {
+      lowStockDefault: number;
+      lowStockGrocery: number;
+      autoLowStockAlert: boolean;
+      reduceStockOnSale: boolean;
+      allowNegativeStock: boolean;
+      requireBinAssignment: boolean;
+      showBinDuringSale: boolean;
+      demandBasedReorder: boolean;
+      manualStockApproval: boolean;
+      stockMethod: string;
+    } | null;
+  };
+  owner: {
+    id: string;
+    name: string;
+    phone: string | null;
+    email: string | null;
+  };
+}) {
+  return {
+    shop: {
+      id: params.shop.id,
+      shopCode: params.shop.shopCode,
+      shopName: params.shop.shopName,
+      businessType: params.shop.businessType,
+      phone: params.shop.phone,
+      address: params.shop.address,
+      logoUrl: params.shop.logoUrl,
+      status: params.shop.status,
+    },
+    owner: {
+      id: params.owner.id,
+      name: params.owner.name,
+      phone: params.owner.phone,
+      email: params.owner.email,
+    },
+    receipt: {
+      showPhone: params.shop.receiptSetting?.showPhone ?? true,
+      showAddress: params.shop.receiptSetting?.showAddress ?? false,
+      showLogo: params.shop.receiptSetting?.showLogo ?? false,
+      showVatInfo: params.shop.receiptSetting?.showVatInfo ?? false,
+    },
+    inventory: params.shop.inventorySetting ? {
+      lowStockDefault: params.shop.inventorySetting.lowStockDefault,
+      lowStockGrocery: params.shop.inventorySetting.lowStockGrocery,
+      autoLowStockAlert: params.shop.inventorySetting.autoLowStockAlert,
+      reduceStockOnSale: params.shop.inventorySetting.reduceStockOnSale,
+      allowNegativeStock: params.shop.inventorySetting.allowNegativeStock,
+      requireBinAssignment: params.shop.inventorySetting.requireBinAssignment,
+      showBinDuringSale: params.shop.inventorySetting.showBinDuringSale,
+      demandBasedReorder: params.shop.inventorySetting.demandBasedReorder,
+      manualStockApproval: params.shop.inventorySetting.manualStockApproval,
+      stockMethod: params.shop.inventorySetting.stockMethod,
+    } : {
+      lowStockDefault: 10,
+      lowStockGrocery: 5,
+      autoLowStockAlert: true,
+      reduceStockOnSale: true,
+      allowNegativeStock: false,
+      requireBinAssignment: false,
+      showBinDuringSale: true,
+      demandBasedReorder: false,
+      manualStockApproval: false,
+      stockMethod: "FIFO",
+    },
+  };
+}
+
 async function requireOwnerShopContext(request: Parameters<typeof getAuthenticatedUser>[0]) {
   const auth = await getAuthenticatedUser(request);
 
@@ -60,6 +150,7 @@ router.get("/", async (request, response) => {
     const shops = await prisma.shop.findMany({
       select: {
         id: true,
+        shopCode: true,
         shopName: true,
         status: true,
       },
@@ -69,6 +160,7 @@ router.get("/", async (request, response) => {
     return response.json({
       shops: shops.map((shop) => ({
         id: shop.id,
+        shopCode: shop.shopCode,
         shopName: shop.shopName,
         status: shop.status,
       })),
@@ -78,6 +170,494 @@ router.get("/", async (request, response) => {
 
     return response.status(503).json({
       message: "Shops could not be loaded right now.",
+    });
+  }
+});
+
+router.get("/me/settings", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const shop = await prisma.shop.findUnique({
+      where: { id: context.shop.id },
+      select: {
+        id: true,
+        shopCode: true,
+        shopName: true,
+        businessType: true,
+        phone: true,
+        address: true,
+        logoUrl: true,
+        status: true,
+        receiptSetting: {
+          select: {
+            showLogo: true,
+            showAddress: true,
+            showPhone: true,
+            showVatInfo: true,
+          },
+        },
+        inventorySetting: {
+          select: {
+            lowStockDefault: true,
+            lowStockGrocery: true,
+            autoLowStockAlert: true,
+            reduceStockOnSale: true,
+            allowNegativeStock: true,
+            requireBinAssignment: true,
+            showBinDuringSale: true,
+            demandBasedReorder: true,
+            manualStockApproval: true,
+            stockMethod: true,
+          },
+        },
+      },
+    });
+
+    if (!shop) {
+      return response.status(404).json({ message: "Shop not found." });
+    }
+
+    return response.json({
+      ...mapShopSettingsResponse({
+        shop,
+        owner: context.auth.user,
+      }),
+      preferences: {
+        language: "bn",
+        theme: "light",
+        currency: "BDT",
+      },
+    });
+  } catch (error) {
+    console.error("Failed to load shop settings.", error);
+
+    return response.status(503).json({
+      message: "Shop settings could not be loaded right now.",
+    });
+  }
+});
+
+router.get("/me/finance-sources", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const [moneyBoxes, bankAccounts] = await Promise.all([
+      (prisma as any).moneyBox.findMany({
+        where: {
+          shopId: context.shop.id,
+          status: "ACTIVE",
+        },
+        orderBy: [{ type: "asc" }, { createdAt: "asc" }],
+      }),
+      (prisma as any).bankAccount.findMany({
+        where: {
+          shopId: context.shop.id,
+          status: "ACTIVE",
+        },
+        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      }),
+    ]);
+
+    return response.json({
+      shop: context.shop,
+      moneyBoxes: moneyBoxes.map((moneyBox: any) => ({
+        id: moneyBox.id,
+        boxName: moneyBox.boxName,
+        code: moneyBox.code,
+        type: moneyBox.type,
+        openingBalance: toMoney(moneyBox.openingBalance),
+        currentBalance: toMoney(moneyBox.currentBalance),
+      })),
+      bankAccounts: bankAccounts.map((bankAccount: any) => ({
+        id: bankAccount.id,
+        accountName: bankAccount.accountName,
+        bankName: bankAccount.bankName,
+        accountNumber: bankAccount.accountNumber,
+        currentBalance: toMoney(bankAccount.currentBalance),
+        isDefault: Boolean(bankAccount.isDefault),
+      })),
+    });
+  } catch (error) {
+    console.error("Failed to load shop finance sources.", error);
+
+    return response.status(503).json({
+      message: "Shop finance sources could not be loaded right now.",
+    });
+  }
+});
+
+router.patch("/me/settings", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      shopName?: string;
+      businessType?: string | null;
+      phone?: string | null;
+      address?: string | null;
+      ownerName?: string;
+      ownerPhone?: string | null;
+      receipt?: {
+        showPhone?: boolean;
+        showAddress?: boolean;
+        showLogo?: boolean;
+        showVatInfo?: boolean;
+      };
+    };
+
+    const shopName = body.shopName?.trim();
+    const ownerName = body.ownerName?.trim();
+    const phone = normalizeOptionalText(body.phone);
+    const address = normalizeOptionalText(body.address);
+    const businessType = normalizeOptionalText(body.businessType);
+    const ownerPhone = normalizeOptionalText(body.ownerPhone);
+
+    if (!shopName) {
+      return response.status(400).json({ message: "Shop name is required." });
+    }
+
+    if (!ownerName) {
+      return response.status(400).json({ message: "Owner name is required." });
+    }
+
+    const duplicateShopPhone = phone
+      ? await prisma.shop.findFirst({
+          where: {
+            phone,
+            id: { not: context.shop.id },
+          },
+          select: { id: true },
+        })
+      : null;
+
+    if (duplicateShopPhone) {
+      return response.status(409).json({ message: "Shop mobile number is already in use." });
+    }
+
+    const duplicateOwnerPhone = ownerPhone
+      ? await prisma.user.findFirst({
+          where: {
+            phone: ownerPhone,
+            id: { not: context.auth.user.id },
+          },
+          select: { id: true },
+        })
+      : null;
+
+    if (duplicateOwnerPhone) {
+      return response.status(409).json({ message: "Owner mobile number is already in use." });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const shop = await tx.shop.update({
+        where: { id: context.shop.id },
+        data: {
+          shopName,
+          businessType,
+          phone,
+          address,
+        },
+        select: {
+          id: true,
+          shopCode: true,
+          shopName: true,
+          businessType: true,
+          phone: true,
+          address: true,
+          logoUrl: true,
+          status: true,
+          inventorySetting: {
+            select: {
+              lowStockDefault: true,
+              lowStockGrocery: true,
+              autoLowStockAlert: true,
+              reduceStockOnSale: true,
+              allowNegativeStock: true,
+              requireBinAssignment: true,
+              showBinDuringSale: true,
+              demandBasedReorder: true,
+              manualStockApproval: true,
+              stockMethod: true,
+            },
+          },
+        },
+      });
+
+      const owner = await tx.user.update({
+        where: { id: context.auth.user.id },
+        data: {
+          name: ownerName,
+          phone: ownerPhone,
+        },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+        },
+      });
+
+      const receipt = await tx.shopReceiptSetting.upsert({
+        where: { shopId: context.shop.id },
+        update: {
+          showPhone: body.receipt?.showPhone ?? true,
+          showAddress: body.receipt?.showAddress ?? false,
+          showLogo: body.receipt?.showLogo ?? false,
+          showVatInfo: body.receipt?.showVatInfo ?? false,
+        },
+        create: {
+          shopId: context.shop.id,
+          showPhone: body.receipt?.showPhone ?? true,
+          showAddress: body.receipt?.showAddress ?? false,
+          showLogo: body.receipt?.showLogo ?? false,
+          showVatInfo: body.receipt?.showVatInfo ?? false,
+        },
+        select: {
+          showLogo: true,
+          showAddress: true,
+          showPhone: true,
+          showVatInfo: true,
+        },
+      });
+
+      return {
+        shop: {
+          ...shop,
+          receiptSetting: receipt,
+        },
+        owner,
+      };
+    });
+
+    return response.json({
+      message: "Shop settings updated successfully.",
+      ...mapShopSettingsResponse(updated),
+      preferences: {
+        language: "bn",
+        theme: "light",
+        currency: "BDT",
+      },
+    });
+  } catch (error) {
+    console.error("Failed to update shop settings.", error);
+
+    return response.status(503).json({
+      message: "Shop settings could not be updated right now.",
+    });
+  }
+});
+
+router.get("/me/inventory-settings", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const inventorySetting = await prisma.shopInventorySetting.findUnique({
+      where: { shopId: context.shop.id },
+    });
+
+    const settings = inventorySetting ? {
+      lowStockDefault: inventorySetting.lowStockDefault,
+      lowStockGrocery: inventorySetting.lowStockGrocery,
+      autoLowStockAlert: inventorySetting.autoLowStockAlert,
+      reduceStockOnSale: inventorySetting.reduceStockOnSale,
+      allowNegativeStock: inventorySetting.allowNegativeStock,
+      requireBinAssignment: inventorySetting.requireBinAssignment,
+      showBinDuringSale: inventorySetting.showBinDuringSale,
+      demandBasedReorder: inventorySetting.demandBasedReorder,
+      manualStockApproval: inventorySetting.manualStockApproval,
+      stockMethod: inventorySetting.stockMethod,
+    } : {
+      lowStockDefault: 10,
+      lowStockGrocery: 5,
+      autoLowStockAlert: true,
+      reduceStockOnSale: true,
+      allowNegativeStock: false,
+      requireBinAssignment: false,
+      showBinDuringSale: true,
+      demandBasedReorder: false,
+      manualStockApproval: false,
+      stockMethod: "FIFO",
+    };
+
+    return response.json({
+      inventory: settings,
+    });
+  } catch (error) {
+    console.error("Failed to load shop inventory settings.", error);
+    return response.status(503).json({
+      message: "Shop inventory settings could not be loaded right now.",
+    });
+  }
+});
+
+router.patch("/me/inventory-settings", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      lowStockDefault?: number;
+      lowStockGrocery?: number;
+      autoLowStockAlert?: boolean;
+      reduceStockOnSale?: boolean;
+      allowNegativeStock?: boolean;
+      requireBinAssignment?: boolean;
+      showBinDuringSale?: boolean;
+      demandBasedReorder?: boolean;
+      manualStockApproval?: boolean;
+      stockMethod?: string;
+    };
+
+    if (body.stockMethod !== undefined && body.stockMethod !== "FIFO" && body.stockMethod !== "LIFO") {
+      return response.status(400).json({
+        message: "Invalid stock calculation method. Must be 'FIFO' or 'LIFO'.",
+      });
+    }
+
+    const updated = await prisma.shopInventorySetting.upsert({
+      where: { shopId: context.shop.id },
+      update: {
+        lowStockDefault: body.lowStockDefault !== undefined ? Number(body.lowStockDefault) : undefined,
+        lowStockGrocery: body.lowStockGrocery !== undefined ? Number(body.lowStockGrocery) : undefined,
+        autoLowStockAlert: body.autoLowStockAlert !== undefined ? !!body.autoLowStockAlert : undefined,
+        reduceStockOnSale: body.reduceStockOnSale !== undefined ? !!body.reduceStockOnSale : undefined,
+        allowNegativeStock: body.allowNegativeStock !== undefined ? !!body.allowNegativeStock : undefined,
+        requireBinAssignment: body.requireBinAssignment !== undefined ? !!body.requireBinAssignment : undefined,
+        showBinDuringSale: body.showBinDuringSale !== undefined ? !!body.showBinDuringSale : undefined,
+        demandBasedReorder: body.demandBasedReorder !== undefined ? !!body.demandBasedReorder : undefined,
+        manualStockApproval: body.manualStockApproval !== undefined ? !!body.manualStockApproval : undefined,
+        stockMethod: body.stockMethod !== undefined ? String(body.stockMethod) : undefined,
+      },
+      create: {
+        shopId: context.shop.id,
+        lowStockDefault: body.lowStockDefault !== undefined ? Number(body.lowStockDefault) : 10,
+        lowStockGrocery: body.lowStockGrocery !== undefined ? Number(body.lowStockGrocery) : 5,
+        autoLowStockAlert: body.autoLowStockAlert !== undefined ? !!body.autoLowStockAlert : true,
+        reduceStockOnSale: body.reduceStockOnSale !== undefined ? !!body.reduceStockOnSale : true,
+        allowNegativeStock: body.allowNegativeStock !== undefined ? !!body.allowNegativeStock : false,
+        requireBinAssignment: body.requireBinAssignment !== undefined ? !!body.requireBinAssignment : false,
+        showBinDuringSale: body.showBinDuringSale !== undefined ? !!body.showBinDuringSale : true,
+        demandBasedReorder: body.demandBasedReorder !== undefined ? !!body.demandBasedReorder : false,
+        manualStockApproval: body.manualStockApproval !== undefined ? !!body.manualStockApproval : false,
+        stockMethod: body.stockMethod !== undefined ? String(body.stockMethod) : "FIFO",
+      },
+    });
+
+    return response.json({
+      message: "Shop inventory settings updated successfully.",
+      inventory: {
+        lowStockDefault: updated.lowStockDefault,
+        lowStockGrocery: updated.lowStockGrocery,
+        autoLowStockAlert: updated.autoLowStockAlert,
+        reduceStockOnSale: updated.reduceStockOnSale,
+        allowNegativeStock: updated.allowNegativeStock,
+        requireBinAssignment: updated.requireBinAssignment,
+        showBinDuringSale: updated.showBinDuringSale,
+        demandBasedReorder: updated.demandBasedReorder,
+        manualStockApproval: updated.manualStockApproval,
+        stockMethod: updated.stockMethod,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to update shop inventory settings.", error);
+    return response.status(503).json({
+      message: "Shop inventory settings could not be updated right now.",
+    });
+  }
+});
+
+router.patch("/me/logo", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as { logoUrl?: string | null };
+    const logoUrl = normalizeOptionalText(body.logoUrl);
+
+    const shop = await prisma.shop.update({
+      where: { id: context.shop.id },
+      data: {
+        logoUrl,
+      },
+      select: {
+        id: true,
+        shopCode: true,
+        shopName: true,
+        businessType: true,
+        phone: true,
+        address: true,
+        logoUrl: true,
+        status: true,
+        receiptSetting: {
+          select: {
+            showLogo: true,
+            showAddress: true,
+            showPhone: true,
+            showVatInfo: true,
+          },
+        },
+      },
+    });
+
+    return response.json({
+      message: "Shop logo updated successfully.",
+      ...mapShopSettingsResponse({
+        shop,
+        owner: context.auth.user,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to update shop logo.", error);
+
+    return response.status(503).json({
+      message: "Shop logo could not be updated right now.",
     });
   }
 });

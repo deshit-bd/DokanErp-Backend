@@ -1,5 +1,240 @@
 #####################DokanERP API LIST######################
 
+###################Mobile Shop Settings APIs###################
+
+Use case:
+- shop owner opens the mobile app `দোকানের তথ্য` screen
+- owner can view and update shop profile information
+- owner can update receipt visibility settings
+- owner can update shop logo
+
+1. GET /app/api/shops/me/settings
+Owner only
+
+Example:
+```http
+GET http://localhost:4000/app/api/shops/me/settings
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "রহিম মুদি বাজার",
+    "businessType": "মুদি দোকান",
+    "phone": "01712XXXXXX",
+    "address": "মিরপুর, ঢাকা",
+    "logoUrl": null,
+    "status": "ACTIVE"
+  },
+  "owner": {
+    "id": "cmqowner001",
+    "name": "আবদুর রহিম",
+    "phone": "01712XXXXXX",
+    "email": "owner@example.com"
+  },
+  "receipt": {
+    "showPhone": true,
+    "showAddress": false,
+    "showLogo": false,
+    "showVatInfo": false
+  },
+  "preferences": {
+    "language": "bn",
+    "theme": "light",
+    "currency": "BDT"
+  },
+  "inventory": {
+    "lowStockDefault": 10,
+    "lowStockGrocery": 5,
+    "autoLowStockAlert": true,
+    "reduceStockOnSale": true,
+    "allowNegativeStock": false,
+    "requireBinAssignment": false,
+    "showBinDuringSale": true,
+    "demandBasedReorder": false,
+    "manualStockApproval": false,
+    "stockMethod": "FIFO"
+  }
+}
+```
+
+Notes:
+- `preferences` currently returns default app values
+- mobile app keeps `language`, `theme`, `currency`, and `showShopName` in local storage for now
+
+2. PATCH /app/api/shops/me/settings
+Owner only
+
+Request:
+```json
+{
+  "shopName": "রহিম মুদি বাজার",
+  "businessType": "মুদি দোকান",
+  "phone": "01712XXXXXX",
+  "address": "মিরপুর, ঢাকা",
+  "ownerName": "আবদুর রহিম",
+  "ownerPhone": "01712XXXXXX",
+  "receipt": {
+    "showPhone": true,
+    "showAddress": true,
+    "showLogo": false,
+    "showVatInfo": false
+  }
+}
+```
+
+Response:
+```json
+{
+  "message": "Shop settings updated successfully.",
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "রহিম মুদি বাজার",
+    "businessType": "মুদি দোকান",
+    "phone": "01712XXXXXX",
+    "address": "মিরপুর, ঢাকা",
+    "logoUrl": null,
+    "status": "ACTIVE"
+  },
+  "owner": {
+    "id": "cmqowner001",
+    "name": "আবদুর রহিম",
+    "phone": "01712XXXXXX",
+    "email": "owner@example.com"
+  },
+  "receipt": {
+    "showPhone": true,
+    "showAddress": true,
+    "showLogo": false,
+    "showVatInfo": false
+  },
+  "preferences": {
+    "language": "bn",
+    "theme": "light",
+    "currency": "BDT"
+  },
+  "inventory": {
+    "lowStockDefault": 10,
+    "lowStockGrocery": 5,
+    "autoLowStockAlert": true,
+    "reduceStockOnSale": true,
+    "allowNegativeStock": false,
+    "requireBinAssignment": false,
+    "showBinDuringSale": true,
+    "demandBasedReorder": false,
+    "manualStockApproval": false,
+    "stockMethod": "FIFO"
+  }
+}
+```
+
+3. PATCH /app/api/shops/me/logo
+Owner only
+
+Request:
+```json
+{
+  "logoUrl": "data:image/png;base64,..."
+}
+```
+
+Response:
+```json
+{
+  "message": "Shop logo updated successfully.",
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "রহিম মুদি বাজার",
+    "businessType": "মুদি দোকান",
+    "phone": "01712XXXXXX",
+    "address": "মিরপুর, ঢাকা",
+    "logoUrl": "data:image/png;base64,...",
+    "status": "ACTIVE"
+  },
+  "owner": {
+    "id": "cmqowner001",
+    "name": "আবদুর রহিম",
+    "phone": "01712XXXXXX",
+    "email": "owner@example.com"
+  },
+  "receipt": {
+    "showPhone": true,
+    "showAddress": true,
+    "showLogo": true,
+    "showVatInfo": false
+  }
+}
+
+4. GET /app/api/shops/me/inventory-settings
+Owner only
+
+Example:
+```http
+GET http://localhost:4000/app/api/shops/me/inventory-settings
+```
+
+Response:
+```json
+{
+  "inventory": {
+    "lowStockDefault": 10,
+    "lowStockGrocery": 5,
+    "autoLowStockAlert": true,
+    "reduceStockOnSale": true,
+    "allowNegativeStock": false,
+    "requireBinAssignment": false,
+    "showBinDuringSale": true,
+    "demandBasedReorder": false,
+    "manualStockApproval": false,
+    "stockMethod": "FIFO"
+  }
+}
+```
+
+5. PATCH /app/api/shops/me/inventory-settings
+Owner only
+
+Request:
+```json
+{
+  "lowStockDefault": 12,
+  "lowStockGrocery": 6,
+  "autoLowStockAlert": true,
+  "reduceStockOnSale": true,
+  "allowNegativeStock": false,
+  "requireBinAssignment": false,
+  "showBinDuringSale": true,
+  "demandBasedReorder": false,
+  "manualStockApproval": false,
+  "stockMethod": "FIFO"
+}
+```
+
+Response:
+```json
+{
+  "message": "Shop inventory settings updated successfully.",
+  "inventory": {
+    "lowStockDefault": 12,
+    "lowStockGrocery": 6,
+    "autoLowStockAlert": true,
+    "reduceStockOnSale": true,
+    "allowNegativeStock": false,
+    "requireBinAssignment": false,
+    "showBinDuringSale": true,
+    "demandBasedReorder": false,
+    "manualStockApproval": false,
+    "stockMethod": "FIFO"
+  }
+}
+```
+```
+
 ###################Shop Local Product + Admin Approval APIs###################
 
 Use case:
@@ -388,6 +623,7 @@ Response shape:
 - `customers[].totalSales`
 - `customers[].totalPaid`
 - `customers[].due`
+- `customers[].storeCredit`
 
 2. POST /app/api/customers/sales
 Request:
@@ -397,6 +633,7 @@ Request:
   "customerId": "customer_xxx",
   "invoiceNo": "SAL-240611-001",
   "paidAmount": 500,
+  "storeCreditUsed": 0,
   "paymentMethod": "cash",
   "notes": "Partial payment received",
   "items": [
@@ -418,6 +655,8 @@ Notes:
 - creates a shop-wise customer sale
 - creates customer ledger entries
 - if `paidAmount > 0`, also creates a customer payment entry
+- if `storeCreditUsed > 0`, customer store credit is reduced
+- if `paymentMethod` is `CASH`, `BKASH`, or `NAGAD`, backend increases the matching money box balance
 
 3. GET /app/api/customers/:customerIdOrCode?shopId=:shopIdOrCode
 Example:
@@ -431,6 +670,7 @@ Response shape:
 - `customer.recentSales`
 - `customer.recentPayments`
 - `customer.recentTransactions`
+- `customer.storeCredit`
 
 4. GET /app/api/customers/:customerIdOrCode/sales?shopId=:shopIdOrCode
 Example:
@@ -462,6 +702,490 @@ GET http://localhost:4000/app/api/customers/CUS-001/ledger?shopId=SHOP-001
 Ledger note:
 - debit increases customer due
 - credit reduces customer due
+
+Updated sales payment note:
+- `POST /app/api/customers/sales` now accepts `paymentDetails`
+- `POST /app/api/customers/sales` now accepts `storeCreditUsed`
+- wallet/card details are saved structurally in customer payment records
+- applied store credit is saved in ledger as an adjustment
+
+Updated sale request example:
+```json
+{
+  "shopId": "shop_xxx",
+  "customerId": "customer_xxx",
+  "invoiceNo": "SAL-240611-001",
+  "paidAmount": 500,
+  "storeCreditUsed": 120,
+  "paymentMethod": "BKASH",
+  "paymentDetails": {
+    "senderNumber": "01711000000",
+    "transactionId": "TXN-5001"
+  },
+  "notes": "Sale checkout payment",
+  "items": [
+    {
+      "masterProductId": "product_xxx",
+      "quantity": 2,
+      "salePrice": 150
+    }
+  ]
+}
+```
+
+Updated due collection request example:
+```json
+{
+  "shopId": "shop_xxx",
+  "amount": 300,
+  "paymentMethod": "CARD",
+  "paymentDetails": {
+    "cardHolderName": "Karim Uddin",
+    "cardLast4": "1234",
+    "cardType": "Visa",
+    "approvalCode": "APR-1001",
+    "transactionId": "TXN-3001"
+  },
+  "referenceNo": "COLLECT-240611-001",
+  "notes": "Due collection"
+}
+```
+
+PaymentDetails rules:
+- `CASH`, `DUE`, `BANK` => `paymentDetails = null`
+- `BKASH` or `NAGAD` => `senderNumber` and `transactionId` required
+- `CARD` => `cardHolderName`, `cardLast4`, `cardType`, and `approvalCode` or `transactionId` required
+
+Store credit rules:
+- `storeCreditUsed` must be `0` or positive
+- `storeCreditUsed` cannot be greater than the customer's available `storeCredit`
+- `paidAmount + storeCreditUsed` cannot be greater than sale total
+- backend reduces customer `storeCredit` when used in sale checkout
+
+###################Sales History / Sale Details / Cancel / Daily Closing APIs###################
+
+Use case:
+- shop owner opens sales history from the sales screen
+- owner opens one sale invoice/details
+- owner cancels a sale and returns stock
+- owner checks daily closing summary
+
+1. GET /app/api/customers/sales?shopId=:shopIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers/sales?shopId=SHOP-001
+GET http://localhost:4000/app/api/customers/sales?shopId=SHOP-001&date=2026-06-14
+GET http://localhost:4000/app/api/customers/sales?shopId=SHOP-001&status=ACTIVE
+```
+
+Response shape:
+- `shop`
+- `summary.totalSales`
+- `summary.activeSales`
+- `summary.cancelledSales`
+- `summary.totalAmount`
+- `summary.totalPaid`
+- `summary.totalDue`
+- `sales[].id`
+- `sales[].customerName`
+- `sales[].invoiceNo`
+- `sales[].saleDate`
+- `sales[].totalAmount`
+- `sales[].paidAmount`
+- `sales[].dueAmount`
+- `sales[].paymentMethod`
+- `sales[].status`
+- `sales[].itemsCount`
+- `sales[].totalQty`
+- `sales[].items[]`
+
+2. GET /app/api/customers/sales/:saleId?shopId=:shopIdOrCode
+Example:
+```http
+GET http://localhost:4000/app/api/customers/sales/cmqsale001?shopId=SHOP-001
+```
+
+Response shape:
+- `shop`
+- `sale.id`
+- `sale.customer`
+- `sale.invoiceNo`
+- `sale.saleDate`
+- `sale.totalAmount`
+- `sale.paidAmount`
+- `sale.dueAmount`
+- `sale.storeCreditUsed`
+- `sale.paymentMethod`
+- `sale.paymentDetails`
+- `sale.status`
+- `sale.cancelReason`
+- `sale.refundMethod`
+- `sale.refundAmount`
+- `sale.items[]`
+
+3. POST /app/api/customers/sales/:saleId/cancel
+Request:
+```json
+{
+  "shopId": "shop_xxx",
+  "refundMethod": "CASH_REFUND",
+  "reason": "খাদ্যের ফেরত দিয়েছেন",
+  "notes": "গ্রাহক ভুল পণ্য নিয়েছিলেন"
+}
+```
+
+Refund method examples:
+- `CASH_REFUND`
+- `WALLET_REFUND`
+- `LATER_ADJUSTMENT`
+
+Cancel notes:
+- sale status becomes `CANCELLED`
+- sold stock is returned to `shop_products`
+- customer ledger gets reversal/adjustment entries
+- cancelled sale remains visible in history
+- `CASH_REFUND` decreases the active `CASH` money box balance
+- `WALLET_REFUND` decreases the active wallet money box balance
+- `LATER_ADJUSTMENT` does not return money immediately, it adds the paid amount to customer `storeCredit`
+
+4. GET /app/api/customers/sales/closing-summary?shopId=:shopIdOrCode&date=YYYY-MM-DD
+Example:
+```http
+GET http://localhost:4000/app/api/customers/sales/closing-summary?shopId=SHOP-001&date=2026-06-14
+```
+
+Response shape:
+- `shop`
+- `date`
+- `summary.totalSalesAmount`
+- `summary.totalPaidAmount`
+- `summary.totalDueAmount`
+- `summary.salesCount`
+- `paymentBreakdown[].method`
+- `paymentBreakdown[].amount`
+- `topProducts[].masterProductId`
+- `topProducts[].name`
+- `topProducts[].quantity`
+- `sales[]`
+
+Daily closing notes:
+- counts only active sales for the selected date
+- payment breakdown includes:
+  - `CASH`
+  - `BKASH`
+  - `NAGAD`
+  - `CARD`
+  - `DUE`
+- top products are ranked by sold quantity
+- daily paid figures now reflect checkout payments that also update money box balances
+
+###################Subscription APIs###################
+
+Use case:
+- owner logs in and mobile app checks subscription access
+- unpaid owner is redirected to subscription page
+- owner submits exact daily payment
+- admin can inspect subscription + invoice + payment status by shop
+
+1. GET /app/api/subscriptions/me
+Owner only
+
+Example:
+```http
+GET http://localhost:4000/app/api/subscriptions/me
+```
+
+Response shape:
+- `shop.id`
+- `shop.shopCode`
+- `shop.shopName`
+- `subscription.allowed`
+- `subscription.shopId`
+- `subscription.status`
+- `subscription.tier`
+- `subscription.trialEndsAt`
+- `subscription.billingDate`
+- `subscription.billableAccounts`
+- `subscription.ratePerAccount`
+- `subscription.totalAmount`
+- `subscription.paidAmount`
+- `subscription.amountDue`
+- `subscription.message`
+- `invoice`
+
+2. POST /app/api/subscriptions/payments
+Owner only
+
+Request:
+```json
+{
+  "amount": 10,
+  "method": "BKASH",
+  "trxId": "SUB-1001"
+}
+```
+
+Rules:
+- payment amount must equal today invoice due exactly
+- if today invoice is already paid, backend returns error
+
+3. GET /app/api/subscriptions?shopId=:shopIdOrCode
+Admin only
+
+Example:
+```http
+GET http://localhost:4000/app/api/subscriptions?shopId=SHOP-001
+```
+
+Response shape:
+- `shop`
+- `subscription`
+- `invoice`
+- `recentInvoices`
+- `recentPayments`
+
+###################Inventory Layout APIs###################
+
+Use case:
+- owner configures inventory mode
+- owner sees inventory dashboard summary
+- owner creates zones, racks, shelves, bins
+- owner assigns purchased stock into bins
+
+1. GET /app/api/inventory/mode
+Owner only
+
+Response:
+```json
+{
+  "shop": {
+    "id": "shop_xxx",
+    "shopCode": "SHOP-001",
+    "shopName": "Rahima Grocery"
+  },
+  "mode": "RACK",
+  "configured": true
+}
+```
+
+2. POST /app/api/inventory/mode
+Owner only
+
+Request:
+```json
+{
+  "mode": "RACK"
+}
+```
+
+3. GET /app/api/inventory/dashboard
+Owner only
+
+Response shape:
+- `shop`
+- `mode`
+- `configured`
+- `summary.zones`
+- `summary.racks`
+- `summary.shelves`
+- `summary.bins`
+- `alerts.attentionCount`
+
+4. GET /app/api/inventory/attention
+Owner only
+
+Response notes:
+- returns low and expired bins
+- mobile app uses this for inventory alert cards
+
+5. GET /app/api/inventory/general-store
+Owner only
+
+Response notes:
+- used when inventory mode is `GENERAL`
+- returns product-wise stock summary
+
+6. GET /app/api/inventory/zones
+Owner only
+
+Response notes:
+- returns `zones[]`
+- each zone includes rack/shelf/bin counts
+
+7. POST /app/api/inventory/zones
+Owner only
+
+Request:
+```json
+{
+  "name": "গ্রোসারি জোন",
+  "subtitle": "নতুন স্টোরেজ জোন",
+  "icon": "map"
+}
+```
+
+8. GET /app/api/inventory/racks?zoneId=:zoneId
+Owner only
+
+9. POST /app/api/inventory/racks
+Owner only
+
+Request:
+```json
+{
+  "zoneId": "zone_xxx",
+  "name": "র্যাক ১",
+  "note": "মেইন র্যাক",
+  "shelfCount": 4,
+  "binsPerShelf": 8,
+  "autoGenerate": true
+}
+```
+
+Notes:
+- if `autoGenerate = true`, backend auto-creates shelves and bins
+
+10. GET /app/api/inventory/shelves?zoneId=:zoneId&rackId=:rackId
+Owner only
+
+11. GET /app/api/inventory/bins?zoneId=:zoneId&rackId=:rackId&shelfId=:shelfId
+Owner only
+
+12. POST /app/api/inventory/bins
+Owner only
+
+Request:
+```json
+{
+  "zoneId": "zone_xxx",
+  "rackId": "rack_xxx",
+  "shelfId": "shelf_xxx",
+  "code": "G-R1-S1-B1",
+  "productName": "",
+  "status": "EMPTY",
+  "quantityLabel": "খালি",
+  "daysLabel": "খালি"
+}
+```
+
+13. POST /app/api/inventory/placements
+Owner only
+
+Use case:
+- after purchase approval, assign incoming quantity into bins
+
+Request shape:
+- `items[].purchaseItemId`
+- `items[].masterProductId`
+- `items[].quantity`
+- `items[].zoneId`
+- `items[].rackId`
+- `items[].shelfId`
+- `items[].binId`
+- `items[].batchNo`
+- `items[].expiryDate`
+- `items[].productName`
+
+###################Expense APIs###################
+
+Use case:
+- owner opens `আরও > খরচ`
+- owner sees expense summary and expense list
+- owner adds a new paid expense
+- backend deducts money from the matching balance source
+
+1. GET /app/api/expenses?shopId=:shopIdOrCode&period=TODAY|WEEK|MONTH|ALL
+Owner only
+
+Example:
+```http
+GET http://localhost:4000/app/api/expenses?shopId=SHOP-001&period=TODAY
+GET http://localhost:4000/app/api/expenses?shopId=SHOP-001&period=WEEK
+GET http://localhost:4000/app/api/expenses?shopId=SHOP-001&period=MONTH
+GET http://localhost:4000/app/api/expenses?shopId=SHOP-001&period=ALL
+```
+
+Response shape:
+- `shop`
+- `summary.today`
+- `summary.week`
+- `summary.month`
+- `summary.count`
+- `expenses[].id`
+- `expenses[].category`
+- `expenses[].amount`
+- `expenses[].expenseDate`
+- `expenses[].description`
+- `expenses[].paymentMethod`
+- `expenses[].moneyBoxId`
+- `expenses[].bankAccountId`
+- `expenses[].status`
+
+2. POST /app/api/expenses
+Owner only
+
+Request:
+```json
+{
+  "shopId": "shop_xxx",
+  "category": "ভাড়া",
+  "amount": 8000,
+  "expenseDate": "2026-06-14",
+  "description": "মাসিক দোকান ভাড়া",
+  "paymentMethod": "CASH"
+}
+```
+
+Allowed payment methods:
+- `CASH`
+- `BKASH`
+- `BANK`
+
+Response:
+```json
+{
+  "message": "Expense recorded successfully.",
+  "expense": {
+    "id": "expense_xxx",
+    "shopId": "shop_xxx",
+    "category": "ভাড়া",
+    "amount": 8000,
+    "expenseDate": "2026-06-14T00:00:00.000Z",
+    "description": "মাসিক দোকান ভাড়া",
+    "paymentMethod": "CASH",
+    "moneyBoxId": "cash_box_xxx",
+    "bankAccountId": null,
+    "status": "PAID"
+  }
+}
+```
+
+Expense accounting notes:
+- `CASH` => backend finds active `CASH` money box and decreases `currentBalance`
+- `BKASH` => backend finds active `BKASH` money box and decreases `currentBalance`
+- `BANK` => backend finds active/default bank account and decreases `currentBalance`
+- if the required balance source does not exist, backend returns validation error
+- current version records paid expenses only
+
+###################Other Current Backend APIs###################
+
+Reference route groups currently available in backend:
+- `/app/api/auth/*`
+- `/app/api/shops/*`
+- `/app/api/products/*`
+- `/app/api/categories/*`
+- `/app/api/brands/*`
+- `/app/api/units/*`
+- `/app/api/product-templates/*`
+- `/app/api/money-boxes/*`
+- `/app/api/bank-accounts/*`
+- `/app/api/suppliers/*`
+- `/app/api/purchases/*`
+- `/app/api/customers/*`
+- `/app/api/inventory/*`
+- `/app/api/subscriptions/*`
+
+If needed later, this file can be expanded with full request/response examples for each remaining route group.
 
 #####################Owner Registration Flow######################
 
@@ -1404,6 +2128,156 @@ Journey:
 2. OTP screen
 3. Dashboard
 
+###################Subscription APIs For Mobile App###################
+
+Purpose:
+- keep current subscription logic as `trial -> daily invoice -> payment -> active`
+- mobile app can show current subscription card, available billing explanation, payment history summary, and pay-now action
+- these APIs are only for `SHOP_OWNER`
+- these APIs are only for `MOBILE` app auth
+
+Important current billing logic:
+- new shop starts with `TRIAL`
+- current trial duration is `1 day`
+- when trial expires, backend creates daily invoice using:
+  - `billableAccounts * dailyRatePerAccount`
+- default daily rate per account is `10 BDT`
+- if today invoice is unpaid, access becomes blocked with status `GRACE`
+- after full payment, subscription returns to `ACTIVE`
+
+1. GET /app/api/subscriptions/me?shopId=:shopId
+
+Example:
+GET http://localhost:4000/app/api/subscriptions/me?shopId=RAHIMA677141
+
+Success response:
+```json
+{
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima General Store",
+    "status": "ACTIVE"
+  },
+  "subscription": {
+    "allowed": false,
+    "shopId": "cmq97s07v000olx9ggnsov6v3",
+    "status": "GRACE",
+    "tier": "BLOCKED",
+    "trialEndsAt": "2026-06-12T08:06:50.354Z",
+    "billingDate": "2026-06-13T18:00:00.000Z",
+    "billableAccounts": 1,
+    "ratePerAccount": 10,
+    "totalAmount": 10,
+    "paidAmount": 0,
+    "amountDue": 10,
+    "message": "Free trial ended. Please pay BDT 10 to continue using the app."
+  },
+  "invoice": {
+    "id": "invoice_today_xxx",
+    "billingDate": "2026-06-13T18:00:00.000Z",
+    "billableAccounts": 1,
+    "ratePerAccount": 10,
+    "totalAmount": 10,
+    "paidAmount": 0,
+    "status": "UNPAID"
+  }
+}
+```
+
+Possible subscription status values:
+- `TRIAL`
+- `ACTIVE`
+- `GRACE`
+- `SUSPENDED`
+- `CANCELLED`
+
+Possible tier values:
+- `TRIAL`
+- `PAID`
+- `BLOCKED`
+
+Notes:
+- `invoice` can be `null` while shop is still in trial
+- if trial is active, `allowed = true`, `amountDue = 0`, and `billingDate = null`
+- if invoice is fully paid, `allowed = true` and status becomes `ACTIVE`
+- if unpaid, app should show pay-now CTA using `amountDue`
+
+2. POST /app/api/subscriptions/payments
+
+Request:
+```json
+{
+  "shopId": "RAHIMA677141",
+  "amount": 10,
+  "method": "manual",
+  "trxId": "SUB-TRX-20260614-001"
+}
+```
+
+Rules:
+- full remaining due must be paid exactly
+- partial payment is rejected
+- if today invoice is already paid, API returns error
+
+Success response:
+```json
+{
+  "message": "Subscription payment recorded successfully.",
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima General Store",
+    "status": "ACTIVE"
+  },
+  "payment": {
+    "id": "payment_xxx",
+    "invoiceId": "invoice_today_xxx",
+    "amount": 10,
+    "method": "manual",
+    "trxId": "SUB-TRX-20260614-001",
+    "status": "SUCCESS",
+    "paidAt": "2026-06-14T09:41:22.000Z"
+  },
+  "billableAccounts": 1,
+  "subscription": {
+    "allowed": true,
+    "shopId": "cmq97s07v000olx9ggnsov6v3",
+    "status": "ACTIVE",
+    "tier": "PAID",
+    "trialEndsAt": "2026-06-12T08:06:50.354Z",
+    "billingDate": "2026-06-13T18:00:00.000Z",
+    "billableAccounts": 1,
+    "ratePerAccount": 10,
+    "totalAmount": 10,
+    "paidAmount": 10,
+    "amountDue": 0,
+    "message": null
+  }
+}
+```
+
+Common errors:
+- `400` -> `shopId is required for subscription operations.`
+- `400` -> `Today's subscription invoice is already paid.`
+- `400` -> `Subscription payment must be exactly BDT :remainingAmount.`
+- `403` -> `Only shop owners can manage subscriptions.`
+- `403` -> `You can only manage the subscription for your own shop.`
+- `404` -> `Shop not found for the provided shopId.`
+- `503` -> `Subscription status could not be loaded right now.`
+- `503` -> `Subscription payment could not be recorded right now.`
+
+How mobile screen can use it:
+1. Load current card using `GET /app/api/subscriptions/me?shopId=:shopId`
+2. Show:
+   - current status from `subscription.status`
+   - due from `subscription.amountDue`
+   - billable count from `subscription.billableAccounts`
+   - current rate from `subscription.ratePerAccount`
+3. If `allowed = false`, show pay CTA
+4. Submit full due with `POST /app/api/subscriptions/payments`
+5. Reload `/me` after successful payment
+
 Rules:
 - Same as owner login flow
 - Salesman must send shop code in login
@@ -1922,3 +2796,132 @@ Inventory testing order:
 8. then call `GET /app/api/inventory/racks?zoneId=...`
 9. then call `GET /app/api/inventory/shelves?zoneId=...`
 10. then call `GET /app/api/inventory/bins?zoneId=...`
+
+###################Mobile Reports & Analytics APIs###################
+
+Use case:
+- shop owner/salesman opens the mobile app `রিপোর্ট ও বিশ্লেষণ` screen
+- owner/salesman can view sales summaries, profit/loss statement, daily/hourly sales trends, and stock valuation report.
+
+1. GET /app/api/reports/dashboard
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/dashboard?shopId=shp_123&range=month
+```
+
+Response:
+```json
+{
+  "summary": {
+    "sales": 885000,
+    "profit": 823300,
+    "purchases": 84000,
+    "expenses": 85500
+  },
+  "trend": [
+    { "date": "মে ১", "sales": 12000 },
+    { "date": "মে ১০", "sales": 18000 },
+    { "date": "মে ২০", "sales": 25000 },
+    { "date": "মে ৩০", "sales": 32000 }
+  ],
+  "paymentMethods": [
+    { "method": "CASH", "amount": 60350, "percentage": 71 },
+    { "method": "BKASH", "amount": 12750, "percentage": 15 },
+    { "method": "DUE", "amount": 11900, "percentage": 14 }
+  ],
+  "topProducts": [
+    { "rank": 1, "name": "প্রিমিয়াম কফি বিন (৫ কেজি)", "sales": "৪৫টি", "value": 12400 },
+    { "rank": 2, "name": "ডেইরি মিল্ক চকোলেট", "sales": "৩৮টি", "value": 8950 },
+    { "rank": 3, "name": "হ্যান্ড স্যানিটাইজার ৫০মি.লি.", "sales": "৩০টি", "value": 7200 }
+  ]
+}
+```
+
+2. GET /app/api/reports/sales/daily
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/sales/daily?shopId=shp_123&date=2026-05-23
+```
+
+Response:
+```json
+{
+  "summary": {
+    "sales": 4850,
+    "profit": 1240,
+    "count": 32,
+    "average": 152
+  },
+  "hourlyTrend": [
+    { "hour": "8am", "sales": 320 },
+    { "hour": "10am", "sales": 550 },
+    { "hour": "12pm", "sales": 1200 },
+    { "hour": "2pm", "sales": 890 },
+    { "hour": "4pm", "sales": 1450 },
+    { "hour": "6pm", "sales": 900 },
+    { "hour": "8pm", "sales": 1100 }
+  ]
+}
+```
+
+3. GET /app/api/reports/profit-loss
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/profit-loss?shopId=shp_123&range=month
+```
+
+Response:
+```json
+{
+  "summary": {
+    "grossProfit": 38800,
+    "grossMargin": 46,
+    "netProfit": 23300,
+    "netMargin": 28
+  },
+  "revenue": {
+    "totalSales": 85000,
+    "returns": 1200,
+    "netSales": 83800
+  },
+  "cost": {
+    "purchaseCost": 45000,
+    "operatingExpenses": 15500,
+    "totalCost": 60500
+  }
+}
+```
+
+4. GET /app/api/reports/stock-value
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/stock-value?shopId=shp_123
+```
+
+Response:
+```json
+{
+  "summary": {
+    "totalStockValue": 240000,
+    "totalProducts": 45,
+    "lowStock": 5,
+    "outOfStock": 2
+  },
+  "categories": [
+    { "name": "চাল-ডাল", "value": 85000, "percentage": 35 },
+    { "name": "তৈল-মসলা", "value": 62000, "percentage": 26 },
+    { "name": "পানীয়", "value": 45000, "percentage": 19 }
+  ],
+  "deadStock": [
+    { "name": "লাক্স সাবান ১০০ গ্রাম", "daysInactive": 42 },
+    { "name": "সানসিল্ক শ্যাম্পু ৫ মিলি", "daysInactive": 35 }
+  ]
+}

@@ -10,6 +10,7 @@ import bankAccountRoutes from "./routes/bank-accounts";
 import brandRoutes from "./routes/brands";
 import categoryRoutes from "./routes/categories";
 import customerRoutes from "./routes/customers";
+import expenseRoutes from "./routes/expenses";
 import inventoryRoutes from "./routes/inventory";
 import moneyBoxRoutes from "./routes/money-boxes";
 import productRoutes from "./routes/products";
@@ -19,6 +20,7 @@ import shopRoutes from "./routes/shops";
 import subscriptionRoutes from "./routes/subscriptions";
 import supplierRoutes from "./routes/suppliers";
 import unitRoutes from "./routes/units";
+import reportsRoutes from "./routes/reports";
 import { evaluateShopSubscriptionAccess } from "./subscription/access";
 
 const app = express();
@@ -65,6 +67,7 @@ function mountApiScope(prefix: string, appType: AppType) {
   scopedRouter.use("/brands", brandRoutes);
   scopedRouter.use("/categories", categoryRoutes);
   scopedRouter.use("/customers", customerRoutes);
+  scopedRouter.use("/expenses", expenseRoutes);
   scopedRouter.use("/inventory", inventoryRoutes);
   scopedRouter.use("/money-boxes", moneyBoxRoutes);
   scopedRouter.use("/products", productRoutes);
@@ -75,6 +78,7 @@ function mountApiScope(prefix: string, appType: AppType) {
   scopedRouter.use("/suppliers", supplierRoutes);
   scopedRouter.use("/add-suppliers", supplierRoutes);
   scopedRouter.use("/units", unitRoutes);
+  scopedRouter.use("/reports", reportsRoutes);
 
   app.use(prefix, scopedRouter);
 }

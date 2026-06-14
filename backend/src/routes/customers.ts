@@ -6,6 +6,14 @@ import { prisma } from "../config/prisma";
 const router = Router();
 
 type CustomerStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
+type PaymentMetaInput = {
+  senderNumber?: string | null;
+  transactionId?: string | null;
+  cardHolderName?: string | null;
+  cardLast4?: string | null;
+  cardType?: string | null;
+  approvalCode?: string | null;
+};
 
 function toDisplayStatus(status: CustomerStatusValue) {
   return status.replace(/_/g, " ");
@@ -13,6 +21,77 @@ function toDisplayStatus(status: CustomerStatusValue) {
 
 function toMoney(value: unknown) {
   return Number(value ?? 0);
+}
+
+function normalizeText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeCustomerPayment(
+  paymentMethodRaw: unknown,
+  amount: number,
+  paymentMetaRaw: PaymentMetaInput | null | undefined,
+) {
+  const paymentMethod = normalizeText(paymentMethodRaw).toUpperCase() || null;
+
+  if (paymentMethod === "DUE" && amount > 0) {
+    return { error: "Due payments must have amount set to 0." };
+  }
+
+  if (amount > 0 && !paymentMethod) {
+    return { error: "paymentMethod is required when amount is greater than 0." };
+  }
+
+  if (!paymentMethod || paymentMethod === "CASH" || paymentMethod === "DUE" || paymentMethod === "BANK") {
+    return { paymentMethod, paymentMeta: null as Record<string, string> | null };
+  }
+
+  const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
+
+  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
+    const senderNumber = normalizeText(paymentMeta.senderNumber);
+    const transactionId = normalizeText(paymentMeta.transactionId);
+
+    if (!senderNumber || !transactionId) {
+      return { error: `${paymentMethod} payments require senderNumber and transactionId.` };
+    }
+
+    return {
+      paymentMethod,
+      paymentMeta: {
+        senderNumber,
+        transactionId,
+      },
+    };
+  }
+
+  if (paymentMethod === "CARD") {
+    const cardHolderName = normalizeText(paymentMeta.cardHolderName);
+    const cardLast4 = normalizeText(paymentMeta.cardLast4);
+    const cardType = normalizeText(paymentMeta.cardType);
+    const approvalCode = normalizeText(paymentMeta.approvalCode);
+    const transactionId = normalizeText(paymentMeta.transactionId);
+
+    if (!cardHolderName || !cardLast4 || !cardType || (!approvalCode && !transactionId)) {
+      return {
+        error:
+          "Card payments require cardHolderName, cardLast4, cardType, and approvalCode or transactionId.",
+      };
+    }
+
+    return {
+      paymentMethod,
+      paymentMeta: {
+        cardHolderName,
+        cardLast4,
+        cardType,
+        approvalCode: approvalCode || undefined,
+        transactionId: transactionId || undefined,
+      },
+    };
+  }
+
+  return { paymentMethod, paymentMeta: null as Record<string, string> | null };
 }
 
 function toBalanceType(due: number) {
@@ -93,7 +172,7 @@ async function requireCustomerAccess(request: Parameters<typeof getAuthenticated
     return auth;
   }
 
-  if (!["SUPER_ADMIN", "ADMIN", "SHOP_OWNER"].includes(auth.payload.role)) {
+  if (!["SUPER_ADMIN", "ADMIN", "SHOP_OWNER", "SALESMAN"].includes(auth.payload.role)) {
     return {
       status: 403,
       body: { message: "You do not have permission to manage customers." },
@@ -126,7 +205,7 @@ async function requireCustomerFinanceContext(request: Parameters<typeof getAuthe
     };
   }
 
-  if (auth.payload.role === "SHOP_OWNER" && auth.payload.shopId && auth.payload.shopId !== rawShopId) {
+  if (["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role) && auth.payload.shopId && auth.payload.shopId !== rawShopId) {
     return {
       status: 403,
       body: { message: "You can only access customer finance for your own shop." },
@@ -180,6 +259,30 @@ async function resolveShopMoneyBox(shopId: string, moneyBoxId?: string | null) {
   });
 }
 
+async function resolveDefaultMoneyBoxByType(shopId: string, type?: string | null) {
+  const normalizedType = normalizeText(type).toUpperCase();
+
+  if (!normalizedType || !["CASH", "BKASH", "NAGAD"].includes(normalizedType)) {
+    return null;
+  }
+
+  return (prisma as any).moneyBox.findFirst({
+    where: {
+      shopId,
+      type: normalizedType,
+      status: "ACTIVE",
+    },
+    orderBy: [{ createdAt: "asc" }],
+    select: {
+      id: true,
+      boxName: true,
+      code: true,
+      type: true,
+      currentBalance: true,
+    },
+  });
+}
+
 async function buildCustomerFinanceSummary(customerId: string, shopId: string) {
   const ledgerEntries = await (prisma as any).customerLedger.findMany({
     where: { customerId, shopId },
@@ -217,10 +320,48 @@ function mapCustomerMaster(customer: any) {
     address: customer.address,
     shortNote: customer.notes,
     notes: customer.notes,
+    storeCredit: toMoney(customer.storeCredit),
     status: customer.status,
     statusLabel: toDisplayStatus(customer.status),
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
+  };
+}
+
+function mapCustomerSaleRecord(sale: any) {
+  const items = Array.isArray(sale.items) ? sale.items : [];
+  const totalQty = items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0);
+
+  return {
+    id: sale.id,
+    shopId: sale.shopId,
+    customerId: sale.customerId,
+    customerName: sale.customer?.name ?? null,
+    customerMobile: sale.customer?.mobile ?? null,
+    invoiceNo: sale.invoiceNo,
+    saleDate: sale.saleDate,
+    totalAmount: toMoney(sale.totalAmount),
+    paidAmount: toMoney(sale.paidAmount),
+    dueAmount: toMoney(sale.dueAmount),
+    paymentMethod: sale.paymentMethod,
+    status: sale.status ?? "ACTIVE",
+    cancelledAt: sale.cancelledAt ?? null,
+    cancelReason: sale.cancelReason ?? null,
+    refundMethod: sale.refundMethod ?? null,
+    refundAmount: toMoney(sale.refundAmount ?? 0),
+    cancelNotes: sale.cancelNotes ?? null,
+    notes: sale.notes ?? null,
+    itemsCount: items.length,
+    totalQty: Number(totalQty.toFixed(3)),
+    items: items.map((item: any) => ({
+      id: item.id,
+      masterProductId: item.masterProductId,
+      name: item.masterProduct?.name ?? item.productName ?? "",
+      sku: item.masterProduct?.sku ?? "",
+      quantity: toMoney(item.quantity),
+      salePrice: toMoney(item.salePrice),
+      totalAmount: toMoney(item.totalAmount),
+    })),
   };
 }
 
@@ -513,6 +654,418 @@ router.post("/", async (request, response) => {
   }
 });
 
+router.get("/sales", async (request, response) => {
+  try {
+    const context = await resolveFinanceShop(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const date = typeof request.query.date === "string" ? request.query.date.trim() : "";
+    const status = typeof request.query.status === "string" ? request.query.status.trim().toUpperCase() : "";
+    const startDate = date ? new Date(`${date}T00:00:00.000Z`) : null;
+    const endDate = date ? new Date(`${date}T23:59:59.999Z`) : null;
+
+    const sales = await (prisma as any).customerSale.findMany({
+      where: {
+        shopId: context.shop.id,
+        ...(status ? { status } : {}),
+        ...(startDate && endDate ? { saleDate: { gte: startDate, lte: endDate } } : {}),
+      },
+      include: {
+        customer: {
+          select: { id: true, name: true, mobile: true },
+        },
+        items: {
+          include: {
+            masterProduct: {
+              select: { id: true, sku: true, name: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ saleDate: "desc" }, { createdAt: "desc" }],
+    });
+
+    const mappedSales = sales.map(mapCustomerSaleRecord);
+
+    return response.json({
+      shop: {
+        id: context.shop.id,
+        shopCode: context.shop.shopCode,
+        shopName: context.shop.shopName,
+      },
+      summary: {
+        totalSales: mappedSales.length,
+        activeSales: mappedSales.filter((sale: any) => sale.status === "ACTIVE").length,
+        cancelledSales: mappedSales.filter((sale: any) => sale.status === "CANCELLED").length,
+        totalAmount: Number(mappedSales.reduce((sum: number, sale: any) => sum + sale.totalAmount, 0).toFixed(2)),
+        totalPaid: Number(mappedSales.reduce((sum: number, sale: any) => sum + sale.paidAmount, 0).toFixed(2)),
+        totalDue: Number(mappedSales.reduce((sum: number, sale: any) => sum + sale.dueAmount, 0).toFixed(2)),
+      },
+      sales: mappedSales,
+    });
+  } catch (error) {
+    console.error("Failed to load shop sales.", error);
+    return response.status(503).json({ message: "Sales history could not be loaded right now." });
+  }
+});
+
+router.get("/sales/closing-summary", async (request, response) => {
+  try {
+    const context = await resolveFinanceShop(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const date = typeof request.query.date === "string" && request.query.date.trim()
+      ? request.query.date.trim()
+      : new Date().toISOString().slice(0, 10);
+    const startDate = new Date(`${date}T00:00:00.000Z`);
+    const endDate = new Date(`${date}T23:59:59.999Z`);
+
+    const sales = await (prisma as any).customerSale.findMany({
+      where: {
+        shopId: context.shop.id,
+        saleDate: { gte: startDate, lte: endDate },
+        status: "ACTIVE",
+      },
+      include: {
+        items: {
+          include: {
+            masterProduct: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ saleDate: "desc" }],
+    });
+
+    const summary = {
+      totalSalesAmount: Number(sales.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount ?? 0), 0).toFixed(2)),
+      totalPaidAmount: Number(sales.reduce((sum: number, sale: any) => sum + Number(sale.paidAmount ?? 0), 0).toFixed(2)),
+      totalDueAmount: Number(sales.reduce((sum: number, sale: any) => sum + Number(sale.dueAmount ?? 0), 0).toFixed(2)),
+      salesCount: sales.length,
+    };
+
+    const paymentBreakdown = ["CASH", "BKASH", "NAGAD", "CARD", "DUE"].map((method) => ({
+      method,
+      amount: Number(
+        sales
+          .filter((sale: any) => (sale.paymentMethod ?? "DUE") === method)
+          .reduce((sum: number, sale: any) => sum + (method === "DUE" ? Number(sale.dueAmount ?? 0) : Number(sale.paidAmount ?? 0)), 0)
+          .toFixed(2),
+      ),
+    }));
+
+    const productMap = new Map<string, { masterProductId: string; name: string; quantity: number }>();
+    sales.forEach((sale: any) => {
+      sale.items.forEach((item: any) => {
+        const key = item.masterProductId;
+        const existing = productMap.get(key);
+        if (existing) {
+          existing.quantity += Number(item.quantity ?? 0);
+        } else {
+          productMap.set(key, {
+            masterProductId: key,
+            name: item.masterProduct?.name ?? "Unknown",
+            quantity: Number(item.quantity ?? 0),
+          });
+        }
+      });
+    });
+
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5)
+      .map((item) => ({
+        ...item,
+        quantity: Number(item.quantity.toFixed(3)),
+      }));
+
+    return response.json({
+      shop: {
+        id: context.shop.id,
+        shopCode: context.shop.shopCode,
+        shopName: context.shop.shopName,
+      },
+      date,
+      summary,
+      paymentBreakdown,
+      topProducts,
+      sales: sales.map(mapCustomerSaleRecord),
+    });
+  } catch (error) {
+    console.error("Failed to load daily sales closing summary.", error);
+    return response.status(503).json({ message: "Daily closing summary could not be loaded right now." });
+  }
+});
+
+router.get("/sales/:saleId", async (request, response) => {
+  try {
+    const context = await resolveFinanceShop(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const sale = await (prisma as any).customerSale.findFirst({
+      where: {
+        id: request.params.saleId,
+        shopId: context.shop.id,
+      },
+      include: {
+        customer: {
+          select: { id: true, name: true, mobile: true, address: true },
+        },
+        items: {
+          include: {
+            masterProduct: {
+              select: { id: true, sku: true, name: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!sale) {
+      return response.status(404).json({ message: "Sale not found." });
+    }
+
+    const payment = await (prisma as any).customerPayment.findFirst({
+      where: {
+        shopId: context.shop.id,
+        referenceNo: sale.invoiceNo ?? undefined,
+      },
+      orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+    });
+
+    return response.json({
+      shop: {
+        id: context.shop.id,
+        shopCode: context.shop.shopCode,
+        shopName: context.shop.shopName,
+        phone: context.shop.phone,
+        address: context.shop.address,
+      },
+      sale: {
+        ...mapCustomerSaleRecord(sale),
+        customer: sale.customer
+          ? {
+              id: sale.customer.id,
+              name: sale.customer.name,
+              mobile: sale.customer.mobile,
+              address: sale.customer.address,
+            }
+          : null,
+        paymentDetails: payment?.paymentMeta ?? null,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to load sale details.", error);
+    return response.status(503).json({ message: "Sale details could not be loaded right now." });
+  }
+});
+
+router.post("/sales/:saleId/cancel", async (request, response) => {
+  try {
+    const context = await resolveFinanceShop(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      refundMethod?: string | null;
+      reason?: string | null;
+      notes?: string | null;
+    };
+
+    const refundMethod = normalizeText(body.refundMethod).toUpperCase() || "CASH_REFUND";
+    const reason = normalizeText(body.reason);
+    const notes = normalizeText(body.notes);
+
+    if (!reason) {
+      return response.status(400).json({ message: "Cancellation reason is required." });
+    }
+
+    const result = await (prisma as any).$transaction(async (tx: any) => {
+      const sale = await tx.customerSale.findFirst({
+        where: {
+          id: request.params.saleId,
+          shopId: context.shop.id,
+        },
+        include: {
+          items: true,
+          customer: true,
+        },
+      });
+
+      if (!sale) {
+        return { errorStatus: 404, errorMessage: "Sale not found." };
+      }
+
+      if ((sale.status ?? "ACTIVE") === "CANCELLED") {
+        return { errorStatus: 400, errorMessage: "This sale is already cancelled." };
+      }
+
+      const salePayment = Number(sale.paidAmount ?? 0);
+      const paymentType = normalizeText(sale.paymentMethod).toUpperCase();
+      const refundMoneyBox =
+        refundMethod === "CASH_REFUND"
+          ? await tx.moneyBox.findFirst({
+              where: { shopId: context.shop.id, type: "CASH", status: "ACTIVE" },
+              orderBy: [{ createdAt: "asc" }],
+            })
+          : refundMethod === "WALLET_REFUND"
+            ? await tx.moneyBox.findFirst({
+                where: { shopId: context.shop.id, type: paymentType === "NAGAD" ? "NAGAD" : "BKASH", status: "ACTIVE" },
+                orderBy: [{ createdAt: "asc" }],
+              })
+            : null;
+
+      for (const item of sale.items) {
+        await tx.shopProduct.update({
+          where: {
+            shopId_masterProductId: {
+              shopId: context.shop.id,
+              masterProductId: item.masterProductId,
+            },
+          },
+          data: {
+            openingStock: {
+              increment: item.quantity,
+            },
+          },
+        });
+      }
+
+      const cancelledSale = await tx.customerSale.update({
+        where: { id: sale.id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancelReason: reason,
+          refundMethod,
+          refundAmount: sale.paidAmount,
+          cancelNotes: notes || null,
+        },
+        include: {
+          customer: {
+            select: { id: true, name: true, mobile: true },
+          },
+          items: {
+            include: {
+              masterProduct: {
+                select: { id: true, sku: true, name: true },
+              },
+            },
+          },
+        },
+      });
+
+      await tx.customerLedger.create({
+        data: {
+          shopId: context.shop.id,
+          customerId: sale.customerId,
+          customerSaleId: sale.id,
+          entryType: "ADJUSTMENT",
+          referenceNo: sale.invoiceNo || sale.customer.customerCode || null,
+          debit: 0,
+          credit: sale.totalAmount,
+          notes: `SALE_CANCELLED | ${reason}${notes ? ` | ${notes}` : ""}`,
+          entryDate: new Date(),
+        },
+      });
+
+      if (salePayment > 0 && refundMethod === "LATER_ADJUSTMENT") {
+        await tx.customer.update({
+          where: { id: sale.customerId },
+          data: {
+            storeCredit: {
+              increment: salePayment,
+            },
+          },
+        });
+
+        await tx.customerLedger.create({
+          data: {
+            shopId: context.shop.id,
+            customerId: sale.customerId,
+            customerSaleId: sale.id,
+            entryType: "ADJUSTMENT",
+            referenceNo: sale.invoiceNo || sale.customer.customerCode || null,
+            debit: salePayment,
+            credit: 0,
+            notes: `STORE_CREDIT_GRANTED | ${notes || reason}`,
+            entryDate: new Date(),
+          },
+        });
+      }
+
+      if (salePayment > 0 && refundMethod !== "LATER_ADJUSTMENT") {
+        if (refundMoneyBox) {
+          await tx.moneyBox.update({
+            where: { id: refundMoneyBox.id },
+            data: {
+              currentBalance: {
+                decrement: salePayment,
+              },
+            },
+          });
+        }
+
+        await tx.customerLedger.create({
+          data: {
+            shopId: context.shop.id,
+            customerId: sale.customerId,
+            customerSaleId: sale.id,
+            entryType: "ADJUSTMENT",
+            referenceNo: sale.invoiceNo || sale.customer.customerCode || null,
+            debit: salePayment,
+            credit: 0,
+            notes: `SALE_REFUND | ${refundMethod}${notes ? ` | ${notes}` : ""}`,
+            entryDate: new Date(),
+          },
+        });
+      }
+
+      return { sale: cancelledSale };
+    });
+
+    if ("errorStatus" in result) {
+      return response.status(result.errorStatus).json({ message: result.errorMessage });
+    }
+
+    return response.json({
+      message: "Sale cancelled successfully.",
+      sale: mapCustomerSaleRecord(result.sale),
+    });
+  } catch (error) {
+    console.error("Failed to cancel sale.", error);
+    return response.status(503).json({ message: "Sale could not be cancelled right now." });
+  }
+});
+
 router.post("/sales", async (request, response) => {
   try {
     const context = await resolveFinanceShop(request);
@@ -529,7 +1082,9 @@ router.post("/sales", async (request, response) => {
       customerId?: string;
       invoiceNo?: string | null;
       paidAmount?: number | string | null;
+      storeCreditUsed?: number | string | null;
       paymentMethod?: string | null;
+      paymentDetails?: PaymentMetaInput | null;
       moneyBoxId?: string | null;
       notes?: string | null;
       saleDate?: string | null;
@@ -584,9 +1139,21 @@ router.post("/sales", async (request, response) => {
     }
 
     const paidAmount = body.paidAmount == null || body.paidAmount === "" ? 0 : Number(body.paidAmount);
+    const requestedStoreCreditUsed =
+      body.storeCreditUsed == null || body.storeCreditUsed === "" ? 0 : Number(body.storeCreditUsed);
 
     if (!Number.isFinite(paidAmount) || paidAmount < 0) {
       return response.status(400).json({ message: "Paid amount must be a valid number." });
+    }
+
+    if (!Number.isFinite(requestedStoreCreditUsed) || requestedStoreCreditUsed < 0) {
+      return response.status(400).json({ message: "storeCreditUsed must be a valid number." });
+    }
+
+    const paymentInfo = normalizeCustomerPayment(body.paymentMethod, paidAmount, body.paymentDetails);
+
+    if ("error" in paymentInfo) {
+      return response.status(400).json({ message: paymentInfo.error });
     }
 
     const masterProducts = await (prisma as any).masterProduct.findMany({
@@ -601,6 +1168,8 @@ router.post("/sales", async (request, response) => {
     }
 
     const moneyBox = await resolveShopMoneyBox(context.shop.id, body.moneyBoxId);
+    const fallbackMoneyBox = !moneyBox ? await resolveDefaultMoneyBoxByType(context.shop.id, paymentInfo.paymentMethod) : null;
+    const effectiveMoneyBox = moneyBox ?? fallbackMoneyBox;
 
     if (body.moneyBoxId && !moneyBox) {
       return response.status(404).json({ message: "Money box not found for this shop." });
@@ -608,11 +1177,18 @@ router.post("/sales", async (request, response) => {
 
     const totalAmount = Number(normalizedItems.reduce((sum, item) => sum + item.totalAmount, 0).toFixed(2));
 
-    if (paidAmount > totalAmount) {
-      return response.status(400).json({ message: "Paid amount cannot be greater than total sale amount." });
+    if (paidAmount + requestedStoreCreditUsed > totalAmount) {
+      return response.status(400).json({ message: "Paid amount plus store credit cannot be greater than total sale amount." });
     }
 
-    const dueAmount = Number((totalAmount - paidAmount).toFixed(2));
+    const availableStoreCredit = toMoney(customer.storeCredit);
+    const storeCreditUsed = Math.min(availableStoreCredit, requestedStoreCreditUsed);
+
+    if (requestedStoreCreditUsed > availableStoreCredit) {
+      return response.status(400).json({ message: "Requested store credit is greater than available customer credit." });
+    }
+
+    const dueAmount = Number((totalAmount - paidAmount - storeCreditUsed).toFixed(2));
     const saleDate = body.saleDate ? new Date(body.saleDate) : new Date();
 
     const sale = await (prisma as any).$transaction(async (tx: any) => {
@@ -625,7 +1201,7 @@ router.post("/sales", async (request, response) => {
           totalAmount,
           paidAmount,
           dueAmount,
-          paymentMethod: body.paymentMethod?.trim() || null,
+          paymentMethod: paymentInfo.paymentMethod,
           notes: body.notes?.trim() || null,
           items: {
             create: normalizedItems.map((item) => ({
@@ -647,6 +1223,111 @@ router.post("/sales", async (request, response) => {
         },
       });
 
+      // Stock deduction logic if reduceStockOnSale is enabled
+      const inventorySetting = await tx.shopInventorySetting.findUnique({
+        where: { shopId: context.shop.id },
+      });
+      const reduceStock = inventorySetting ? inventorySetting.reduceStockOnSale : true;
+
+      if (reduceStock) {
+        const allowNegative = inventorySetting ? inventorySetting.allowNegativeStock : false;
+        const stockMethod = inventorySetting ? inventorySetting.stockMethod : "FIFO";
+
+        for (const item of normalizedItems) {
+          const shopProduct = await tx.shopProduct.findUnique({
+            where: {
+              shopId_masterProductId: {
+                shopId: context.shop.id,
+                masterProductId: item.masterProductId,
+              },
+            },
+          });
+
+          if (!shopProduct) {
+            throw new Error(`Product not found in shop inventory: ${item.masterProductId}`);
+          }
+
+          const currentStock = Number(shopProduct.openingStock ?? 0);
+          if (!allowNegative && currentStock < item.quantity) {
+            throw new Error(`Insufficient stock for product. Available: ${currentStock}, Requested: ${item.quantity}`);
+          }
+
+          // Fetch bin items for this product
+          const binItems = await tx.inventoryBinItem.findMany({
+            where: {
+              shopId: context.shop.id,
+              masterProductId: item.masterProductId,
+              quantity: { gt: 0 },
+            },
+            orderBy: {
+              createdAt: stockMethod === "LIFO" ? "desc" : "asc",
+            },
+          });
+
+          let remainingToDeduct = item.quantity;
+          for (const binItem of binItems) {
+            if (remainingToDeduct <= 0) break;
+            const binQty = Number(binItem.quantity);
+            if (binQty <= 0) continue;
+
+            const deductFromBin = Math.min(binQty, remainingToDeduct);
+            const newBinQty = Number((binQty - deductFromBin).toFixed(3));
+            remainingToDeduct = Number((remainingToDeduct - deductFromBin).toFixed(3));
+
+            if (newBinQty <= 0) {
+              await tx.inventoryBinItem.delete({
+                where: { id: binItem.id },
+              });
+            } else {
+              await tx.inventoryBinItem.update({
+                where: { id: binItem.id },
+                data: { quantity: newBinQty },
+              });
+            }
+
+            // Update parent bin
+            const bin = await tx.inventoryBin.findUnique({
+              where: { id: binItem.binId },
+            });
+            if (bin) {
+              const remainingBinItems = await tx.inventoryBinItem.findMany({
+                where: { binId: bin.id },
+              });
+              const totalBinQty = remainingBinItems.reduce((sum: number, bi: any) => sum + Number(bi.quantity), 0);
+              const nextStatus = totalBinQty <= 0 ? "EMPTY" : (totalBinQty < 10 ? "LOW" : "FULL");
+              const quantityLabel = totalBinQty <= 0 ? "খালি" : `${totalBinQty} পিস`;
+              const daysLabel = totalBinQty <= 0 ? "খালি" : bin.daysLabel;
+              const productName = totalBinQty <= 0 ? "" : bin.productName;
+
+              await tx.inventoryBin.update({
+                where: { id: bin.id },
+                data: {
+                  status: nextStatus,
+                  quantityLabel,
+                  productName,
+                  daysLabel,
+                },
+              });
+            }
+          }
+
+          // Decrement product openingStock
+          await tx.shopProduct.update({
+            where: {
+              shopId_masterProductId: {
+                shopId: context.shop.id,
+                masterProductId: item.masterProductId,
+              },
+            },
+            data: {
+              openingStock: {
+                decrement: item.quantity,
+              },
+            },
+          });
+        }
+      }
+
       await tx.customerLedger.create({
         data: {
           shopId: context.shop.id,
@@ -661,6 +1342,31 @@ router.post("/sales", async (request, response) => {
         },
       });
 
+      if (storeCreditUsed > 0) {
+        await tx.customer.update({
+          where: { id: customer.id },
+          data: {
+            storeCredit: {
+              decrement: storeCreditUsed,
+            },
+          },
+        });
+
+        await tx.customerLedger.create({
+          data: {
+            shopId: context.shop.id,
+            customerId: customer.id,
+            customerSaleId: createdSale.id,
+            entryType: "ADJUSTMENT",
+            referenceNo: createdSale.invoiceNo || customer.customerCode || null,
+            debit: 0,
+            credit: storeCreditUsed,
+            notes: `STORE_CREDIT_USED | ${createdSale.notes ?? ""}`.trim(),
+            entryDate: saleDate,
+          },
+        });
+      }
+
       let payment: any = null;
 
       if (paidAmount > 0) {
@@ -669,13 +1375,25 @@ router.post("/sales", async (request, response) => {
             shopId: context.shop.id,
             customerId: customer.id,
             amount: paidAmount,
-            paymentMethod: body.paymentMethod?.trim() || null,
-            moneyBoxId: moneyBox?.id ?? null,
+            paymentMethod: paymentInfo.paymentMethod,
+            paymentMeta: paymentInfo.paymentMeta,
+            moneyBoxId: effectiveMoneyBox?.id ?? null,
             referenceNo: createdSale.invoiceNo || null,
             notes: body.notes?.trim() || null,
             paidAt: saleDate,
           },
         });
+
+        if (effectiveMoneyBox && ["CASH", "BKASH", "NAGAD"].includes(paymentInfo.paymentMethod || "")) {
+          await tx.moneyBox.update({
+            where: { id: effectiveMoneyBox.id },
+            data: {
+              currentBalance: {
+                increment: paidAmount,
+              },
+            },
+          });
+        }
 
         await tx.customerLedger.create({
           data: {
@@ -710,6 +1428,7 @@ router.post("/sales", async (request, response) => {
         totalAmount: toMoney(sale.createdSale.totalAmount),
         paidAmount: toMoney(sale.createdSale.paidAmount),
         dueAmount: toMoney(sale.createdSale.dueAmount),
+        storeCreditUsed,
         paymentMethod: sale.createdSale.paymentMethod,
         notes: sale.createdSale.notes,
         items: sale.createdSale.items.map((item: any) => ({
@@ -727,14 +1446,19 @@ router.post("/sales", async (request, response) => {
             id: sale.payment.id,
             amount: toMoney(sale.payment.amount),
             paymentMethod: sale.payment.paymentMethod,
+            paymentDetails: sale.payment.paymentMeta ?? null,
             moneyBoxId: sale.payment.moneyBoxId,
             referenceNo: sale.payment.referenceNo,
             paidAt: sale.payment.paidAt,
           }
         : null,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to create customer sale.", error);
+
+    if (error instanceof Error && (error.message.startsWith("Insufficient stock") || error.message.startsWith("Product not found"))) {
+      return response.status(400).json({ message: error.message });
+    }
 
     return response.status(503).json({ message: "Customer sale could not be created right now." });
   }
@@ -830,6 +1554,7 @@ router.post("/:id/payments", async (request, response) => {
     const body = request.body as {
       amount?: number | string | null;
       paymentMethod?: string | null;
+      paymentDetails?: PaymentMetaInput | null;
       moneyBoxId?: string | null;
       referenceNo?: string | null;
       notes?: string | null;
@@ -853,7 +1578,15 @@ router.post("/:id/payments", async (request, response) => {
       return response.status(400).json({ message: "Payment amount cannot be greater than the outstanding due." });
     }
 
+    const paymentInfo = normalizeCustomerPayment(body.paymentMethod, amount, body.paymentDetails);
+
+    if ("error" in paymentInfo) {
+      return response.status(400).json({ message: paymentInfo.error });
+    }
+
     const moneyBox = await resolveShopMoneyBox(context.shop.id, body.moneyBoxId);
+    const fallbackMoneyBox = !moneyBox ? await resolveDefaultMoneyBoxByType(context.shop.id, paymentInfo.paymentMethod) : null;
+    const effectiveMoneyBox = moneyBox ?? fallbackMoneyBox;
 
     if (body.moneyBoxId && !moneyBox) {
       return response.status(404).json({ message: "Money box not found for this shop." });
@@ -867,13 +1600,25 @@ router.post("/:id/payments", async (request, response) => {
           shopId: context.shop.id,
           customerId: customer.id,
           amount,
-          paymentMethod: body.paymentMethod?.trim() || null,
-          moneyBoxId: moneyBox?.id ?? null,
+          paymentMethod: paymentInfo.paymentMethod,
+          paymentMeta: paymentInfo.paymentMeta,
+          moneyBoxId: effectiveMoneyBox?.id ?? null,
           referenceNo: body.referenceNo?.trim() || null,
           notes: body.notes?.trim() || null,
           paidAt,
         },
       });
+
+      if (effectiveMoneyBox && ["CASH", "BKASH", "NAGAD"].includes(paymentInfo.paymentMethod || "")) {
+        await tx.moneyBox.update({
+          where: { id: effectiveMoneyBox.id },
+          data: {
+            currentBalance: {
+              increment: amount,
+            },
+          },
+        });
+      }
 
       await tx.customerLedger.create({
         data: {
@@ -900,6 +1645,7 @@ router.post("/:id/payments", async (request, response) => {
         customerId: payment.customerId,
         amount: toMoney(payment.amount),
         paymentMethod: payment.paymentMethod,
+        paymentDetails: payment.paymentMeta ?? null,
         moneyBoxId: payment.moneyBoxId,
         referenceNo: payment.referenceNo,
         notes: payment.notes,
@@ -954,6 +1700,7 @@ router.get("/:id/ledger", async (request, response) => {
             id: true,
             amount: true,
             paymentMethod: true,
+            paymentMeta: true,
             referenceNo: true,
             paidAt: true,
           },
@@ -998,6 +1745,7 @@ router.get("/:id/ledger", async (request, response) => {
                 id: entry.customerPayment.id,
                 amount: toMoney(entry.customerPayment.amount),
                 paymentMethod: entry.customerPayment.paymentMethod,
+                paymentDetails: entry.customerPayment.paymentMeta ?? null,
                 referenceNo: entry.customerPayment.referenceNo,
                 paidAt: entry.customerPayment.paidAt,
               }
@@ -1059,6 +1807,7 @@ router.get("/:id", async (request, response) => {
             id: true,
             amount: true,
             paymentMethod: true,
+            paymentMeta: true,
             referenceNo: true,
             notes: true,
             paidAt: true,
@@ -1115,10 +1864,11 @@ router.get("/:id", async (request, response) => {
           recentPayments: payments.map((payment: any) => ({
             id: payment.id,
             amount: toMoney(payment.amount),
-            paymentMethod: payment.paymentMethod,
-            referenceNo: payment.referenceNo,
-            notes: payment.notes,
-            paidAt: payment.paidAt,
+          paymentMethod: payment.paymentMethod,
+          paymentDetails: payment.paymentMeta ?? null,
+          referenceNo: payment.referenceNo,
+          notes: payment.notes,
+          paidAt: payment.paidAt,
           })),
           recentTransactions: ledgerEntries.map((entry: any) => ({
             id: entry.id,
