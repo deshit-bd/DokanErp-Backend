@@ -21,7 +21,7 @@ async function requirePlatformUser(request: Parameters<typeof getAuthenticatedUs
     return auth;
   }
 
-  if (!["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+  if (!["SUPER_ADMIN", "ADMIN", "SHOP_OWNER"].includes(auth.payload.role)) {
     return {
       status: 403,
       body: { message: "You do not have permission to manage units." },
@@ -38,6 +38,9 @@ function serializeUnit(unit: {
   type: UnitType;
   description: string | null;
   status: UnitStatus;
+  shopId: string | null;
+  isGlobal: boolean;
+  isApproved: boolean;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -50,6 +53,9 @@ function serializeUnit(unit: {
     description: unit.description,
     status: unit.status,
     statusLabel: toDisplayLabel(unit.status),
+    shopId: unit.shopId,
+    isGlobal: unit.isGlobal,
+    isApproved: unit.isApproved,
     createdAt: unit.createdAt,
     updatedAt: unit.updatedAt,
   };
@@ -63,7 +69,15 @@ router.get("/", async (request, response) => {
       return sendAuthError(response, auth);
     }
 
+    const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role);
+
     const units = await prisma.unit.findMany({
+      where: isAdmin ? {} : {
+        OR: [
+          { isGlobal: true },
+          { shopId: auth.payload.shopId }
+        ]
+      },
       orderBy: [{ createdAt: "desc" }, { name: "asc" }],
     });
 
@@ -124,9 +138,19 @@ router.post("/", async (request, response) => {
       return response.status(400).json({ message: "Unit status is invalid." });
     }
 
+    const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role);
+
     const existingUnit = await prisma.unit.findFirst({
       where: {
-        OR: [{ name }, { shortName }],
+        OR: isAdmin ? [
+          { name, isGlobal: true },
+          { shortName, isGlobal: true }
+        ] : [
+          { name, isGlobal: true },
+          { name, shopId: auth.payload.shopId },
+          { shortName, isGlobal: true },
+          { shortName, shopId: auth.payload.shopId }
+        ]
       },
       select: {
         id: true,
@@ -147,6 +171,9 @@ router.post("/", async (request, response) => {
         type,
         description,
         status,
+        shopId: isAdmin ? null : auth.payload.shopId,
+        isGlobal: isAdmin,
+        isApproved: isAdmin,
       },
     });
 
@@ -161,6 +188,87 @@ router.post("/", async (request, response) => {
       message:
         "Unit could not be saved because the database schema is not applied or the database is offline. Start PostgreSQL, then run backend prisma push and seed.",
     });
+  }
+});
+
+router.delete("/:id", async (request, response) => {
+  try {
+    const auth = await requirePlatformUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    const { id } = request.params;
+    const unit = await prisma.unit.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            masterProducts: true,
+          },
+        },
+      },
+    });
+
+    if (!unit) {
+      return response.status(404).json({ message: "Unit not found." });
+    }
+
+    if (unit._count.masterProducts > 0) {
+      return response.status(409).json({ message: "Unit is in use by products and cannot be deleted." });
+    }
+
+    await prisma.unit.delete({
+      where: { id },
+    });
+
+    return response.json({
+      message: "Unit deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Failed to delete unit.", error);
+    return response.status(500).json({ message: "Failed to delete unit." });
+  }
+});
+
+router.post("/:id/approve", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    if (!["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      return response.status(403).json({ message: "Only administrators can approve master units." });
+    }
+
+    const { id } = request.params;
+    const unit = await prisma.unit.findUnique({
+      where: { id },
+    });
+
+    if (!unit) {
+      return response.status(404).json({ message: "Unit not found." });
+    }
+
+    const updated = await prisma.unit.update({
+      where: { id },
+      data: {
+        isGlobal: true,
+        isApproved: true,
+        shopId: null,
+      },
+    });
+
+    return response.json({
+      message: "Unit approved and elevated to global master data successfully.",
+      unit: serializeUnit(updated),
+    });
+  } catch (error) {
+    console.error("Failed to approve unit.", error);
+    return response.status(500).json({ message: "Failed to approve unit." });
   }
 });
 

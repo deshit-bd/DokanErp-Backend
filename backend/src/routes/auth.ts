@@ -19,7 +19,7 @@ import {
   setAccessCookie,
   setRefreshCookie,
 } from "../auth/session";
-import { canAddSalesmanInCurrentTier, ensureShopSubscription, evaluateShopSubscriptionAccess } from "../subscription/access";
+import { canAddSalesmanInCurrentTier, ensureShopSubscription, evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "../subscription/access";
 
 const router = Router();
 const REGISTRATION_DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -600,8 +600,16 @@ async function handleVerifyLoginOtpRequest(request: ScopedRequest, response: Res
               (item: { shopId: string; shop: { shopCode?: string | null } }) => item.shopId === authContext.shopId,
             )?.shop.shopCode ??
             null,
+          shopName:
+            user.ownedShops.find((shop: { id: string; shopName?: string | null }) => shop.id === authContext.shopId)
+              ?.shopName ??
+            user.shopUsers.find(
+              (item: { shopId: string; shop: { shopName?: string | null } }) => item.shopId === authContext.shopId,
+            )?.shop.shopName ??
+            null,
         }
       : null,
+
   });
 }
 
@@ -976,7 +984,7 @@ router.post("/register-salesman", async (request, response) => {
           shopId: ownedShop.id,
           userId: user.id,
           role: "SALESMAN",
-          isBillable: true,
+          isBillable: false,
         },
       });
 
@@ -1606,8 +1614,10 @@ router.post("/owners-login", async (request, response) => {
         ? {
             id: authContext.shopId,
             shopCode: user.ownedShops.find((shop) => shop.id === authContext.shopId)?.shopCode ?? null,
+            shopName: user.ownedShops.find((shop) => shop.id === authContext.shopId)?.shopName ?? null,
           }
         : null,
+
     });
   } catch (error) {
     console.error("Owners login route error:", error);
@@ -1648,7 +1658,9 @@ router.post("/salesmans-login", async (request, response) => {
       shop: {
         id: shopId,
         shopCode: user.shopUsers.find((item) => item.shopId === shopId)?.shop.shopCode ?? null,
+        shopName: user.shopUsers.find((item) => item.shopId === shopId)?.shop.shopName ?? null,
       },
+
     });
   } catch (error) {
     console.error("Salesmans login route error:", error);
@@ -1881,11 +1893,24 @@ router.post("/login", async (request, response) => {
       const subscriptionAccess = await evaluateShopSubscriptionAccess(authContext.shopId);
 
       if (!subscriptionAccess.allowed) {
-        clearAuthCookies(response);
-        return response.status(402).json({
-          message: subscriptionAccess.message,
-          subscription: subscriptionAccess,
-        });
+        if (authContext.role === "SALESMAN") {
+          const salesmanTrial = await evaluateSalesmanTrialAccess(authContext.shopId, user.id);
+
+          if (!salesmanTrial.allowed) {
+            clearAuthCookies(response);
+            return response.status(402).json({
+              message: subscriptionAccess.message,
+              subscription: subscriptionAccess,
+              salesmanTrial,
+            });
+          }
+        } else {
+          clearAuthCookies(response);
+          return response.status(402).json({
+            message: subscriptionAccess.message,
+            subscription: subscriptionAccess,
+          });
+        }
       }
     }
 
@@ -1998,12 +2023,26 @@ router.post("/refresh", async (request, response) => {
     const subscriptionAccess = await evaluateShopSubscriptionAccess(authContext.shopId);
 
     if (!subscriptionAccess.allowed) {
-      await revokeRefreshFamily(tokenRecord.family);
-      clearAuthCookies(response);
-      return response.status(402).json({
-        message: subscriptionAccess.message,
-        subscription: subscriptionAccess,
-      });
+      if (authContext.role === "SALESMAN") {
+        const salesmanTrial = await evaluateSalesmanTrialAccess(authContext.shopId, user.id);
+
+        if (!salesmanTrial.allowed) {
+          await revokeRefreshFamily(tokenRecord.family);
+          clearAuthCookies(response);
+          return response.status(402).json({
+            message: subscriptionAccess.message,
+            subscription: subscriptionAccess,
+            salesmanTrial,
+          });
+        }
+      } else {
+        await revokeRefreshFamily(tokenRecord.family);
+        clearAuthCookies(response);
+        return response.status(402).json({
+          message: subscriptionAccess.message,
+          subscription: subscriptionAccess,
+        });
+      }
     }
   }
 

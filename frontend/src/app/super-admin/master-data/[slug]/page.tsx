@@ -319,7 +319,11 @@ type UnitRecord = {
   statusLabel: string;
   createdAt: string;
   updatedAt: string;
+  isGlobal?: boolean;
+  isApproved?: boolean;
+  shopId?: string | null;
 };
+
 
 type UnitApiResponse = {
   stats: {
@@ -3983,7 +3987,30 @@ async function refreshProductCatalog() {
     }
   }
 
+  async function handleApproveUnit(unitId: string) {
+    setUnitLoadError(null);
+    setOpenUnitActionMenuId(null);
+
+    try {
+      const response = await fetch(`/api/units/${unitId}/approve`, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { message?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to approve unit.");
+      }
+
+      await refreshUnits();
+    } catch (error) {
+      setUnitLoadError(error instanceof Error ? error.message : "Failed to approve unit.");
+    }
+  }
+
   if (slug === "brand") {
+
     return (
       <section className="master-category-page">
         <div className="master-category-stats">
@@ -5298,13 +5325,18 @@ async function refreshProductCatalog() {
                     <span>{row.typeLabel}</span>
                     <span>{row.description || "N/A"}</span>
                     <span>
-                      <em
-                        className={`master-category-status-badge${
-                          row.status === "INACTIVE" ? " unit-page-status-badge-inactive" : ""
-                        }`}
-                      >
-                        {row.statusLabel}
-                      </em>
+                      <span style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                        <em
+                          className={`master-category-status-badge${
+                            row.status === "INACTIVE" ? " unit-page-status-badge-inactive" : ""
+                          }`}
+                        >
+                          {row.statusLabel}
+                        </em>
+                        {row.isApproved === false ? (
+                          <em className="master-category-status-badge master-category-status-badge-pending">Pending Approval</em>
+                        ) : null}
+                      </span>
                     </span>
                     <span>{formatUnitDate(row.createdAt)}</span>
                     <span className="master-category-actions">
@@ -5331,6 +5363,18 @@ async function refreshProductCatalog() {
 
                         {openUnitActionMenuId === row.id ? (
                           <div className="master-category-action-dropdown" role="menu">
+                            {row.isApproved === false ? (
+                              <button
+                                type="button"
+                                className="master-category-action-dropdown-item"
+                                style={{ color: "#0b7a57", fontWeight: "bold" }}
+                                role="menuitem"
+                                onClick={() => void handleApproveUnit(row.id)}
+                              >
+                                <FiCheckCircle style={{ color: "#0b7a57" }} />
+                                <span>Approve Unit</span>
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               className="master-category-action-dropdown-item"
@@ -5371,6 +5415,7 @@ async function refreshProductCatalog() {
                         ) : null}
                       </span>
                     </span>
+
                   </div>
                 ))
               )}

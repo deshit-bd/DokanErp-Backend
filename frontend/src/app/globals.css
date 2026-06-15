@@ -9832,6 +9832,12 @@ button.admin-sidebar-link {
   color: #6f7c8d;
 }
 
+.master-category-status-badge-pending {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+
 .master-category-actions {
   display: flex;
   align-items: center;

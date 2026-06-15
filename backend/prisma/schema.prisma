@@ -269,6 +269,7 @@ model User {
   purchasesApproved Purchase[] @relation("PurchaseApprovedBy")
   purchaseReturnsCreated PurchaseReturn[] @relation("PurchaseReturnCreatedBy")
   purchaseReturnsApproved PurchaseReturn[] @relation("PurchaseReturnApprovedBy")
+  customerSalesCreated CustomerSale[] @relation("CustomerSaleCreatedBy")
   categoriesCreated ProductCategory[] @relation("CategoryCreatedBy")
   categoriesUpdated ProductCategory[] @relation("CategoryUpdatedBy")
   categoryLogsPerformed CategoryLog[] @relation("CategoryLogPerformedBy")
@@ -346,6 +347,8 @@ model Shop {
   inventoryBins   InventoryBin[]
   inventoryBinItems InventoryBinItem[]
   masterProductRequests MasterProductRequest[]
+  notificationSettings NotificationSetting?
+  inAppNotifications   InAppNotification[]
 
   @@index([shopName])
   @@map("shops")
@@ -506,9 +509,12 @@ model OwnerRegistrationDraft {
 
 model ProductCategory {
   id              String         @id @default(cuid())
-  name            String         @unique @db.VarChar(120)
+  name            String         @db.VarChar(120)
   description     String?
   status          CategoryStatus @default(ACTIVE)
+  shopId          String?        @map("shop_id")
+  isGlobal        Boolean        @default(true) @map("is_global")
+  isApproved      Boolean        @default(true) @map("is_approved")
   createdByUserId String?        @map("created_by")
   updatedByUserId String?        @map("updated_by")
   createdAt       DateTime       @default(now()) @map("created_at")
@@ -520,6 +526,7 @@ model ProductCategory {
   logs            CategoryLog[]
 
   @@index([status])
+  @@index([shopId])
   @@map("product_categories")
 }
 
@@ -583,11 +590,14 @@ model Brand {
 
 model Unit {
   id          String     @id @default(cuid())
-  name        String     @unique @db.VarChar(120)
-  shortName   String     @unique @map("short_name") @db.VarChar(40)
+  name        String     @db.VarChar(120)
+  shortName   String     @map("short_name") @db.VarChar(40)
   type        UnitType
   description String?
   status      UnitStatus @default(ACTIVE)
+  shopId      String?    @map("shop_id")
+  isGlobal    Boolean    @default(true) @map("is_global")
+  isApproved  Boolean    @default(true) @map("is_approved")
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
@@ -595,6 +605,7 @@ model Unit {
 
   @@index([status])
   @@index([type])
+  @@index([shopId])
   @@map("units")
 }
 
@@ -1006,6 +1017,7 @@ model CustomerSale {
   id              String         @id @default(cuid())
   shopId          String         @map("shop_id")
   customerId      String         @map("customer_id")
+  createdByUserId String?        @map("created_by_user_id")
   invoiceNo       String?        @map("invoice_no") @db.VarChar(80)
   saleDate        DateTime       @default(now()) @map("sale_date")
   totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
@@ -1024,11 +1036,13 @@ model CustomerSale {
 
   shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
   customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy       User?          @relation("CustomerSaleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   items           CustomerSaleItem[]
   ledgerEntries   CustomerLedger[]
 
   @@index([shopId])
   @@index([customerId])
+  @@index([createdByUserId])
   @@index([saleDate])
   @@map("customer_sales")
 }
@@ -1315,4 +1329,39 @@ model ShopReceiptSetting {
   shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@map("shop_receipt_settings")
+}
+
+model NotificationSetting {
+  id            String   @id @default(cuid())
+  shopId        String   @unique @map("shop_id")
+  lowStock      Boolean  @default(true) @map("low_stock")
+  binLowStock   Boolean  @default(true) @map("bin_low_stock")
+  newSale       Boolean  @default(true) @map("new_sale")
+  dueReminder   Boolean  @default(true) @map("due_reminder")
+  newCustomer   Boolean  @default(true) @map("new_customer")
+  expiryAlert   Boolean  @default(true) @map("expiry_alert")
+  dailyReport   Boolean  @default(true) @map("daily_report")
+  weeklyReport  Boolean  @default(true) @map("weekly_report")
+  quietHours    Boolean  @default(false) @map("quiet_hours")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model InAppNotification {
+  id          String   @id @default(cuid())
+  shopId      String   @map("shop_id")
+  type        String
+  title       String
+  message     String
+  timestamp   String
+  createdAt   DateTime @default(now()) @map("created_at")
+  isRead      Boolean  @default(false) @map("is_read")
+
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("in_app_notifications")
 }

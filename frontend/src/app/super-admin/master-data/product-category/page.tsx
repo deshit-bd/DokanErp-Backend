@@ -16,7 +16,11 @@ type CategoryRow = {
   updatedAt: string;
   createdBy?: { id: string; name: string } | null;
   updatedBy?: { id: string; name: string } | null;
+  isGlobal?: boolean;
+  isApproved?: boolean;
+  shopId?: string | null;
 };
+
 
 type CategoryResponse = {
   stats?: {
@@ -355,7 +359,31 @@ export default function ProductCategoryPage() {
     }
   }
 
+  async function handleApprove(categoryId: string) {
+    setFeedback("");
+    setError("");
+    setOpenActionMenuId(null);
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}/approve`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as CategoryResponse;
+
+      if (!response.ok) {
+        setError(result.message ?? "Failed to approve category.");
+        return;
+      }
+
+      setFeedback(result.message ?? "Category approved successfully.");
+      await loadCategories();
+    } catch {
+      setError("Unable to approve category right now.");
+    }
+  }
+
   async function handleDuplicate(categoryId: string) {
+
     const source = categories.find((item) => item.id === categoryId);
 
     if (!source) {
@@ -475,7 +503,12 @@ export default function ProductCategoryPage() {
                   <span>{row.description || "No description"}</span>
                   <span>{row.products}</span>
                   <span>
-                    <em className={getBadgeClass(row.status)}>{row.statusLabel}</em>
+                    <span style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                      <em className={getBadgeClass(row.status)}>{row.statusLabel}</em>
+                      {row.isApproved === false ? (
+                        <em className="master-category-status-badge master-category-status-badge-pending">Pending Approval</em>
+                      ) : null}
+                    </span>
                   </span>
                   <span>{formatDate(row.createdAt)}</span>
                   <span className="master-category-actions">
@@ -499,6 +532,17 @@ export default function ProductCategoryPage() {
 
                       {openActionMenuId === row.id ? (
                         <div className="master-category-action-dropdown" role="menu">
+                          {row.isApproved === false ? (
+                            <button
+                              type="button"
+                              className="master-category-action-dropdown-item"
+                              style={{ color: "#0b7a57", fontWeight: "bold" }}
+                              role="menuitem"
+                              onClick={() => void handleApprove(row.id)}
+                            >
+                              Approve Category
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className="master-category-action-dropdown-item"
@@ -536,6 +580,7 @@ export default function ProductCategoryPage() {
                           </button>
                         </div>
                       ) : null}
+
                     </span>
                   </span>
                 </div>
@@ -666,6 +711,30 @@ export default function ProductCategoryPage() {
               </div>
 
               <div className="master-category-details-grid">
+                <div className="master-category-details-card" style={{ gridColumn: "1 / -1" }}>
+                  <span className="master-category-details-label">Approval Status</span>
+                  {selectedCategory.isApproved === false ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                      <em className="master-category-status-badge master-category-status-badge-pending">Pending Approval</em>
+                      <button
+                        type="button"
+                        className="master-category-primary-button"
+                        style={{ padding: "4px 12px", fontSize: "0.75rem", background: "#0b7a57", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                        onClick={() => {
+                          void handleApprove(selectedCategory.id);
+                          setSelectedCategoryId(null);
+                        }}
+                      >
+                        Approve Request
+                      </button>
+                    </div>
+                  ) : (
+                    <em className="master-category-status-badge" style={{ marginTop: "4px" }}>Approved (Global)</em>
+                  )}
+                </div>
+              </div>
+
+              <div className="master-category-details-grid">
                 <div className="master-category-details-card">
                   <span className="master-category-details-label">Created Date</span>
                   <strong>{formatDate(selectedCategory.createdAt)}</strong>
@@ -676,6 +745,7 @@ export default function ProductCategoryPage() {
                   <strong>{formatDate(selectedCategory.updatedAt)}</strong>
                 </div>
               </div>
+
             </div>
           </aside>
         </>

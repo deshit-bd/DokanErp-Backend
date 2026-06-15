@@ -21,7 +21,9 @@ import subscriptionRoutes from "./routes/subscriptions";
 import supplierRoutes from "./routes/suppliers";
 import unitRoutes from "./routes/units";
 import reportsRoutes from "./routes/reports";
-import { evaluateShopSubscriptionAccess } from "./subscription/access";
+import staffRoutes from "./routes/staff";
+import notificationRoutes from "./routes/notifications";
+import { evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "./subscription/access";
 
 const app = express();
 
@@ -52,6 +54,14 @@ function mountApiScope(prefix: string, appType: AppType) {
       const access = await evaluateShopSubscriptionAccess(auth.payload.shopId);
 
       if (!access.allowed) {
+        if (auth.payload.role === "SALESMAN") {
+          const salesmanTrial = await evaluateSalesmanTrialAccess(auth.payload.shopId, auth.user.id);
+
+          if (salesmanTrial.allowed) {
+            return next();
+          }
+        }
+
         return response.status(402).json({
           message: access.message,
           subscription: access,
@@ -76,9 +86,11 @@ function mountApiScope(prefix: string, appType: AppType) {
   scopedRouter.use("/shops", shopRoutes);
   scopedRouter.use("/subscriptions", subscriptionRoutes);
   scopedRouter.use("/suppliers", supplierRoutes);
+  scopedRouter.use("/staff", staffRoutes);
   scopedRouter.use("/add-suppliers", supplierRoutes);
   scopedRouter.use("/units", unitRoutes);
   scopedRouter.use("/reports", reportsRoutes);
+  scopedRouter.use("/notifications", notificationRoutes);
 
   app.use(prefix, scopedRouter);
 }

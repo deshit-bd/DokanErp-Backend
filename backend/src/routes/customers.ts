@@ -1196,6 +1196,7 @@ router.post("/sales", async (request, response) => {
         data: {
           shopId: context.shop.id,
           customerId: customer.id,
+          createdByUserId: context.auth.user.id,
           invoiceNo: body.invoiceNo?.trim() || null,
           saleDate,
           totalAmount,

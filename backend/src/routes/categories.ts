@@ -18,7 +18,7 @@ async function requirePlatformUser(request: Parameters<typeof getAuthenticatedUs
     return auth;
   }
 
-  if (!["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+  if (!["SUPER_ADMIN", "ADMIN", "SHOP_OWNER"].includes(auth.payload.role)) {
     return {
       status: 403,
       body: { message: "You do not have permission to manage categories." },
@@ -35,7 +35,15 @@ router.get("/", async (request, response) => {
     return sendAuthError(response, auth);
   }
 
+  const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role);
+
   const categories = await prisma.productCategory.findMany({
+    where: isAdmin ? {} : {
+      OR: [
+        { isGlobal: true },
+        { shopId: auth.payload.shopId }
+      ]
+    },
     orderBy: { createdAt: "desc" },
     include: {
       _count: {
@@ -67,6 +75,9 @@ router.get("/", async (request, response) => {
       description: category.description,
       status: category.status,
       statusLabel: toDisplayStatus(category.status),
+      isGlobal: category.isGlobal,
+      isApproved: category.isApproved,
+      shopId: category.shopId,
       products: category._count.masterProducts,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
@@ -97,8 +108,18 @@ router.post("/", async (request, response) => {
     return response.status(400).json({ message: "Category name is required." });
   }
 
-  const existingCategory = await prisma.productCategory.findUnique({
-    where: { name },
+  const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role);
+
+  const existingCategory = await prisma.productCategory.findFirst({
+    where: {
+      name,
+      OR: isAdmin ? [
+        { isGlobal: true }
+      ] : [
+        { isGlobal: true },
+        { shopId: auth.payload.shopId }
+      ]
+    },
     select: { id: true, status: true },
   });
 
@@ -111,6 +132,9 @@ router.post("/", async (request, response) => {
       name,
       description,
       status,
+      shopId: isAdmin ? null : auth.payload.shopId,
+      isGlobal: isAdmin,
+      isApproved: isAdmin,
       createdByUserId: auth.user.id,
       updatedByUserId: auth.user.id,
       logs: {
@@ -120,6 +144,9 @@ router.post("/", async (request, response) => {
             name,
             description,
             status,
+            shopId: isAdmin ? null : auth.payload.shopId,
+            isGlobal: isAdmin,
+            isApproved: isAdmin,
           },
           performedById: auth.user.id,
         },
@@ -148,6 +175,9 @@ router.post("/", async (request, response) => {
       description: category.description,
       status: category.status,
       statusLabel: toDisplayStatus(category.status),
+      isGlobal: category.isGlobal,
+      isApproved: category.isApproved,
+      shopId: category.shopId,
       products: category._count.masterProducts,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
@@ -335,6 +365,74 @@ router.delete("/:id", async (request, response) => {
   return response.json({
     message: "Category deleted successfully.",
   });
+});
+
+router.post("/:id/approve", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    if (!["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      return response.status(403).json({ message: "Only administrators can approve master categories." });
+    }
+
+    const { id } = request.params;
+    const category = await prisma.productCategory.findUnique({
+      where: { id },
+    });
+
+    if (!category) {
+      return response.status(404).json({ message: "Category not found." });
+    }
+
+    const updated = await prisma.productCategory.update({
+      where: { id },
+      data: {
+        isGlobal: true,
+        isApproved: true,
+        shopId: null,
+        updatedByUserId: auth.user.id,
+      },
+      include: {
+        _count: {
+          select: {
+            masterProducts: true,
+          },
+        },
+        createdBy: {
+          select: { id: true, name: true },
+        },
+        updatedBy: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    return response.json({
+      message: "Category approved and elevated to global master data successfully.",
+      category: {
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        status: updated.status,
+        statusLabel: updated.status.replace(/_/g, " "),
+        isGlobal: updated.isGlobal,
+        isApproved: updated.isApproved,
+        shopId: updated.shopId,
+        products: updated._count.masterProducts,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+        createdBy: updated.createdBy,
+        updatedBy: updated.updatedBy,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to approve category.", error);
+    return response.status(500).json({ message: "Failed to approve category." });
+  }
 });
 
 export default router;

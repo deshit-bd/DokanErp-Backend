@@ -2,6 +2,7 @@ import { prisma } from "../config/prisma";
 
 const TRIAL_DURATION_DAYS = 1;
 const DEFAULT_DAILY_RATE_PER_ACCOUNT = 10;
+const SALESMAN_BILLABLE_DELAY_MS = 24 * 60 * 60 * 1000;
 
 export const FREE_TIER_PRODUCT_LIMIT = 50;
 export const FREE_TIER_SALESMAN_LIMIT = 1;
@@ -101,6 +102,22 @@ export async function ensureShopSubscription(shopId: string, client: PrismaLike 
 }
 
 export async function countBillableAccounts(shopId: string, client: PrismaLike = prisma) {
+  const billableCutoff = new Date(Date.now() - SALESMAN_BILLABLE_DELAY_MS);
+
+  await client.shopUser.updateMany({
+    where: {
+      shopId,
+      role: "SALESMAN",
+      isBillable: false,
+      createdAt: {
+        lte: billableCutoff,
+      },
+    },
+    data: {
+      isBillable: true,
+    },
+  });
+
   return client.shopUser.count({
     where: {
       shopId,
@@ -142,39 +159,49 @@ export async function ensureDailyInvoice(shopId: string, client: PrismaLike = pr
   const ratePerAccount = toMoney(subscription.dailyRatePerAccount);
   const totalAmount = toMoney(billableAccounts * ratePerAccount);
 
-  const existingInvoice = await client.invoice.findUnique({
+  const invoice = await client.invoice.upsert({
     where: {
       shopId_billingDate: {
         shopId,
         billingDate,
       },
     },
+    create: {
+      subscriptionId: subscription.id,
+      shopId,
+      billingDate,
+      billableAccounts,
+      ratePerAccount,
+      totalAmount,
+      paidAmount: 0,
+      status: computeInvoiceStatus(0, totalAmount),
+    },
+    update: {
+      billableAccounts,
+      ratePerAccount,
+      totalAmount,
+    },
   });
 
-  if (!existingInvoice) {
-    return client.invoice.create({
-      data: {
-        subscriptionId: subscription.id,
-        shopId,
-        billingDate,
-        billableAccounts,
-        ratePerAccount,
-        totalAmount,
-        paidAmount: 0,
-        status: computeInvoiceStatus(0, totalAmount),
-      },
-    });
+  const paidAmount = toMoney(invoice.paidAmount);
+  const nextStatus = computeInvoiceStatus(paidAmount, totalAmount);
+
+  if (
+    invoice.billableAccounts === billableAccounts &&
+    Number(invoice.ratePerAccount) === ratePerAccount &&
+    Number(invoice.totalAmount) === totalAmount &&
+    invoice.status === nextStatus
+  ) {
+    return invoice;
   }
 
-  const paidAmount = toMoney(existingInvoice.paidAmount);
-
   return client.invoice.update({
-    where: { id: existingInvoice.id },
+    where: { id: invoice.id },
     data: {
       billableAccounts,
       ratePerAccount,
       totalAmount,
-      status: computeInvoiceStatus(paidAmount, totalAmount),
+      status: nextStatus,
     },
   });
 }
@@ -273,6 +300,39 @@ export async function evaluateShopSubscriptionAccess(shopId: string, client: Pri
     paidAmount,
     amountDue,
     message: `Free trial ended. Please pay BDT ${amountDue} to continue using the app.`,
+  };
+}
+
+const SALESMAN_TRIAL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export async function evaluateSalesmanTrialAccess(shopId: string, userId: string, client: PrismaLike = prisma) {
+  const membership = await client.shopUser.findFirst({
+    where: {
+      shopId,
+      userId,
+      role: "SALESMAN",
+    },
+    select: {
+      id: true,
+      createdAt: true,
+    },
+  });
+
+  if (!membership) {
+    return {
+      allowed: false,
+      trialEndsAt: null,
+      remainingMs: 0,
+    };
+  }
+
+  const trialEndsAt = new Date(membership.createdAt.getTime() + SALESMAN_TRIAL_WINDOW_MS);
+  const remainingMs = trialEndsAt.getTime() - Date.now();
+
+  return {
+    allowed: remainingMs > 0,
+    trialEndsAt,
+    remainingMs: Math.max(remainingMs, 0),
   };
 }
 

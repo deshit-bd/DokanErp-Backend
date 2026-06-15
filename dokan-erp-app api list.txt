@@ -2864,11 +2864,179 @@ Response:
     { "hour": "4pm", "sales": 1450 },
     { "hour": "6pm", "sales": 900 },
     { "hour": "8pm", "sales": 1100 }
-  ]
+  ],
+  "topProducts": [
+    { "rank": 1, "name": "মিনিকেট চাল", "salesCount": 48, "salesLabel": "৪৮টি বিক্রয়", "value": 63000 }
+  ],
+  "paymentMethods": [
+    { "method": "CASH", "label": "নগদ", "amount": 3200, "percentage": 66 },
+    { "method": "WALLET", "label": "bKash/Nagad", "amount": 950, "percentage": 20 },
+    { "method": "DUE", "label": "বাকি", "amount": 700, "percentage": 14 }
+  ],
+  "meta": {
+    "date": "2026-05-23T00:00:00.000Z"
+  }
 }
 ```
 
-3. GET /app/api/reports/profit-loss
+3. GET /app/api/reports/purchases/summary
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/purchases/summary?shopId=shp_123&range=month
+```
+
+Response:
+```json
+{
+  "summary": {
+    "totalPurchases": 125000,
+    "purchaseCount": 18,
+    "averagePurchase": 6944,
+    "paidAmount": 90000,
+    "dueAmount": 35000
+  },
+  "trend": [
+    { "date": "১", "amount": 12000 },
+    { "date": "৫", "amount": 18000 },
+    { "date": "১০", "amount": 9500 }
+  ],
+  "trendSummary": {
+    "currentTotal": 125000,
+    "previousTotal": 99000,
+    "changePct": 26,
+    "direction": "up"
+  },
+  "paymentMethods": [
+    { "method": "CASH", "label": "নগদ/ব্যাংক", "amount": 54000, "percentage": 43 },
+    { "method": "WALLET", "label": "bKash/Nagad/Card", "amount": 36000, "percentage": 29 },
+    { "method": "DUE", "label": "বাকি", "amount": 35000, "percentage": 28 }
+  ],
+  "topSuppliers": [
+    { "rank": 1, "name": "রহিম ট্রেডার্স", "amount": 42000, "count": 4 }
+  ],
+  "topProducts": [
+    { "rank": 1, "name": "মিনিকেট চাল", "quantity": 80, "value": 63000 }
+  ],
+  "meta": {
+    "range": "month",
+    "startDate": "2026-05-01T00:00:00.000Z",
+    "endDate": "2026-05-31T23:59:59.999Z",
+    "generatedAt": "2026-05-31T12:00:00.000Z"
+  }
+}
+```
+
+4. GET /app/api/reports/dues/summary
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/dues/summary?shopId=shp_123&range=month
+```
+
+Response:
+```json
+{
+  "summary": {
+    "totalReceivable": 56000,
+    "totalPayable": 22000,
+    "netBalance": 34000,
+    "receivableCustomers": 12,
+    "payableSuppliers": 5
+  },
+  "activity": {
+    "customerDueCreated": 17000,
+    "customerDueCollected": 9000,
+    "supplierDueCreated": 12000,
+    "supplierDuePaid": 7000
+  },
+  "aging": {
+    "receivable": [
+      { "key": "0_7", "label": "০-৭ দিন", "amount": 18000 },
+      { "key": "8_15", "label": "৮-১৫ দিন", "amount": 14000 }
+    ],
+    "payable": [
+      { "key": "0_7", "label": "০-৭ দিন", "amount": 8000 },
+      { "key": "8_15", "label": "৮-১৫ দিন", "amount": 5000 }
+    ]
+  },
+  "topReceivables": [
+    { "rank": 1, "id": "cust_1", "name": "করিম স্টোর", "mobile": "017XXXXXXXX", "due": 12000, "ageDays": 9 }
+  ],
+  "topPayables": [
+    { "rank": 1, "id": "sup_1", "name": "রহিম ট্রেডার্স", "mobile": "018XXXXXXXX", "due": 9000, "ageDays": 6 }
+  ],
+  "meta": {
+    "range": "month",
+    "startDate": "2026-05-01T00:00:00.000Z",
+    "endDate": "2026-05-31T23:59:59.999Z",
+    "generatedAt": "2026-05-31T12:00:00.000Z"
+  }
+}
+```
+
+5. GET /app/api/reports/expenses/summary
+Owner and Salesman
+
+Example:
+```http
+GET http://localhost:4000/app/api/reports/expenses/summary?shopId=shp_123&range=month
+```
+
+Response:
+```json
+{
+  "summary": {
+    "totalExpenses": 85500,
+    "expenseCount": 24,
+    "averageExpense": 3563,
+    "highestExpense": 18000,
+    "topCategory": "ভাড়া"
+  },
+  "trend": [
+    { "date": "১", "amount": 12000 },
+    { "date": "৫", "amount": 5000 },
+    { "date": "১০", "amount": 8000 }
+  ],
+  "trendSummary": {
+    "currentTotal": 85500,
+    "previousTotal": 76000,
+    "changePct": 13,
+    "direction": "up"
+  },
+  "categories": [
+    { "name": "ভাড়া", "amount": 30000, "count": 2, "percentage": 35 },
+    { "name": "বেতন", "amount": 22000, "count": 4, "percentage": 26 }
+  ],
+  "paymentMethods": [
+    { "method": "CASH", "label": "নগদ", "amount": 40000, "percentage": 47 },
+    { "method": "WALLET", "label": "bKash/Nagad", "amount": 18000, "percentage": 21 },
+    { "method": "BANK", "label": "ব্যাংক", "amount": 25000, "percentage": 29 },
+    { "method": "OTHER", "label": "অন্যান্য", "amount": 2500, "percentage": 3 }
+  ],
+  "recentExpenses": [
+    {
+      "id": "exp_1",
+      "category": "পরিবহন",
+      "amount": 1200,
+      "expenseDate": "2026-05-23T10:00:00.000Z",
+      "description": "ডেলিভারি ভাড়া",
+      "paymentMethod": "CASH",
+      "status": "PAID"
+    }
+  ],
+  "meta": {
+    "range": "month",
+    "startDate": "2026-05-01T00:00:00.000Z",
+    "endDate": "2026-05-31T23:59:59.999Z",
+    "generatedAt": "2026-05-31T12:00:00.000Z"
+  }
+}
+```
+
+6. GET /app/api/reports/profit-loss
 Owner and Salesman
 
 Example:
@@ -2894,11 +3062,21 @@ Response:
     "purchaseCost": 45000,
     "operatingExpenses": 15500,
     "totalCost": 60500
+  },
+  "meta": {
+    "range": "month",
+    "startDate": "2026-05-01T00:00:00.000Z",
+    "endDate": "2026-05-31T23:59:59.999Z",
+    "generatedAt": "2026-05-31T12:00:00.000Z"
   }
 }
 ```
 
-4. GET /app/api/reports/stock-value
+Notes:
+- supports `range=today|week|month|year`
+- also supports custom date range using `startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
+
+7. GET /app/api/reports/stock-value
 Owner and Salesman
 
 Example:
