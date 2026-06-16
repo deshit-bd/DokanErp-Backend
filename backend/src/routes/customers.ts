@@ -336,6 +336,7 @@ function mapCustomerSaleRecord(sale: any) {
     id: sale.id,
     shopId: sale.shopId,
     customerId: sale.customerId,
+    createdByUserId: sale.createdByUserId,
     customerName: sale.customer?.name ?? null,
     customerMobile: sale.customer?.mobile ?? null,
     invoiceNo: sale.invoiceNo,
@@ -343,6 +344,9 @@ function mapCustomerSaleRecord(sale: any) {
     totalAmount: toMoney(sale.totalAmount),
     paidAmount: toMoney(sale.paidAmount),
     dueAmount: toMoney(sale.dueAmount),
+    discountAmount: toMoney(sale.discountAmount ?? 0),
+    taxAmount: toMoney(sale.taxAmount ?? 0),
+    chargeAmount: toMoney(sale.chargeAmount ?? 0),
     paymentMethod: sale.paymentMethod,
     status: sale.status ?? "ACTIVE",
     cancelledAt: sale.cancelledAt ?? null,
@@ -1083,6 +1087,9 @@ router.post("/sales", async (request, response) => {
       invoiceNo?: string | null;
       paidAmount?: number | string | null;
       storeCreditUsed?: number | string | null;
+      discountAmount?: number | string | null;
+      taxAmount?: number | string | null;
+      chargeAmount?: number | string | null;
       paymentMethod?: string | null;
       paymentDetails?: PaymentMetaInput | null;
       moneyBoxId?: string | null;
@@ -1141,6 +1148,9 @@ router.post("/sales", async (request, response) => {
     const paidAmount = body.paidAmount == null || body.paidAmount === "" ? 0 : Number(body.paidAmount);
     const requestedStoreCreditUsed =
       body.storeCreditUsed == null || body.storeCreditUsed === "" ? 0 : Number(body.storeCreditUsed);
+    const discountAmount = body.discountAmount == null || body.discountAmount === "" ? 0 : Number(body.discountAmount);
+    const taxAmount = body.taxAmount == null || body.taxAmount === "" ? 0 : Number(body.taxAmount);
+    const chargeAmount = body.chargeAmount == null || body.chargeAmount === "" ? 0 : Number(body.chargeAmount);
 
     if (!Number.isFinite(paidAmount) || paidAmount < 0) {
       return response.status(400).json({ message: "Paid amount must be a valid number." });
@@ -1148,6 +1158,18 @@ router.post("/sales", async (request, response) => {
 
     if (!Number.isFinite(requestedStoreCreditUsed) || requestedStoreCreditUsed < 0) {
       return response.status(400).json({ message: "storeCreditUsed must be a valid number." });
+    }
+
+    if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+      return response.status(400).json({ message: "discountAmount must be a valid number." });
+    }
+
+    if (!Number.isFinite(taxAmount) || taxAmount < 0) {
+      return response.status(400).json({ message: "taxAmount must be a valid number." });
+    }
+
+    if (!Number.isFinite(chargeAmount) || chargeAmount < 0) {
+      return response.status(400).json({ message: "chargeAmount must be a valid number." });
     }
 
     const paymentInfo = normalizeCustomerPayment(body.paymentMethod, paidAmount, body.paymentDetails);
@@ -1176,8 +1198,9 @@ router.post("/sales", async (request, response) => {
     }
 
     const totalAmount = Number(normalizedItems.reduce((sum, item) => sum + item.totalAmount, 0).toFixed(2));
+    const grandTotal = Number((totalAmount - discountAmount + taxAmount + chargeAmount).toFixed(2));
 
-    if (paidAmount + requestedStoreCreditUsed > totalAmount) {
+    if (paidAmount + requestedStoreCreditUsed > grandTotal) {
       return response.status(400).json({ message: "Paid amount plus store credit cannot be greater than total sale amount." });
     }
 
@@ -1188,7 +1211,7 @@ router.post("/sales", async (request, response) => {
       return response.status(400).json({ message: "Requested store credit is greater than available customer credit." });
     }
 
-    const dueAmount = Number((totalAmount - paidAmount - storeCreditUsed).toFixed(2));
+    const dueAmount = Number((grandTotal - paidAmount - storeCreditUsed).toFixed(2));
     const saleDate = body.saleDate ? new Date(body.saleDate) : new Date();
 
     const sale = await (prisma as any).$transaction(async (tx: any) => {
@@ -1202,6 +1225,9 @@ router.post("/sales", async (request, response) => {
           totalAmount,
           paidAmount,
           dueAmount,
+          discountAmount,
+          taxAmount,
+          chargeAmount,
           paymentMethod: paymentInfo.paymentMethod,
           notes: body.notes?.trim() || null,
           items: {

@@ -100,6 +100,41 @@ function mapShopSettingsResponse(params: {
   };
 }
 
+async function requireShopContext(request: Parameters<typeof getAuthenticatedUser>[0]) {
+  const auth = await getAuthenticatedUser(request);
+
+  if (isAuthError(auth)) {
+    return auth;
+  }
+
+  if (auth.payload.appType !== "MOBILE" || !auth.payload.shopId) {
+    return {
+      status: 403,
+      body: { message: "Invalid application scope." },
+    };
+  }
+
+  const shop = await prisma.shop.findUnique({
+    where: { id: auth.payload.shopId },
+    select: {
+      id: true,
+      shopCode: true,
+      shopName: true,
+      businessType: true,
+      status: true,
+    },
+  });
+
+  if (!shop) {
+    return {
+      status: 404,
+      body: { message: "Shop not found." },
+    };
+  }
+
+  return { auth, shop };
+}
+
 async function requireOwnerShopContext(request: Parameters<typeof getAuthenticatedUser>[0]) {
   const auth = await getAuthenticatedUser(request);
 
@@ -748,7 +783,7 @@ router.get("/quick-setup/catalog", async (request, response) => {
 
 router.get("/products", async (request, response) => {
   try {
-    const context = await requireOwnerShopContext(request);
+    const context = await requireShopContext(request);
 
     if (isAuthError(context as any)) {
       return sendAuthError(response, context as any);
@@ -1314,6 +1349,216 @@ router.patch("/products/:shopProductId", async (request, response) => {
   } catch (error) {
     console.error("Failed to update shop product:", error);
     return response.status(503).json({ message: "Failed to update shop product." });
+  }
+});
+
+router.get("/me/taxes-charges", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const shopId = context.shop.id;
+
+    const taxes = await prisma.shopTax.findMany({
+      where: { shopId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const charges = await prisma.shopCharge.findMany({
+      where: { shopId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return response.json({ taxes, charges });
+  } catch (error) {
+    console.error("Failed to fetch taxes and charges:", error);
+    return response.status(500).json({ message: "Internal server error." });
+  }
+});
+
+router.post("/me/taxes", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const { name, rate, type } = request.body;
+
+    if (!name || rate === undefined) {
+      return response.status(400).json({ message: "Name and rate are required." });
+    }
+
+    const tax = await prisma.shopTax.create({
+      data: {
+        shopId: context.shop.id,
+        name,
+        rate: Number(rate),
+        type: type || "PERCENTAGE",
+        isActive: true,
+      },
+    });
+
+    return response.status(201).json(tax);
+  } catch (error) {
+    console.error("Failed to create tax:", error);
+    return response.status(500).json({ message: "Internal server error." });
+  }
+});
+
+router.post("/me/charges", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const { name, amount, type } = request.body;
+
+    if (!name || amount === undefined) {
+      return response.status(400).json({ message: "Name and amount are required." });
+    }
+
+    const charge = await prisma.shopCharge.create({
+      data: {
+        shopId: context.shop.id,
+        name,
+        amount: Number(amount),
+        type: type || "FIXED",
+        isActive: true,
+      },
+    });
+
+    return response.status(201).json(charge);
+  } catch (error) {
+    console.error("Failed to create charge:", error);
+    return response.status(500).json({ message: "Internal server error." });
+  }
+});
+
+router.patch("/me/taxes/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const { id } = request.params;
+    const { isActive, name, rate } = request.body;
+
+    await prisma.shopTax.updateMany({
+      where: { id, shopId: context.shop.id },
+      data: {
+        ...(isActive !== undefined && { isActive }),
+        ...(name && { name }),
+        ...(rate !== undefined && { rate: Number(rate) }),
+      },
+    });
+
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to update tax:", error);
+    return response.status(500).json({ message: "Internal server error." });
+  }
+});
+
+router.patch("/me/charges/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const { id } = request.params;
+    const { isActive, name, amount, type } = request.body;
+
+    await prisma.shopCharge.updateMany({
+      where: { id, shopId: context.shop.id },
+      data: {
+        ...(isActive !== undefined && { isActive }),
+        ...(name && { name }),
+        ...(amount !== undefined && { amount: Number(amount) }),
+        ...(type && { type }),
+      },
+    });
+
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to update charge:", error);
+    return response.status(500).json({ message: "Internal server error." });
+  }
+});
+
+router.delete("/me/taxes/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    await prisma.shopTax.deleteMany({
+      where: { id: request.params.id, shopId: context.shop.id },
+    });
+
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete tax:", error);
+    return response.status(500).json({ message: "Internal server error." });
+  }
+});
+
+router.delete("/me/charges/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    await prisma.shopCharge.deleteMany({
+      where: { id: request.params.id, shopId: context.shop.id },
+    });
+
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete charge:", error);
+    return response.status(500).json({ message: "Internal server error." });
   }
 });
 

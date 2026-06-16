@@ -235,6 +235,138 @@ Response:
 ```
 ```
 
+5. GET /app/api/shops/me/taxes-charges
+Owner only
+
+Response:
+```json
+{
+  "taxes": [
+    {
+      "id": "cmqtax001",
+      "shopId": "cmq97s07v000olx9ggnsov6v3",
+      "name": "VAT",
+      "rate": 15.00,
+      "type": "PERCENTAGE",
+      "isActive": true
+    }
+  ],
+  "charges": [
+    {
+      "id": "cmqcharge001",
+      "shopId": "cmq97s07v000olx9ggnsov6v3",
+      "name": "Delivery Charge",
+      "amount": 80.00,
+      "type": "FIXED",
+      "isActive": true
+    }
+  ]
+}
+```
+
+6. POST /app/api/shops/me/taxes
+Owner only
+
+Request:
+```json
+{
+  "name": "VAT",
+  "rate": 15,
+  "type": "PERCENTAGE"
+}
+```
+
+Response:
+```json
+{
+  "id": "cmqtax001",
+  "shopId": "cmq97s07v000olx9ggnsov6v3",
+  "name": "VAT",
+  "rate": 15,
+  "type": "PERCENTAGE",
+  "isActive": true
+}
+```
+
+7. POST /app/api/shops/me/charges
+Owner only
+
+Request:
+```json
+{
+  "name": "Delivery Charge",
+  "amount": 80,
+  "type": "FIXED"
+}
+```
+
+Response:
+```json
+{
+  "id": "cmqcharge001",
+  "shopId": "cmq97s07v000olx9ggnsov6v3",
+  "name": "Delivery Charge",
+  "amount": 80,
+  "type": "FIXED",
+  "isActive": true
+}
+```
+
+8. PATCH /app/api/shops/me/taxes/:id
+Owner only
+
+Request:
+```json
+{
+  "isActive": false
+}
+```
+
+Response:
+```json
+{
+  "success": true
+}
+```
+
+9. PATCH /app/api/shops/me/charges/:id
+Owner only
+
+Request:
+```json
+{
+  "isActive": false
+}
+```
+
+Response:
+```json
+{
+  "success": true
+}
+```
+
+10. DELETE /app/api/shops/me/taxes/:id
+Owner only
+
+Response:
+```json
+{
+  "success": true
+}
+```
+
+11. DELETE /app/api/shops/me/charges/:id
+Owner only
+
+Response:
+```json
+{
+  "success": true
+}
+```
+
+
 ###################Shop Local Product + Admin Approval APIs###################
 
 Use case:
@@ -392,9 +524,50 @@ Response:
 ###################Purchase Details / Due Payment / Return APIs###################
 
 1. GET /app/api/purchases?shopId=:shopId
+Description: Retrieve purchase history records for a shop.
+Query Params:
+  - `shopId` (string, required) - Shop ID/Code
 Example:
-```http
 GET http://localhost:4000/app/api/purchases?shopId=cmq97s07v000olx9ggnsov6v3
+
+Response (200 OK):
+```json
+{
+  "shopId": "RAHIMA677141",
+  "purchases": [
+    {
+      "id": "purchase_xxx",
+      "supplierId": "supplier_xxx",
+      "supplierName": "Abul Khair Group",
+      "supplierCode": "SUP-001",
+      "invoiceNo": "PO-10032",
+      "purchaseDate": "2026-06-11T10:30:00.000Z",
+      "status": "PENDING_APPROVAL",
+      "statusLabel": "PENDING APPROVAL",
+      "subtotalAmount": 3270,
+      "discountAmount": 100,
+      "extraChargeAmount": 30,
+      "totalAmount": 3200,
+      "paidAmount": 2500,
+      "dueAmount": 700,
+      "paymentMethod": "CASH",
+      "paymentDetails": null,
+      "invoiceFileName": "invoice-10032.jpg",
+      "notes": "আজকের ক্রয়",
+      "items": [
+        {
+          "id": "purchase_item_xxx",
+          "masterProductId": "prod_rice",
+          "name": "Miniket Rice (25kg)",
+          "sku": "PROD-RICE-25",
+          "quantity": 24,
+          "purchasePrice": 56,
+          "totalAmount": 1344
+        }
+      ]
+    }
+  ]
+}
 ```
 
 Response notes:
@@ -432,30 +605,145 @@ Response shape:
 - `purchase.returns[]`
 
 3. POST /app/api/purchases
-Request:
+Description: Create a new supplier purchase transaction.
+Request (CASH):
 ```json
 {
-  "shopId": "cmq97s07v000olx9ggnsov6v3",
-  "supplierId": "cmq9b3m0t0613lxglo6yxij6b",
-  "invoiceNo": "PUR-260613-101",
-  "discountAmount": 10,
-  "extraChargeAmount": 10,
-  "paidAmount": 400,
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "invoiceNo": "PO-10032",
+  "purchaseDate": "2026-06-11T10:30:00.000Z",
   "paymentMethod": "CASH",
-  "paymentDetails": null,
-  "invoiceFileName": null,
-  "notes": "Morning purchase",
+  "paidAmount": 2500,
+  "notes": "আজকের ক্রয় | Discount: 100 | Extra Charges: 80 | Invoice File: invoice-10032.jpg",
   "items": [
     {
-      "masterProductId": "cmq3qiahw0005lxru9rwwzl9",
-      "quantity": 10,
-      "purchasePrice": 42,
-      "batchNo": null,
-      "expiryDate": "2026-06-30"
+      "masterProductId": "prod_rice",
+      "quantity": 24,
+      "purchasePrice": 56,
+      "batchNo": "BATCH-240611-A",
+      "expiryDate": "2027-06-11T00:00:00.000Z"
+    },
+    {
+      "masterProductId": "prod_oil",
+      "quantity": 12,
+      "purchasePrice": 145
     }
   ]
 }
 ```
+
+Request (DUE):
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "invoiceNo": "PO-10033",
+  "paymentMethod": "DUE",
+  "paidAmount": 0,
+  "notes": "সম্পূর্ণ বাকি",
+  "items": [
+    {
+      "masterProductId": "prod_oil",
+      "quantity": 12,
+      "purchasePrice": 145
+    }
+  ]
+}
+```
+
+Request (bKash / Nagad):
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "paymentMethod": "BKASH",
+  "paidAmount": 3200,
+  "paymentDetails": {
+    "senderNumber": "01712345678",
+    "transactionId": "BKX99887766"
+  },
+  "items": [
+    {
+      "masterProductId": "prod_rice",
+      "quantity": 10,
+      "purchasePrice": 50
+    }
+  ]
+}
+```
+
+Request (Card):
+```json
+{
+  "shopId": "RAHIMA677141",
+  "supplierId": "supplier_xxx",
+  "paymentMethod": "CARD",
+  "paidAmount": 3200,
+  "paymentDetails": {
+    "cardHolderName": "Abdul Karim",
+    "cardLast4": "4589",
+    "cardType": "Visa",
+    "approvalCode": "APR77821"
+  },
+  "items": [
+    {
+      "masterProductId": "prod_rice",
+      "quantity": 10,
+      "purchasePrice": 50
+    }
+  ]
+}
+```
+
+Response (201 Created):
+```json
+{
+  "message": "Purchase created successfully.",
+  "purchase": {
+    "id": "purchase_xxx",
+    "shopId": "cmq_shop_001",
+    "supplierId": "supplier_xxx",
+    "supplierCode": "SUP-001",
+    "invoiceNo": "PO-10032",
+    "purchaseDate": "2026-06-11T10:30:00.000Z",
+    "status": "APPROVED",
+    "statusLabel": "APPROVED",
+    "subtotalAmount": 3270,
+    "discountAmount": 100,
+    "extraChargeAmount": 30,
+    "totalAmount": 3200,
+    "paidAmount": 2500,
+    "dueAmount": 700,
+    "paymentMethod": "CASH",
+    "paymentDetails": null,
+    "invoiceFileName": "invoice-10032.jpg",
+    "notes": "আজকের ক্রয়",
+    "items": [
+      {
+        "id": "purchase_item_xxx",
+        "masterProductId": "prod_rice",
+        "name": "Miniket Rice (25kg)",
+        "sku": "PROD-RICE-25",
+        "batchNo": "BATCH-240611-A",
+        "expiryDate": "2027-06-11T00:00:00.000Z",
+        "quantity": 24,
+        "purchasePrice": 56,
+        "totalAmount": 1344
+      }
+    ]
+  }
+}
+```
+
+Validation rules:
+- `CASH`: no extra input required
+- `BANK`: no extra input required
+- `BKASH` / `NAGAD`: `senderNumber` and `transactionId` required
+- `CARD`: `cardHolderName`, `cardLast4`, `cardType`, and `approvalCode` or `transactionId` required
+- `DUE`: `paidAmount` must be `0`
+- backend calculates `totalAmount` from items
+- backend calculates `dueAmount = totalAmount - paidAmount`
 
 Notes:
 - owner creates direct `APPROVED` purchase
@@ -549,6 +837,7 @@ Optional fields:
 - `name`
 - `email`
 - `notes`
+- `openingDue`
 - `status`
 
 Response:
@@ -610,22 +899,47 @@ Customer notes:
 These APIs are shop-wise and use the global customer master as the customer source.
 
 1. GET /app/api/customers?shopId=:shopIdOrCode
+Description: Retrieve all customers for a specific shop with financial summaries.
+Query Params:
+  - `shopId` (string, required) - Shop ID/Code
+  - `search` (string, optional) - Filter by name, code, mobile, email
 Example:
-```http
 GET http://localhost:4000/app/api/customers?shopId=SHOP-001
+
+Response (200 OK):
+```json
+{
+  "shop": {
+    "id": "shop_id",
+    "shopCode": "SHOP-CODE",
+    "shopName": "Shop Name"
+  },
+  "stats": {
+    "total": 1,
+    "totalSales": 12000,
+    "totalPaid": 8000,
+    "totalDue": 4000
+  },
+  "customers": [
+    {
+      "id": "customer_id",
+      "customerCode": "CUS-XYZ",
+      "name": "Customer Name",
+      "mobile": "017XXXXXXXX",
+      "address": "Customer Address",
+      "notes": "Customer notes/CreditLimit details",
+      "totalSales": 12000,
+      "totalPaid": 8000,
+      "due": 4000,
+      "storeCredit": 0,
+      "lastActivityAt": "2026-06-11T12:00:00.000Z"
+    }
+  ]
+}
 ```
 
-Response shape:
-- `shop`
-- `stats.totalSales`
-- `stats.totalPaid`
-- `stats.totalDue`
-- `customers[].totalSales`
-- `customers[].totalPaid`
-- `customers[].due`
-- `customers[].storeCredit`
-
 2. POST /app/api/customers/sales
+Description: Create a customer invoice, record the transaction, and update ledgers.
 Request:
 ```json
 {
@@ -634,6 +948,9 @@ Request:
   "invoiceNo": "SAL-240611-001",
   "paidAmount": 500,
   "storeCreditUsed": 0,
+  "discountAmount": 50,
+  "taxAmount": 15,
+  "chargeAmount": 10,
   "paymentMethod": "cash",
   "notes": "Partial payment received",
   "items": [
@@ -651,6 +968,19 @@ Request:
 }
 ```
 
+Response (201 Created):
+```json
+{
+  "message": "Customer sale created successfully.",
+  "sale": {
+    "id": "sale_id",
+    "totalAmount": 3000,
+    "paidAmount": 3000,
+    "dueAmount": 0
+  }
+}
+```
+
 Notes:
 - creates a shop-wise customer sale
 - creates customer ledger entries
@@ -659,18 +989,39 @@ Notes:
 - if `paymentMethod` is `CASH`, `BKASH`, or `NAGAD`, backend increases the matching money box balance
 
 3. GET /app/api/customers/:customerIdOrCode?shopId=:shopIdOrCode
+Description: Retrieve detailed profile stats and ledger history for a specific customer.
 Example:
-```http
 GET http://localhost:4000/app/api/customers/CUS-001?shopId=SHOP-001
-```
 
-Response shape:
-- `shop`
-- `customer.finance`
-- `customer.recentSales`
-- `customer.recentPayments`
-- `customer.recentTransactions`
-- `customer.storeCredit`
+Response (200 OK):
+```json
+{
+  "customer": {
+    "id": "customer_id",
+    "name": "Customer Name",
+    "mobile": "017XXXXXXXX",
+    "address": "Customer Address",
+    "notes": "[CreditLimit: 15000] Regular customer",
+    "storeCredit": 0,
+    "finance": {
+      "totalSales": 12000,
+      "totalPaid": 8000,
+      "due": 4000
+    },
+    "recentTransactions": [
+      {
+        "id": "ledger_entry_id",
+        "entryType": "SALE",
+        "referenceNo": "INV-123",
+        "debit": 12000,
+        "credit": 0,
+        "notes": "Products sale",
+        "entryDate": "2026-06-11T12:00:00.000Z"
+      }
+    ]
+  }
+}
+```
 
 4. GET /app/api/customers/:customerIdOrCode/sales?shopId=:shopIdOrCode
 Example:
@@ -679,6 +1030,7 @@ GET http://localhost:4000/app/api/customers/CUS-001/sales?shopId=SHOP-001
 ```
 
 5. POST /app/api/customers/:customerIdOrCode/payments
+Description: Record a payment collected from a customer to reduce their due.
 Request:
 ```json
 {
@@ -687,6 +1039,13 @@ Request:
   "paymentMethod": "cash",
   "referenceNo": "COLLECT-240611-001",
   "notes": "Due collection"
+}
+```
+
+Response (200 OK):
+```json
+{
+  "message": "Payment recorded successfully."
 }
 ```
 
@@ -881,37 +1240,81 @@ Daily closing notes:
 
 ###################Subscription APIs###################
 
-Use case:
+Purpose:
+- keep current subscription logic as `trial -> daily invoice -> payment -> active`
+- mobile app can show current subscription card, available billing explanation, payment history summary, and pay-now action
 - owner logs in and mobile app checks subscription access
 - unpaid owner is redirected to subscription page
 - owner submits exact daily payment
 - admin can inspect subscription + invoice + payment status by shop
 
-1. GET /app/api/subscriptions/me
+Important current billing logic:
+- new shop starts with `TRIAL`
+- current trial duration is `1 day`
+- when trial expires, backend creates daily invoice using:
+  - `billableAccounts * dailyRatePerAccount`
+- default daily rate per account is `10 BDT`
+- if today invoice is unpaid, access becomes blocked with status `GRACE`
+- after full payment, subscription returns to `ACTIVE`
+
+1. GET /app/api/subscriptions/me?shopId=:shopId
 Owner only
 
 Example:
-```http
-GET http://localhost:4000/app/api/subscriptions/me
+GET http://localhost:4000/app/api/subscriptions/me?shopId=RAHIMA677141
+
+Success response:
+```json
+{
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima General Store",
+    "status": "ACTIVE"
+  },
+  "subscription": {
+    "allowed": false,
+    "shopId": "cmq97s07v000olx9ggnsov6v3",
+    "status": "GRACE",
+    "tier": "BLOCKED",
+    "trialEndsAt": "2026-06-12T08:06:50.354Z",
+    "billingDate": "2026-06-13T18:00:00.000Z",
+    "billableAccounts": 1,
+    "ratePerAccount": 10,
+    "totalAmount": 10,
+    "paidAmount": 0,
+    "amountDue": 10,
+    "message": "Free trial ended. Please pay BDT 10 to continue using the app."
+  },
+  "invoice": {
+    "id": "invoice_today_xxx",
+    "billingDate": "2026-06-13T18:00:00.000Z",
+    "billableAccounts": 1,
+    "ratePerAccount": 10,
+    "totalAmount": 10,
+    "paidAmount": 0,
+    "status": "UNPAID"
+  }
+}
 ```
 
-Response shape:
-- `shop.id`
-- `shop.shopCode`
-- `shop.shopName`
-- `subscription.allowed`
-- `subscription.shopId`
-- `subscription.status`
-- `subscription.tier`
-- `subscription.trialEndsAt`
-- `subscription.billingDate`
-- `subscription.billableAccounts`
-- `subscription.ratePerAccount`
-- `subscription.totalAmount`
-- `subscription.paidAmount`
-- `subscription.amountDue`
-- `subscription.message`
-- `invoice`
+Possible subscription status values:
+- `TRIAL`
+- `ACTIVE`
+- `GRACE`
+- `SUSPENDED`
+- `CANCELLED`
+
+Possible tier values:
+- `TRIAL`
+- `PAID`
+- `BLOCKED`
+
+Notes:
+- `invoice` can be `null` while shop is still in trial
+- if trial is active, `allowed = true`, `amountDue = 0`, and `billingDate = null`
+- if invoice is fully paid, `allowed = true` and status becomes `ACTIVE`
+- if unpaid, app should show pay-now CTA using `amountDue`
 
 2. POST /app/api/subscriptions/payments
 Owner only
@@ -919,23 +1322,81 @@ Owner only
 Request:
 ```json
 {
+  "shopId": "RAHIMA677141",
   "amount": 10,
-  "method": "BKASH",
-  "trxId": "SUB-1001"
+  "method": "manual",
+  "trxId": "SUB-TRX-20260614-001"
 }
 ```
 
 Rules:
-- payment amount must equal today invoice due exactly
-- if today invoice is already paid, backend returns error
+- full remaining due must be paid exactly
+- partial payment is rejected
+- if today invoice is already paid, API returns error
+
+Success response:
+```json
+{
+  "message": "Subscription payment recorded successfully.",
+  "shop": {
+    "id": "cmq97s07v000olx9ggnsov6v3",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima General Store",
+    "status": "ACTIVE"
+  },
+  "payment": {
+    "id": "payment_xxx",
+    "invoiceId": "invoice_today_xxx",
+    "amount": 10,
+    "method": "manual",
+    "trxId": "SUB-TRX-20260614-001",
+    "status": "SUCCESS",
+    "paidAt": "2026-06-14T09:41:22.000Z"
+  },
+  "billableAccounts": 1,
+  "subscription": {
+    "allowed": true,
+    "shopId": "cmq97s07v000olx9ggnsov6v3",
+    "status": "ACTIVE",
+    "tier": "PAID",
+    "trialEndsAt": "2026-06-12T08:06:50.354Z",
+    "billingDate": "2026-06-13T18:00:00.000Z",
+    "billableAccounts": 1,
+    "ratePerAccount": 10,
+    "totalAmount": 10,
+    "paidAmount": 10,
+    "amountDue": 0,
+    "message": null
+  }
+}
+```
+
+Common errors:
+- `400` -> `shopId is required for subscription operations.`
+- `400` -> `Today's subscription invoice is already paid.`
+- `400` -> `Subscription payment must be exactly BDT :remainingAmount.`
+- `403` -> `Only shop owners can manage subscriptions.`
+- `403` -> `You can only manage the subscription for your own shop.`
+- `404` -> `Shop not found for the provided shopId.`
+- `503` -> `Subscription status could not be loaded right now.`
+- `503` -> `Subscription payment could not be recorded right now.`
+
+How mobile screen can use it:
+1. Load current card using `GET /app/api/subscriptions/me?shopId=:shopId`
+2. Show:
+   - current status from `subscription.status`
+   - due from `subscription.amountDue`
+   - billable count from `subscription.billableAccounts`
+   - current rate from `subscription.ratePerAccount`
+3. If `allowed = false`, show pay CTA
+4. Submit full due with `POST /app/api/subscriptions/payments`
+5. Reload `/me` after successful payment
 
 3. GET /app/api/subscriptions?shopId=:shopIdOrCode
 Admin only
 
 Example:
-```http
 GET http://localhost:4000/app/api/subscriptions?shopId=SHOP-001
-```
 
 Response shape:
 - `shop`
@@ -946,22 +1407,34 @@ Response shape:
 
 ###################Inventory Layout APIs###################
 
-Use case:
-- owner configures inventory mode
-- owner sees inventory dashboard summary
-- owner creates zones, racks, shelves, bins
-- owner assigns purchased stock into bins
+Purpose:
+- these APIs support the owner inventory layout flow
+- advanced rack mode uses: `zone -> rack -> shelf -> bin`
+- all inventory layout data is shop-wise
+- mobile owner screens now call these endpoints
+
+UI binding note:
+- rack mode summary cards come from `GET /app/api/inventory/dashboard`
+- normal mode summary cards and product list come from `GET /app/api/inventory/general-store`
+
+Auth rule:
+- these endpoints require logged-in `SHOP_OWNER` mobile session
+- use owner login first so auth cookie is available
 
 1. GET /app/api/inventory/mode
-Owner only
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/mode
+```
 
 Response:
 ```json
 {
   "shop": {
     "id": "shop_xxx",
-    "shopCode": "SHOP-001",
-    "shopName": "Rahima Grocery"
+    "shopCode": "RAHIMG292804",
+    "shopName": "Rahima Grocery Store",
+    "status": "ACTIVE"
   },
   "mode": "RACK",
   "configured": true
@@ -969,8 +1442,6 @@ Response:
 ```
 
 2. POST /app/api/inventory/mode
-Owner only
-
 Request:
 ```json
 {
@@ -978,93 +1449,259 @@ Request:
 }
 ```
 
-3. GET /app/api/inventory/dashboard
-Owner only
-
-Response shape:
-- `shop`
-- `mode`
-- `configured`
-- `summary.zones`
-- `summary.racks`
-- `summary.shelves`
-- `summary.bins`
-- `alerts.attentionCount`
-
-4. GET /app/api/inventory/attention
-Owner only
-
-Response notes:
-- returns low and expired bins
-- mobile app uses this for inventory alert cards
-
-5. GET /app/api/inventory/general-store
-Owner only
-
-Response notes:
-- used when inventory mode is `GENERAL`
-- returns product-wise stock summary
-
-6. GET /app/api/inventory/zones
-Owner only
-
-Response notes:
-- returns `zones[]`
-- each zone includes rack/shelf/bin counts
-
-7. POST /app/api/inventory/zones
-Owner only
-
-Request:
+Response:
 ```json
 {
-  "name": "গ্রোসারি জোন",
-  "subtitle": "নতুন স্টোরেজ জোন",
-  "icon": "map"
+  "message": "Shop inventory mode updated successfully.",
+  "mode": "RACK"
 }
 ```
 
-8. GET /app/api/inventory/racks?zoneId=:zoneId
-Owner only
+3. GET /app/api/inventory/dashboard
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/dashboard
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "shop_xxx",
+    "shopCode": "RAHIMG292804",
+    "shopName": "Rahima Grocery Store"
+  },
+  "mode": "RACK",
+  "configured": true,
+  "summary": {
+    "zones": 2,
+    "racks": 4,
+    "shelves": 16,
+    "bins": 128
+  },
+  "alerts": {
+    "attentionCount": 3
+  }
+}
+```
+
+4. GET /app/api/inventory/attention
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/attention
+```
+
+Response:
+```json
+{
+  "attentionList": [
+    {
+      "binId": "bin_xxx",
+      "code": "A-R1-S1-B3",
+      "productName": "আটা ৫ কেজি",
+      "status": "LOW",
+      "quantityLabel": "৫ পিস",
+      "daysLabel": "৩ দিন"
+    }
+  ]
+}
+```
+
+5. GET /app/api/inventory/general-store
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/general-store
+```
+
+Response:
+```json
+{
+  "summary": {
+    "totalProducts": 320,
+    "assignedProducts": 280,
+    "unassignedProducts": 40
+  },
+  "unassignedList": [
+    {
+      "masterProductId": "prod_xxx",
+      "name": "মিনিকেট চাল ২৫ কেজি",
+      "sku": "CHAL-MIN-25",
+      "stock": 12
+    }
+  ]
+}
+```
+
+6. GET /app/api/inventory/zones
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/zones
+```
+
+Response:
+```json
+{
+  "zones": [
+    {
+      "id": "zone_xxx",
+      "name": "গোডাউন এ",
+      "code": "Z-A",
+      "notes": "প্রধান গোডাউন",
+      "racksCount": 2,
+      "createdAt": "2026-06-11T09:00:00.000Z"
+    }
+  ]
+}
+```
+
+7. POST /app/api/inventory/zones
+Request:
+```json
+{
+  "name": "গোডাউন এ",
+  "code": "Z-A",
+  "notes": "প্রধান গোডাউন"
+}
+```
+
+Response:
+```json
+{
+  "message": "Zone created successfully.",
+  "zone": {
+    "id": "zone_xxx",
+    "name": "গোডাউন এ",
+    "code": "Z-A"
+  }
+}
+```
+
+8. GET /app/api/inventory/racks
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/racks
+GET http://localhost:4000/app/api/inventory/racks?zoneId=zone_xxx
+```
+
+Response:
+```json
+{
+  "racks": [
+    {
+      "id": "rack_xxx",
+      "zoneId": "zone_xxx",
+      "zoneName": "গোডাউন এ",
+      "name": "র্যাক ১",
+      "notes": "মেইন র্যাক",
+      "shelvesCount": 4,
+      "createdAt": "2026-06-11T09:15:00.000Z"
+    }
+  ]
+}
+```
 
 9. POST /app/api/inventory/racks
-Owner only
-
 Request:
 ```json
 {
   "zoneId": "zone_xxx",
   "name": "র্যাক ১",
-  "note": "মেইন র্যাক",
+  "notes": "মেইন র্যাক",
   "shelfCount": 4,
   "binsPerShelf": 8,
   "autoGenerate": true
 }
 ```
 
-Notes:
-- if `autoGenerate = true`, backend auto-creates shelves and bins
+Response:
+```json
+{
+  "message": "Rack created successfully.",
+  "rack": {
+    "id": "rack_xxx",
+    "name": "র্যাক ১",
+    "shelvesCreated": 4,
+    "binsCreated": 32
+  }
+}
+```
 
-10. GET /app/api/inventory/shelves?zoneId=:zoneId&rackId=:rackId
-Owner only
+10. GET /app/api/inventory/shelves
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/shelves?zoneId=zone_xxx
+GET http://localhost:4000/app/api/inventory/shelves?zoneId=zone_xxx&rackId=rack_xxx
+```
 
-11. GET /app/api/inventory/bins?zoneId=:zoneId&rackId=:rackId&shelfId=:shelfId
-Owner only
+Response:
+```json
+{
+  "shelves": [
+    {
+      "id": "shelf_xxx",
+      "rackId": "rack_xxx",
+      "name": "তাক ১",
+      "code": "S1",
+      "binsCount": 8,
+      "createdAt": "2026-06-11T09:20:00.000Z"
+    }
+  ]
+}
+```
+
+11. GET /app/api/inventory/bins
+Example:
+```http
+GET http://localhost:4000/app/api/inventory/bins?zoneId=zone_xxx
+GET http://localhost:4000/app/api/inventory/bins?zoneId=zone_xxx&rackId=rack_xxx&shelfId=shelf_xxx
+```
+
+Response:
+```json
+{
+  "bins": [
+    {
+      "id": "bin_xxx",
+      "shelfId": "shelf_xxx",
+      "code": "A-R1-S1-B1",
+      "productName": "মিনিকেট চাল ২৫ কেজি",
+      "status": "NORMAL",
+      "quantityLabel": "১২ পিস",
+      "daysLabel": "১০ দিন",
+      "createdAt": "2026-06-11T09:30:00.000Z"
+    }
+  ]
+}
+```
 
 12. POST /app/api/inventory/bins
-Owner only
-
 Request:
 ```json
 {
   "zoneId": "zone_xxx",
   "rackId": "rack_xxx",
   "shelfId": "shelf_xxx",
-  "code": "G-R1-S1-B1",
-  "productName": "",
-  "status": "EMPTY",
-  "quantityLabel": "খালি",
-  "daysLabel": "খালি"
+  "code": "A-A-S2-B2",
+  "productName": "চিনি"
+}
+```
+
+Response:
+```json
+{
+  "message": "Custom bin created successfully.",
+  "bin": {
+    "id": "bin_yyy",
+    "rackId": "rack_xxx",
+    "shelfId": "shelf_xxx",
+    "code": "A-A-S2-B2",
+    "productName": "চিনি",
+    "status": "LOW",
+    "quantityLabel": "২ পিস",
+    "daysLabel": "২ দিন",
+    "createdAt": "2026-06-11T09:40:00.000Z",
+    "updatedAt": "2026-06-11T09:40:00.000Z"
+  }
 }
 ```
 
@@ -1085,6 +1722,18 @@ Request shape:
 - `items[].batchNo`
 - `items[].expiryDate`
 - `items[].productName`
+
+Inventory testing order:
+1. login as owner
+2. call `POST /app/api/inventory/mode`
+3. if mode is `GENERAL`, call `GET /app/api/inventory/general-store`
+4. if mode is `RACK`, call `POST /app/api/inventory/zones`
+5. then call `POST /app/api/inventory/racks`
+6. then call `GET /app/api/inventory/dashboard`
+7. then call `GET /app/api/inventory/zones`
+8. then call `GET /app/api/inventory/racks?zoneId=...`
+9. then call `GET /app/api/inventory/shelves?zoneId=...`
+10. then call `GET /app/api/inventory/bins?zoneId=...`
 
 ###################Expense APIs###################
 
@@ -1853,151 +2502,15 @@ Important backend behavior for `POST /app/api/suppliers` from purchase flow:
 
 Purchase list API:
 - GET /app/api/purchases?shopId=RAHIMA677141
-
-Example response:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "purchases": [
-    {
-      "id": "purchase_xxx",
-      "supplierId": "supplier_xxx",
-      "supplierName": "Abul Khair Group",
-      "supplierCode": "SUP-001",
-      "invoiceNo": "PO-10032",
-      "purchaseDate": "2026-06-11T10:30:00.000Z",
-      "status": "PENDING_APPROVAL",
-      "statusLabel": "PENDING APPROVAL",
-      "subtotalAmount": 3270,
-      "discountAmount": 100,
-      "extraChargeAmount": 30,
-      "totalAmount": 3200,
-      "paidAmount": 2500,
-      "dueAmount": 700,
-      "paymentMethod": "CASH",
-      "paymentDetails": null,
-      "invoiceFileName": "invoice-10032.jpg",
-      "notes": "আজকের ক্রয়",
-      "items": [
-        {
-          "id": "purchase_item_xxx",
-          "masterProductId": "prod_rice",
-          "name": "Miniket Rice (25kg)",
-          "sku": "PROD-RICE-25",
-          "quantity": 24,
-          "purchasePrice": 56,
-          "totalAmount": 1344
-        }
-      ]
-    }
-  ]
-}
-```
+(Note: See section "Purchase Details / Due Payment / Return APIs" for full documentation and example responses.)
 
 Single purchase details API:
 - GET /app/api/purchases/:purchaseId
+(Note: See section "Purchase Details / Due Payment / Return APIs" for full documentation.)
 
 Create purchase API:
 - POST /app/api/purchases
-
-Example request for cash:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "supplierId": "supplier_xxx",
-  "invoiceNo": "PO-10032",
-  "purchaseDate": "2026-06-11T10:30:00.000Z",
-  "paymentMethod": "CASH",
-  "paidAmount": 2500,
-  "notes": "আজকের ক্রয় | Discount: 100 | Extra Charges: 80 | Invoice File: invoice-10032.jpg",
-  "items": [
-    {
-      "masterProductId": "prod_rice",
-      "quantity": 24,
-      "purchasePrice": 56,
-      "batchNo": "BATCH-240611-A",
-      "expiryDate": "2027-06-11T00:00:00.000Z"
-    },
-    {
-      "masterProductId": "prod_oil",
-      "quantity": 12,
-      "purchasePrice": 145
-    }
-  ]
-}
-```
-
-Example request for due:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "supplierId": "supplier_xxx",
-  "invoiceNo": "PO-10033",
-  "paymentMethod": "DUE",
-  "paidAmount": 0,
-  "notes": "সম্পূর্ণ বাকি",
-  "items": [
-    {
-      "masterProductId": "prod_oil",
-      "quantity": 12,
-      "purchasePrice": 145
-    }
-  ]
-}
-```
-
-Example request for bKash / Nagad:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "supplierId": "supplier_xxx",
-  "paymentMethod": "BKASH",
-  "paidAmount": 3200,
-  "paymentDetails": {
-    "senderNumber": "01712345678",
-    "transactionId": "BKX99887766"
-  },
-  "items": [
-    {
-      "masterProductId": "prod_rice",
-      "quantity": 10,
-      "purchasePrice": 50
-    }
-  ]
-}
-```
-
-Example request for card:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "supplierId": "supplier_xxx",
-  "paymentMethod": "CARD",
-  "paidAmount": 3200,
-  "paymentDetails": {
-    "cardHolderName": "Abdul Karim",
-    "cardLast4": "4589",
-    "cardType": "Visa",
-    "approvalCode": "APR77821"
-  },
-  "items": [
-    {
-      "masterProductId": "prod_rice",
-      "quantity": 10,
-      "purchasePrice": 50
-    }
-  ]
-}
-```
-
-Validation rules:
-- `CASH`: no extra input required
-- `BANK`: no extra input required
-- `BKASH` / `NAGAD`: `senderNumber` and `transactionId` required
-- `CARD`: `cardHolderName`, `cardLast4`, `cardType`, and `approvalCode` or `transactionId` required
-- `DUE`: `paidAmount` must be `0`
-- backend calculates `totalAmount` from items
-- backend calculates `dueAmount = totalAmount - paidAmount`
+(Note: See section "Purchase Details / Due Payment / Return APIs" for full documentation and examples.)
 
 Approve pending purchase:
 - PATCH /app/api/purchases/:purchaseId/approve?shopId=RAHIMA677141
@@ -2014,61 +2527,7 @@ Reject request body example:
 
 Create supplier from purchase screen:
 - POST /app/api/suppliers
-
-Example request:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "companyOrPersonName": "Akij Foods Supplier",
-  "mobile": "01722334455",
-  "email": "supplier@example.com",
-  "address": "Tejgaon, Dhaka",
-  "productType": "Beverages, Snacks",
-  "shortNote": "[CreditLimit: 5000] Monday delivery",
-  "dueAmount": 1200,
-  "sendWhatsAppInvite": true
-}
-```
-
-Success response shape for purchase create:
-```json
-{
-  "message": "Purchase created successfully.",
-  "purchase": {
-    "id": "purchase_xxx",
-    "shopId": "cmq_shop_001",
-    "supplierId": "supplier_xxx",
-    "supplierCode": "SUP-001",
-    "invoiceNo": "PO-10032",
-    "purchaseDate": "2026-06-11T10:30:00.000Z",
-    "status": "APPROVED",
-    "statusLabel": "APPROVED",
-    "subtotalAmount": 3270,
-    "discountAmount": 100,
-    "extraChargeAmount": 30,
-    "totalAmount": 3200,
-    "paidAmount": 2500,
-    "dueAmount": 700,
-    "paymentMethod": "CASH",
-    "paymentDetails": null,
-    "invoiceFileName": "invoice-10032.jpg",
-    "notes": "আজকের ক্রয়",
-    "items": [
-      {
-        "id": "purchase_item_xxx",
-        "masterProductId": "prod_rice",
-        "name": "Miniket Rice (25kg)",
-        "sku": "PROD-RICE-25",
-        "batchNo": "BATCH-240611-A",
-        "expiryDate": "2027-06-11T00:00:00.000Z",
-        "quantity": 24,
-        "purchasePrice": 56,
-        "totalAmount": 1344
-      }
-    ]
-  }
-}
-```
+(Note: See section "Add Supplier For Specific Shop" for full documentation and validation rules.)
 
 ###################Supplier Payment Method Details###################
 
@@ -2078,6 +2537,14 @@ Purpose:
 
 API:
 - POST /app/api/suppliers/:supplierIdOrCode/payments?shopId=RAHIMA677141
+Description: Record a payment made to a supplier to reduce বকেয়া (due).
+
+Response (200 OK):
+```json
+{
+  "message": "Supplier payment recorded successfully."
+}
+```
 
 Cash request:
 ```json
@@ -2128,242 +2595,7 @@ Journey:
 2. OTP screen
 3. Dashboard
 
-###################Subscription APIs For Mobile App###################
 
-Purpose:
-- keep current subscription logic as `trial -> daily invoice -> payment -> active`
-- mobile app can show current subscription card, available billing explanation, payment history summary, and pay-now action
-- these APIs are only for `SHOP_OWNER`
-- these APIs are only for `MOBILE` app auth
-
-Important current billing logic:
-- new shop starts with `TRIAL`
-- current trial duration is `1 day`
-- when trial expires, backend creates daily invoice using:
-  - `billableAccounts * dailyRatePerAccount`
-- default daily rate per account is `10 BDT`
-- if today invoice is unpaid, access becomes blocked with status `GRACE`
-- after full payment, subscription returns to `ACTIVE`
-
-1. GET /app/api/subscriptions/me?shopId=:shopId
-
-Example:
-GET http://localhost:4000/app/api/subscriptions/me?shopId=RAHIMA677141
-
-Success response:
-```json
-{
-  "shop": {
-    "id": "cmq97s07v000olx9ggnsov6v3",
-    "shopCode": "RAHIMA677141",
-    "shopName": "Rahima General Store",
-    "status": "ACTIVE"
-  },
-  "subscription": {
-    "allowed": false,
-    "shopId": "cmq97s07v000olx9ggnsov6v3",
-    "status": "GRACE",
-    "tier": "BLOCKED",
-    "trialEndsAt": "2026-06-12T08:06:50.354Z",
-    "billingDate": "2026-06-13T18:00:00.000Z",
-    "billableAccounts": 1,
-    "ratePerAccount": 10,
-    "totalAmount": 10,
-    "paidAmount": 0,
-    "amountDue": 10,
-    "message": "Free trial ended. Please pay BDT 10 to continue using the app."
-  },
-  "invoice": {
-    "id": "invoice_today_xxx",
-    "billingDate": "2026-06-13T18:00:00.000Z",
-    "billableAccounts": 1,
-    "ratePerAccount": 10,
-    "totalAmount": 10,
-    "paidAmount": 0,
-    "status": "UNPAID"
-  }
-}
-```
-
-Possible subscription status values:
-- `TRIAL`
-- `ACTIVE`
-- `GRACE`
-- `SUSPENDED`
-- `CANCELLED`
-
-Possible tier values:
-- `TRIAL`
-- `PAID`
-- `BLOCKED`
-
-Notes:
-- `invoice` can be `null` while shop is still in trial
-- if trial is active, `allowed = true`, `amountDue = 0`, and `billingDate = null`
-- if invoice is fully paid, `allowed = true` and status becomes `ACTIVE`
-- if unpaid, app should show pay-now CTA using `amountDue`
-
-2. POST /app/api/subscriptions/payments
-
-Request:
-```json
-{
-  "shopId": "RAHIMA677141",
-  "amount": 10,
-  "method": "manual",
-  "trxId": "SUB-TRX-20260614-001"
-}
-```
-
-Rules:
-- full remaining due must be paid exactly
-- partial payment is rejected
-- if today invoice is already paid, API returns error
-
-Success response:
-```json
-{
-  "message": "Subscription payment recorded successfully.",
-  "shop": {
-    "id": "cmq97s07v000olx9ggnsov6v3",
-    "shopCode": "RAHIMA677141",
-    "shopName": "Rahima General Store",
-    "status": "ACTIVE"
-  },
-  "payment": {
-    "id": "payment_xxx",
-    "invoiceId": "invoice_today_xxx",
-    "amount": 10,
-    "method": "manual",
-    "trxId": "SUB-TRX-20260614-001",
-    "status": "SUCCESS",
-    "paidAt": "2026-06-14T09:41:22.000Z"
-  },
-  "billableAccounts": 1,
-  "subscription": {
-    "allowed": true,
-    "shopId": "cmq97s07v000olx9ggnsov6v3",
-    "status": "ACTIVE",
-    "tier": "PAID",
-    "trialEndsAt": "2026-06-12T08:06:50.354Z",
-    "billingDate": "2026-06-13T18:00:00.000Z",
-    "billableAccounts": 1,
-    "ratePerAccount": 10,
-    "totalAmount": 10,
-    "paidAmount": 10,
-    "amountDue": 0,
-    "message": null
-  }
-}
-```
-
-Common errors:
-- `400` -> `shopId is required for subscription operations.`
-- `400` -> `Today's subscription invoice is already paid.`
-- `400` -> `Subscription payment must be exactly BDT :remainingAmount.`
-- `403` -> `Only shop owners can manage subscriptions.`
-- `403` -> `You can only manage the subscription for your own shop.`
-- `404` -> `Shop not found for the provided shopId.`
-- `503` -> `Subscription status could not be loaded right now.`
-- `503` -> `Subscription payment could not be recorded right now.`
-
-How mobile screen can use it:
-1. Load current card using `GET /app/api/subscriptions/me?shopId=:shopId`
-2. Show:
-   - current status from `subscription.status`
-   - due from `subscription.amountDue`
-   - billable count from `subscription.billableAccounts`
-   - current rate from `subscription.ratePerAccount`
-3. If `allowed = false`, show pay CTA
-4. Submit full due with `POST /app/api/subscriptions/payments`
-5. Reload `/me` after successful payment
-
-Rules:
-- Same as owner login flow
-- Salesman must send shop code in login
-- After password verify, OTP is sent manually by a separate API
-- OTP expires after 2 minutes
-- Exact salesman login APIs:
-  - POST /app/api/auth/salesmans-login
-  - POST /app/api/auth/salesmans-login-otp
-  - POST /app/api/auth/salesmans-verify-otp
-
-1. POST /app/api/auth/salesmans-login
-Request:
-{
-  "mobile": "01712345680",
-  "password": "1234",
-  "shopId": "RAHIMG292804"
-}
-
-Response:
-{
-  "message": "Salesman credentials verified successfully.",
-  "verified": true,
-  "requiresOtp": true,
-  "nextStep": "/app/api/auth/salesmans-login-otp",
-  "salesman": {
-    "id": "user_xxx",
-    "name": "Salesman Name",
-    "mobile": "01712345680"
-  },
-  "shop": {
-    "id": "cmq68nqx90004lxxkbrncleq7",
-    "shopCode": "RAHIMG292804"
-  }
-}
-
-2. POST /app/api/auth/salesmans-login-otp
-Request:
-{
-  "mobile": "01712345680",
-  "password": "1234",
-  "shopId": "RAHIMG292804"
-}
-
-Response:
-{
-  "message": "Password verified. OTP sent successfully.",
-  "loginRequestId": "otp_request_xxx",
-  "expiresAt": "2026-06-10T06:20:00.000Z",
-  "expiresInSeconds": 120,
-  "demoOtp": "1234",
-  "requiresOtp": true
-}
-
-3. POST /app/api/auth/salesmans-verify-otp
-Request:
-{
-  "loginRequestId": "otp_request_xxx",
-  "mobile": "01712345680",
-  "otp": "1234"
-}
-
-Response:
-{
-  "message": "Login successful.",
-  "authenticated": true,
-  "redirectTo": "/shop/dashboard",
-  "role": "SALESMAN",
-  "appType": "MOBILE",
-  "user": {
-    "id": "user_xxx",
-    "name": "Salesman Name",
-    "mobile": "01712345680"
-  },
-  "shop": {
-    "id": "cmq68nqx90004lxxkbrncleq7",
-    "shopCode": "RAHIMG292804"
-  }
-}
-
-Demo test flow:
-1. Call POST /app/api/auth/salesmans-login
-2. If verified, call POST /app/api/auth/salesmans-login-otp
-3. Copy loginRequestId from the response
-4. Copy demoOtp from the response or backend console log
-5. Call POST /app/api/auth/salesmans-verify-otp
-6. If OTP is correct, salesman login is completed
 
 ###################Create Salesman API###################
 
@@ -2432,370 +2664,6 @@ Note:
 - Example shop code: `RAHIMG292804`
 - internal database `id` is still returned for backend use
 
-###################Inventory Layout APIs###################
-
-Purpose:
-- these APIs support the owner inventory layout flow
-- advanced rack mode uses: `zone -> rack -> shelf -> bin`
-- all inventory layout data is shop-wise
-- mobile owner screens now call these endpoints
-
-UI binding note:
-- rack mode summary cards come from `GET /app/api/inventory/dashboard`
-- normal mode summary cards and product list come from `GET /app/api/inventory/general-store`
-
-Auth rule:
-- these endpoints require logged-in `SHOP_OWNER` mobile session
-- use owner login first so auth cookie is available
-
-1. GET /app/api/inventory/mode
-Example:
-```http
-GET http://localhost:4000/app/api/inventory/mode
-```
-
-Response:
-```json
-{
-  "shop": {
-    "id": "shop_xxx",
-    "shopCode": "RAHIMG292804",
-    "shopName": "Rahima Grocery Store",
-    "status": "ACTIVE"
-  },
-  "mode": "RACK",
-  "configured": true
-}
-```
-
-2. POST /app/api/inventory/mode
-Request:
-```json
-{
-  "mode": "RACK"
-}
-```
-
-Response:
-```json
-{
-  "message": "Inventory mode saved successfully.",
-  "setting": {
-    "id": "inv_setting_xxx",
-    "shopId": "shop_xxx",
-    "mode": "RACK"
-  },
-  "configured": true
-}
-```
-
-3. GET /app/api/inventory/dashboard
-Example:
-```http
-GET http://localhost:4000/app/api/inventory/dashboard
-```
-
-Response:
-```json
-{
-  "shop": {
-    "id": "shop_xxx",
-    "shopCode": "RAHIMG292804",
-    "shopName": "Rahima Grocery Store",
-    "status": "ACTIVE"
-  },
-  "mode": "RACK",
-  "configured": true,
-  "summary": {
-    "zones": 5,
-    "racks": 12,
-    "shelves": 36,
-    "bins": 115
-  },
-  "alerts": {
-    "attentionCount": 3
-  }
-}
-```
-
-4. GET /app/api/inventory/attention
-Example:
-```http
-GET http://localhost:4000/app/api/inventory/attention
-```
-
-Response shape:
-- `bins[].code`
-- `bins[].productName`
-- `bins[].status`
-- `bins[].quantityLabel`
-- `bins[].daysLabel`
-
-5. GET /app/api/inventory/general-store
-Purpose:
-- used for `GENERAL` / normal inventory mode
-- no zone
-- no rack
-- no shelf
-- no bin
-- all shop products are stored in one location: `Main Store`
-
-Example:
-```http
-GET http://localhost:4000/app/api/inventory/general-store
-```
-
-Response:
-```json
-{
-  "shop": {
-    "id": "shop_xxx",
-    "shopCode": "RAHIMG292804",
-    "shopName": "Rahima Grocery Store",
-    "status": "ACTIVE"
-  },
-  "store": {
-    "id": "main-store",
-    "name": "Main Store",
-    "mode": "GENERAL"
-  },
-  "summary": {
-    "totalProducts": 12,
-    "lowStockProducts": 2,
-    "outOfStockProducts": 1
-  },
-  "products": [
-    {
-      "id": "shop_product_xxx",
-      "masterProductId": "product_xxx",
-      "name": "Miniket Rice (25kg)",
-      "sku": "PROD-RICE-25",
-      "packageSize": "25kg Sack",
-      "stock": 40,
-      "salePrice": 1650,
-      "status": "IN_STOCK"
-    },
-    {
-      "id": "shop_product_yyy",
-      "masterProductId": "product_yyy",
-      "name": "Fresh Sugar (1kg)",
-      "sku": "PROD-SUG-1",
-      "packageSize": "1kg Packet",
-      "stock": 3,
-      "salePrice": 135,
-      "status": "LOW"
-    }
-  ]
-}
-```
-
-General mode note:
-- this is the proper API for normal inventory mode
-- if mode is `GENERAL`, use `general-store`
-- do not show rack/bin workflow for this mode
-- `Main Store` is the only storage location in this mode
-
-6. GET /app/api/inventory/zones
-Example:
-```http
-GET http://localhost:4000/app/api/inventory/zones
-```
-
-Response:
-```json
-{
-  "shop": {
-    "id": "shop_xxx",
-    "shopCode": "RAHIMG292804",
-    "shopName": "Rahima Grocery Store",
-    "status": "ACTIVE"
-  },
-  "zones": [
-    {
-      "id": "zone_xxx",
-      "name": "গ্রোসারি জোন",
-      "subtitle": "চাল, ডাল, মশলা এবং রান্নার পণ্য",
-      "icon": "map",
-      "rackCount": 3,
-      "shelfCount": 12,
-      "binCount": 48,
-      "createdAt": "2026-06-11T09:00:00.000Z",
-      "updatedAt": "2026-06-11T09:00:00.000Z"
-    }
-  ]
-}
-```
-
-7. POST /app/api/inventory/zones
-Request:
-```json
-{
-  "name": "গ্রোসারি জোন",
-  "subtitle": "চাল, ডাল, মশলা এবং রান্নার পণ্য",
-  "icon": "map"
-}
-```
-
-Response:
-```json
-{
-  "message": "Inventory zone created successfully.",
-  "zone": {
-    "id": "zone_xxx",
-    "name": "গ্রোসারি জোন",
-    "subtitle": "চাল, ডাল, মশলা এবং রান্নার পণ্য",
-    "icon": "map",
-    "rackCount": 0,
-    "shelfCount": 0,
-    "binCount": 0,
-    "createdAt": "2026-06-11T09:10:00.000Z",
-    "updatedAt": "2026-06-11T09:10:00.000Z"
-  }
-}
-```
-
-8. GET /app/api/inventory/racks
-Optional query:
-- `zoneId`
-
-Examples:
-```http
-GET http://localhost:4000/app/api/inventory/racks
-GET http://localhost:4000/app/api/inventory/racks?zoneId=zone_xxx
-```
-
-9. POST /app/api/inventory/racks
-Request:
-```json
-{
-  "zoneId": "zone_xxx",
-  "name": "র্যাক A",
-  "note": "চাল, ডাল ঠিক",
-  "shelfCount": 8,
-  "binsPerShelf": 8,
-  "autoGenerate": true
-}
-```
-
-Response:
-```json
-{
-  "message": "Inventory rack created successfully.",
-  "rack": {
-    "id": "rack_xxx",
-    "zoneId": "zone_xxx",
-    "name": "র্যাক A",
-    "note": "চাল, ডাল ঠিক",
-    "shelfCount": 8,
-    "totalBins": 64,
-    "usedBins": 0,
-    "createdAt": "2026-06-11T09:20:00.000Z",
-    "updatedAt": "2026-06-11T09:20:00.000Z"
-  },
-  "shelves": [
-    {
-      "id": "shelf_xxx",
-      "zoneId": "zone_xxx",
-      "rackId": "rack_xxx",
-      "name": "র্যাক A - Shelf 1",
-      "totalBins": 8,
-      "usedBins": 0
-    }
-  ],
-  "bins": [
-    {
-      "id": "bin_xxx",
-      "zoneId": "zone_xxx",
-      "rackId": "rack_xxx",
-      "shelfId": "shelf_xxx",
-      "code": "গ-A-S1-B1",
-      "productName": "খালি",
-      "status": "EMPTY",
-      "quantityLabel": "খালি",
-      "daysLabel": "খালি"
-    }
-  ]
-}
-```
-
-Notes:
-- if `autoGenerate=true`, backend auto-creates shelves and bins
-- bin code format is generated automatically
-- shelf names are generated uniquely, for example:
-  - `Rack A - Shelf 1`
-  - `Rack A - Shelf 2`
-  - `Rack A - Shelf 3`
-- if no zone exists yet, create a zone first before calling `POST /app/api/inventory/racks`
-
-10. GET /app/api/inventory/shelves
-Optional query:
-- `zoneId`
-- `rackId`
-
-Examples:
-```http
-GET http://localhost:4000/app/api/inventory/shelves?zoneId=zone_xxx
-GET http://localhost:4000/app/api/inventory/shelves?zoneId=zone_xxx&rackId=rack_xxx
-```
-
-11. GET /app/api/inventory/bins
-Optional query:
-- `zoneId`
-- `rackId`
-- `shelfId`
-
-Examples:
-```http
-GET http://localhost:4000/app/api/inventory/bins?zoneId=zone_xxx
-GET http://localhost:4000/app/api/inventory/bins?zoneId=zone_xxx&rackId=rack_xxx&shelfId=shelf_xxx
-```
-
-12. POST /app/api/inventory/bins
-Request:
-```json
-{
-  "zoneId": "zone_xxx",
-  "rackId": "rack_xxx",
-  "shelfId": "shelf_xxx",
-  "code": "A-A-S2-B2",
-  "productName": "চিনি",
-  "status": "LOW",
-  "quantityLabel": "২ পিস",
-  "daysLabel": "২ দিন"
-}
-```
-
-Response:
-```json
-{
-  "message": "Inventory bin created successfully.",
-  "bin": {
-    "id": "bin_xxx",
-    "zoneId": "zone_xxx",
-    "rackId": "rack_xxx",
-    "shelfId": "shelf_xxx",
-    "code": "A-A-S2-B2",
-    "productName": "চিনি",
-    "status": "LOW",
-    "quantityLabel": "২ পিস",
-    "daysLabel": "২ দিন",
-    "createdAt": "2026-06-11T09:40:00.000Z",
-    "updatedAt": "2026-06-11T09:40:00.000Z"
-  }
-}
-```
-
-Inventory testing order:
-1. login as owner
-2. call `POST /app/api/inventory/mode`
-3. if mode is `GENERAL`, call `GET /app/api/inventory/general-store`
-4. if mode is `RACK`, call `POST /app/api/inventory/zones`
-5. then call `POST /app/api/inventory/racks`
-6. then call `GET /app/api/inventory/dashboard`
-7. then call `GET /app/api/inventory/zones`
-8. then call `GET /app/api/inventory/racks?zoneId=...`
-9. then call `GET /app/api/inventory/shelves?zoneId=...`
-10. then call `GET /app/api/inventory/bins?zoneId=...`
 
 ###################Mobile Reports & Analytics APIs###################
 

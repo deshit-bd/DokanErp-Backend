@@ -165,7 +165,26 @@ function validatePinRules(pin: string) {
 }
 
 function normalizeMobile(value?: string | null) {
-  return value?.trim() ?? "";
+  if (!value) return "";
+  const trimmed = value.trim();
+  
+  if (trimmed.includes("@")) {
+    return trimmed;
+  }
+  
+  let cleaned = trimmed.replace(/\D/g, ""); // Keep only digits
+  
+  if (cleaned.startsWith("880") && cleaned.length > 10) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith("88") && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  }
+  
+  if (cleaned.startsWith("0")) {
+    cleaned = cleaned.slice(1);
+  }
+  
+  return cleaned;
 }
 
 function normalizeNumberInput(value?: string | number | null) {
@@ -279,7 +298,11 @@ async function verifyOwnerLoginCredentials(body: PreLoginBody): Promise<OwnerCre
 
   const user = await findUserByIdentity(mobile);
 
-  if (!user || user.phone !== mobile || user.status !== UserStatus.ACTIVE || !verifyPassword(password, user.passwordHash)) {
+  const normalizedInput = normalizeMobile(mobile);
+  const isPhoneMatch = user?.phone ? (normalizeMobile(user.phone) === normalizedInput) : false;
+  const isEmailMatch = user?.email ? (user.email.toLowerCase() === mobile.toLowerCase()) : false;
+
+  if (!user || (!isPhoneMatch && !isEmailMatch) || user.status !== UserStatus.ACTIVE || !verifyPassword(password, user.passwordHash)) {
     return {
       error: {
         status: 401,
@@ -329,7 +352,11 @@ async function verifySalesmanLoginCredentials(body: SalesmanLoginBody): Promise<
 
   const user = await findUserByIdentity(mobile);
 
-  if (!user || user.phone !== mobile || user.status !== UserStatus.ACTIVE || !verifyPassword(password, user.passwordHash)) {
+  const normalizedInput = normalizeMobile(mobile);
+  const isPhoneMatch = user?.phone ? (normalizeMobile(user.phone) === normalizedInput) : false;
+  const isEmailMatch = user?.email ? (user.email.toLowerCase() === mobile.toLowerCase()) : false;
+
+  if (!user || (!isPhoneMatch && !isEmailMatch) || user.status !== UserStatus.ACTIVE || !verifyPassword(password, user.passwordHash)) {
     return {
       error: {
         status: 401,
@@ -614,9 +641,23 @@ async function handleVerifyLoginOtpRequest(request: ScopedRequest, response: Res
 }
 
 async function findUserByIdentity(identity: string) {
+  const normalized = normalizeMobile(identity);
+  const isPhone = /^\+?\d+$/.test(identity.trim().replace(/[-\s]/g, ""));
+  const OR_conditions: any[] = [{ email: identity }, { phone: identity }];
+
+  if (isPhone && normalized) {
+    const variations = [
+      normalized,
+      "0" + normalized,
+      "+880" + normalized,
+      "880" + normalized,
+    ];
+    OR_conditions.push({ phone: { in: variations } });
+  }
+
   const user = await prisma.user.findFirst({
     where: {
-      OR: [{ email: identity }, { phone: identity }],
+      OR: OR_conditions,
     },
     include: {
       platformUser: true,
@@ -1742,7 +1783,11 @@ router.post("/send-login-otp", async (request, response) => {
 
     const user = await findUserByIdentity(mobile);
 
-    if (!user || user.phone !== mobile || user.status !== UserStatus.ACTIVE) {
+    const normalizedInput = normalizeMobile(mobile);
+    const isPhoneMatch = user?.phone ? (normalizeMobile(user.phone) === normalizedInput) : false;
+    const isEmailMatch = user?.email ? (user.email.toLowerCase() === mobile.toLowerCase()) : false;
+
+    if (!user || (!isPhoneMatch && !isEmailMatch) || user.status !== UserStatus.ACTIVE) {
       return response.status(404).json({ message: "No active account found for this mobile number." });
     }
 

@@ -349,6 +349,8 @@ model Shop {
   masterProductRequests MasterProductRequest[]
   notificationSettings NotificationSetting?
   inAppNotifications   InAppNotification[]
+  taxes                ShopTax[]
+  charges              ShopCharge[]
 
   @@index([shopName])
   @@map("shops")
@@ -1023,6 +1025,9 @@ model CustomerSale {
   totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
   paidAmount      Decimal        @default(0) @map("paid_amount") @db.Decimal(10, 2)
   dueAmount       Decimal        @default(0) @map("due_amount") @db.Decimal(10, 2)
+  discountAmount  Decimal        @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  taxAmount       Decimal        @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  chargeAmount    Decimal        @default(0) @map("charge_amount") @db.Decimal(10, 2)
   paymentMethod   String?        @map("payment_method") @db.VarChar(50)
   status          String         @default("ACTIVE") @db.VarChar(30)
   cancelledAt     DateTime?      @map("cancelled_at")
@@ -1364,4 +1369,36 @@ model InAppNotification {
   shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@map("in_app_notifications")
+}
+
+model ShopTax {
+  id        String   @id @default(cuid())
+  shopId    String   @map("shop_id")
+  name      String   @db.VarChar(100)
+  rate      Decimal  @db.Decimal(5, 2)
+  type      String   @default("PERCENTAGE")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@map("shop_taxes")
+}
+
+model ShopCharge {
+  id        String   @id @default(cuid())
+  shopId    String   @map("shop_id")
+  name      String   @db.VarChar(100)
+  amount    Decimal  @db.Decimal(10, 2)
+  type      String   @default("FIXED")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@map("shop_charges")
 }
