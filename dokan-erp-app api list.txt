@@ -1816,25 +1816,751 @@ Expense accounting notes:
 - if the required balance source does not exist, backend returns validation error
 - current version records paid expenses only
 
-###################Other Current Backend APIs###################
+###################Platform Master Data APIs (Brands, Categories, Units, Product Templates)###################
 
-Reference route groups currently available in backend:
-- `/app/api/auth/*`
-- `/app/api/shops/*`
-- `/app/api/products/*`
-- `/app/api/categories/*`
-- `/app/api/brands/*`
-- `/app/api/units/*`
-- `/app/api/product-templates/*`
-- `/app/api/money-boxes/*`
-- `/app/api/bank-accounts/*`
-- `/app/api/suppliers/*`
-- `/app/api/purchases/*`
-- `/app/api/customers/*`
-- `/app/api/inventory/*`
-- `/app/api/subscriptions/*`
+These APIs allow platform administrators to manage the global lists of brands, categories, units, and templates that shops use.
 
-If needed later, this file can be expanded with full request/response examples for each remaining route group.
+1. GET /app/api/brands
+Admin or Super Admin only
+Retrieves a list of all platform brands with active/inactive stats.
+
+Example:
+```http
+GET http://localhost:4000/app/api/brands
+```
+
+Response:
+```json
+{
+  "stats": {
+    "total": 3,
+    "active": 2,
+    "inactive": 1,
+    "archived": 0
+  },
+  "brands": [
+    {
+      "id": "brand_unilever",
+      "name": "Unilever",
+      "description": "Unilever Bangladesh",
+      "logoUrl": "http://localhost:4000/uploads/brands/unilever.png",
+      "status": "ACTIVE",
+      "statusLabel": "ACTIVE",
+      "categories": 2,
+      "products": 14,
+      "createdAt": "2026-06-11T06:00:00.000Z",
+      "updatedAt": "2026-06-11T06:00:00.000Z"
+    }
+  ]
+}
+```
+
+2. POST /app/api/brands
+Admin or Super Admin only
+Creates a new brand. Supports base64 logo uploads.
+
+Request:
+```json
+{
+  "name": "Square Group",
+  "description": "Square Toiletries & Consumer Goods",
+  "logoUrl": "data:image/png;base64,...",
+  "status": "ACTIVE"
+}
+```
+
+Response:
+```json
+{
+  "message": "Brand created successfully.",
+  "brand": {
+    "id": "brand_square",
+    "name": "Square Group",
+    "description": "Square Toiletries & Consumer Goods",
+    "logoUrl": "http://localhost:4000/uploads/brands/1700000000000.png",
+    "status": "ACTIVE",
+    "statusLabel": "ACTIVE",
+    "categories": 0,
+    "products": 0,
+    "createdAt": "2026-06-11T06:00:00.000Z",
+    "updatedAt": "2026-06-11T06:00:00.000Z"
+  }
+}
+```
+
+3. GET /app/api/categories
+Authenticated User
+Retrieves list of active categories.
+
+Example:
+```http
+GET http://localhost:4000/app/api/categories
+```
+
+Response:
+```json
+[
+  {
+    "id": "cat_grocery",
+    "name": "Grocery",
+    "description": "Standard grocery items",
+    "status": "ACTIVE"
+  }
+]
+```
+
+4. POST /app/api/categories
+Admin or Super Admin only
+Request:
+```json
+{
+  "name": "Cosmetics",
+  "description": "Beauty and soap items",
+  "status": "ACTIVE"
+}
+```
+
+5. PATCH /app/api/categories/:id
+Admin or Super Admin only
+Updates category status or fields.
+
+6. DELETE /app/api/categories/:id
+Admin or Super Admin only
+Deletes category.
+
+7. POST /app/api/categories/:id/approve
+Admin or Super Admin only
+Approves a custom category request submitted by a shop.
+
+8. GET /app/api/units
+Authenticated User
+Retrieves units master list.
+
+9. POST /app/api/units
+Admin or Super Admin only
+Request:
+```json
+{
+  "name": "Kilogram",
+  "shortName": "KG",
+  "status": "ACTIVE"
+}
+```
+
+10. DELETE /app/api/units/:id
+Admin or Super Admin only
+
+11. POST /app/api/units/:id/approve
+Admin or Super Admin only
+
+12. GET /app/api/product-templates
+Admin or Super Admin only
+Retrieves platform-wide quick setup template categories.
+
+Response:
+```json
+{
+  "stats": {
+    "total": 1,
+    "active": 1,
+    "inactive": 0,
+    "archived": 0,
+    "withProducts": 1
+  },
+  "templates": [
+    {
+      "id": "template_grocery",
+      "code": "GROCERY_STARTER",
+      "name": "Grocery Starter Pack",
+      "description": "Essential items for standard grocery store",
+      "status": "ACTIVE",
+      "statusLabel": "ACTIVE",
+      "productCount": 2,
+      "products": [
+        {
+          "id": "item_01",
+          "masterProductId": "prod_oil",
+          "name": "Rupchanda Soyabean Oil 1L",
+          "sku": "RUP-OIL-1L",
+          "barcode": "12345678",
+          "pictureUrl": null,
+          "category": "Oil",
+          "brand": "Rupchanda",
+          "unit": "LITRE"
+        }
+      ]
+    }
+  ]
+}
+```
+
+13. POST /app/api/product-templates
+Admin or Super Admin only
+Request:
+```json
+{
+  "code": "MUDI_STARTER",
+  "name": "মুদি দোকান স্টার্টার প্যাক",
+  "description": "মুদি দোকানের প্রয়োজনীয় পণ্য তালিকা",
+  "status": "ACTIVE"
+}
+```
+
+14. PUT /app/api/product-templates/:id
+Admin or Super Admin only
+
+15. DELETE /app/api/product-templates/:id
+Admin or Super Admin only
+
+16. PUT /app/api/product-templates/:id/products
+Admin or Super Admin only
+Sets/updates the array of master products mapped inside a template.
+Request:
+```json
+{
+  "productIds": ["prod_oil", "prod_rice"]
+}
+```
+
+17. DELETE /app/api/product-templates/:id/products/:productId
+Admin or Super Admin only
+Removes a specific master product from a template.
+
+
+###################Platform Global/Master Products Management APIs###################
+
+These APIs are for managing the global master database products that all shops import/reference.
+
+1. GET /app/api/products
+Authenticated User
+Retrieves global master products list. Filters: `categoryId`, `brandId`, `unitId`, `search`.
+
+Example:
+```http
+GET http://localhost:4000/app/api/products?search=oil&categoryId=cat_grocery
+```
+
+Response:
+```json
+[
+  {
+    "id": "prod_oil",
+    "sku": "RUP-OIL-1L",
+    "name": "Rupchanda Soyabean Oil 1L",
+    "note": "Rupchanda brand cooking oil",
+    "categoryId": "cat_grocery",
+    "category": "Grocery",
+    "brandId": "brand_rupchanda",
+    "brand": "Rupchanda",
+    "unitId": "unit_litre",
+    "unit": "LITRE",
+    "barcode": "12345678",
+    "price": 180,
+    "priceLabel": "$180",
+    "suggestedPrice": 185,
+    "suggestedPriceLabel": "$185",
+    "packageSize": "1L",
+    "pictureUrl": null,
+    "status": "ACTIVE",
+    "statusLabel": "ACTIVE"
+  }
+]
+```
+
+2. POST /app/api/products
+Admin or Super Admin only
+Creates a global master product in database.
+Request:
+```json
+{
+  "name": "Rupchanda Soyabean Oil 1L",
+  "barcode": "12345678",
+  "categoryId": "cat_grocery",
+  "brandId": "brand_rupchanda",
+  "unitId": "unit_litre",
+  "price": 180,
+  "suggestedPrice": 185,
+  "packageSize": "1L",
+  "pictureUrl": "data:image/jpeg;base64,..."
+}
+```
+
+3. PUT /app/api/products/:id
+Admin or Super Admin only
+Updates master product details.
+
+4. POST /app/api/products/:id/duplicate
+Admin or Super Admin only
+Duplicates a master product row with a new autogenerated SKU.
+
+5. PATCH /app/api/products/:id/status
+Admin or Super Admin only
+Toggle status. Request: `{ "status": "ACTIVE" | "INACTIVE" }`
+
+6. DELETE /app/api/products/:id
+Admin or Super Admin only
+
+7. GET /app/api/products/:id/barcode.svg
+Authenticated User
+Renders the barcode corresponding to the master product barcode value as SVG.
+
+
+###################Shop Quick Setup Catalog Selection & Custom Pricing APIs###################
+
+These APIs support the shop onboarding configuration wizards where owners import preset products in bulk.
+
+1. GET /app/api/shops/quick-setup/catalog
+Shop Owner only
+Returns starter suggested products and currently configured shop products.
+Example:
+```http
+GET http://localhost:4000/app/api/shops/quick-setup/catalog
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "cmq_shop_01",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store"
+  },
+  "limits": {
+    "freeTierProductLimit": 200,
+    "configuredProductCount": 10
+  },
+  "suggestedProducts": [
+    {
+      "id": "prod_oil",
+      "sku": "RUP-OIL-1L",
+      "name": "Rupchanda Soyabean Oil 1L",
+      "packageSize": "1L",
+      "price": 180,
+      "suggestedPrice": 185,
+      "selected": true
+    }
+  ],
+  "configuredProducts": [
+    {
+      "masterProductId": "prod_oil",
+      "name": "Rupchanda Soyabean Oil 1L",
+      "sku": "RUP-OIL-1L",
+      "packageSize": "1L",
+      "openingStock": 15,
+      "salePrice": 185
+    }
+  ]
+}
+```
+
+2. POST /app/api/shops/quick-setup/catalog/select
+Shop Owner only
+Imports selected master products into the shop inventory profile with initial zero stock.
+Request:
+```json
+{
+  "productIds": ["prod_oil", "prod_rice"]
+}
+```
+
+Response:
+```json
+{
+  "message": "Quick setup products selected successfully.",
+  "products": [
+    {
+      "masterProductId": "prod_oil",
+      "name": "Rupchanda Soyabean Oil 1L",
+      "sku": "RUP-OIL-1L",
+      "openingStock": 0,
+      "salePrice": 185
+    }
+  ]
+}
+```
+
+3. PATCH /app/api/shops/quick-setup/catalog/pricing
+Shop Owner only
+Enables bulk entry of opening stock and custom selling price for newly imported items.
+Request:
+```json
+{
+  "items": [
+    { "masterProductId": "prod_oil", "openingStock": 20, "salePrice": 182 },
+    { "masterProductId": "prod_rice", "openingStock": 10, "salePrice": 65 }
+  ]
+}
+```
+
+Response:
+```json
+{
+  "message": "Opening stock and sale price saved successfully.",
+  "products": [
+    {
+      "masterProductId": "prod_oil",
+      "name": "Rupchanda Soyabean Oil 1L",
+      "sku": "RUP-OIL-1L",
+      "openingStock": 20,
+      "salePrice": 182
+    }
+  ]
+}
+```
+
+4. PATCH /app/api/shops/products/:shopProductId
+Shop Owner only
+Updates specific stock levels, sale prices, and low stock limits for a single shop inventory product.
+Request:
+```json
+{
+  "stock": 25,
+  "price": 184,
+  "lowStockLimit": 5
+}
+```
+
+
+###################Shop Accounts & Finance Sources APIs###################
+
+These APIs manage the balances, details, and active statuses of cash registers, mobile merchant wallets, and bank accounts.
+
+1. GET /app/api/shops/me/finance-sources
+Shop Owner or Salesman
+Retrieves all active cash boxes and bank accounts summary list.
+Example:
+```http
+GET http://localhost:4000/app/api/shops/me/finance-sources
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "cmq_shop_01",
+    "shopCode": "RAHIMA677141",
+    "shopName": "Rahima Grocery Store"
+  },
+  "moneyBoxes": [
+    {
+      "id": "cash_counter_01",
+      "boxName": "Main Counter Cash",
+      "code": "CASH_MAIN",
+      "type": "CASH",
+      "openingBalance": 2000,
+      "currentBalance": 8500,
+      "details": "Cash drawer counter 1",
+      "status": "ACTIVE"
+    }
+  ],
+  "bankAccounts": [
+    {
+      "id": "bank_account_01",
+      "accountName": "Rahima Business current account",
+      "bankName": "Datch Bangla Bank",
+      "accountNumber": "*********4589",
+      "accountType": "CURRENT",
+      "openingBalance": 10000,
+      "currentBalance": 35000,
+      "currency": "BDT",
+      "status": "ACTIVE",
+      "isDefault": true
+    }
+  ]
+}
+```
+
+2. POST /app/api/shops/me/money-boxes (or POST /app/api/money-boxes)
+Shop Owner only (POST /app/api/money-boxes is platform-wide admin creation)
+Creates a new shop money box (e.g. CASH, BKASH, NAGAD).
+Request:
+```json
+{
+  "boxName": "Bkash Wallet Store",
+  "code": "BKASH_DRAWER_01",
+  "type": "BKASH",
+  "openingBalance": 1000
+}
+```
+
+3. PUT /app/api/shops/me/money-boxes/:id (or PUT /app/api/money-boxes/:id)
+Shop Owner only
+Updates properties/balances of money box.
+
+4. POST /app/api/shops/me/bank-accounts (or POST /app/api/bank-accounts)
+Shop Owner only
+Request:
+```json
+{
+  "accountName": "Rahima Savings",
+  "bankName": "DBBL",
+  "accountNumber": "9876543210",
+  "accountType": "SAVINGS",
+  "openingBalance": 5000,
+  "isDefault": false
+}
+```
+
+5. PUT /app/api/shops/me/bank-accounts/:id (or PUT /app/api/bank-accounts/:id)
+Shop Owner only
+
+
+###################Staff Management & Performance APIs###################
+
+These APIs allow owners to manage salesman credentials, security PINs, and access permissions, and let salesmen check their personal performance logs.
+
+1. GET /app/api/staff
+Shop Owner only
+Retrieves all salesman employees in the shop, status, and permissions.
+Example:
+```http
+GET http://localhost:4000/app/api/staff
+```
+
+Response:
+```json
+{
+  "shop": {
+    "id": "cmq_shop_01",
+    "shopCode": "RAHIMA677141"
+  },
+  "summary": {
+    "total": 1,
+    "active": 1,
+    "inactive": 0,
+    "canSell": 1,
+    "canCollectDue": 1
+  },
+  "staff": [
+    {
+      "id": "salesman_user_id",
+      "name": "Sabbir Hossain",
+      "mobile": "01711111111",
+      "email": "sabbir@example.com",
+      "status": "ACTIVE",
+      "isActive": true,
+      "joinedAt": "2026-06-11T12:00:00.000Z",
+      "permissions": {
+        "canSell": true,
+        "canViewStock": true,
+        "canViewReports": false,
+        "canChangePrice": false,
+        "canCollectDue": true
+      }
+    }
+  ]
+}
+```
+
+2. GET /app/api/staff/:staffUserId
+Shop Owner only
+Retrieves detailed profile performance statistics, daily/monthly sales values, and today's activity log for a specific salesman.
+
+3. PATCH /app/api/staff/:staffUserId/permissions
+Shop Owner only
+Updates permission switches for staff member.
+Request:
+```json
+{
+  "canSell": true,
+  "canViewStock": true,
+  "canViewReports": true,
+  "canChangePrice": false,
+  "canCollectDue": true
+}
+```
+
+4. POST /app/api/staff/:staffUserId/pin-reset
+Shop Owner only
+Triggers staff PIN reset request. User must choose a new PIN on their next dashboard loading.
+
+5. PATCH /app/api/staff/:staffUserId/status
+Shop Owner only
+Activates/deactivates salesman access. Request: `{ "status": "ACTIVE" | "INACTIVE" }`
+
+6. GET /app/api/staff/me/performance
+Salesman employee only
+Retrieves the logged-in salesman's personal performance charts, weekly trends, top items sold, and daily sales metrics.
+
+
+###################Notification Settings & In-App Notifications APIs###################
+
+These APIs manage settings and delivery of in-app inventory, sales, and payment alerts.
+
+1. GET /app/api/notifications/settings
+Shop Owner only
+Fetches current alert configurations.
+
+Response:
+```json
+{
+  "settings": {
+    "id": "notif_set_01",
+    "shopId": "cmq_shop_01",
+    "lowStock": true,
+    "binLowStock": true,
+    "newSale": true,
+    "dueReminder": true,
+    "newCustomer": true,
+    "expiryAlert": true,
+    "dailyReport": true,
+    "weeklyReport": true,
+    "quietHours": false
+  }
+}
+```
+
+2. PUT /app/api/notifications/settings
+Shop Owner only
+Updates shop alert preferences.
+Request:
+```json
+{
+  "lowStock": true,
+  "dueReminder": false,
+  "quietHours": true
+}
+```
+
+3. GET /app/api/notifications
+Authenticated User
+Fetches up to 100 recent shop notifications.
+
+Response:
+```json
+{
+  "notifications": [
+    {
+      "id": "notif_01",
+      "shopId": "cmq_shop_01",
+      "type": "LOW_STOCK",
+      "title": "Low Stock Alert",
+      "message": "Miniket Rice stock is below limit.",
+      "isRead": false,
+      "timestamp": "10:30 AM | 14/06/2026",
+      "createdAt": "2026-06-14T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+4. POST /app/api/notifications
+Authenticated User
+Manually creates a custom alert.
+Request:
+```json
+{
+  "type": "ANNOUNCEMENT",
+  "title": "Shop Update",
+  "message": "Delivery hours extended starting today."
+}
+```
+
+5. PUT /app/api/notifications/read
+Authenticated User
+Marks alert(s) as read. Specify `id` to mark a single alert, or send empty body to mark all as read.
+Request:
+```json
+{
+  "id": "notif_01"
+}
+```
+
+6. DELETE /app/api/notifications
+Authenticated User
+Deletes alert(s). Specify `id` in body to delete single alert, or leave body empty to delete all notifications.
+
+
+###################Additional Auth / User Profile APIs###################
+
+These APIs manage user profile edits, direct registration, and credentials changes.
+
+1. POST /app/api/auth/register-owner
+Public API
+Bypasses the multi-step draft/OTP registration flow, signing up owner and shop instantly.
+Request:
+```json
+{
+  "shopName": "Bhai Bhai Grocery",
+  "name": "Babul Alam",
+  "mobile": "01712999999",
+  "password": "1234",
+  "confirmPassword": "1234"
+}
+```
+
+2. GET /app/api/auth/me
+Authenticated User
+Retrieves active session details and user profile data.
+
+Response:
+```json
+{
+  "user": {
+    "id": "user_owner_01",
+    "name": "Babul Alam",
+    "phone": "01712999999",
+    "email": null,
+    "profileImageUrl": null
+  },
+  "session": {
+    "appType": "MOBILE",
+    "role": "SHOP_OWNER",
+    "shopId": "cmq_shop_01"
+  }
+}
+```
+
+3. PATCH /app/api/auth/me
+Authenticated User
+Updates name, email, or phone of the active user.
+Request:
+```json
+{
+  "name": "Babul Alam Chowdhury",
+  "email": "babul@example.com"
+}
+```
+
+4. PATCH /app/api/auth/me/password
+Authenticated User
+Updates user account password.
+Request:
+```json
+{
+  "currentPassword": "1234",
+  "newPassword": "5678",
+  "confirmPassword": "5678"
+}
+```
+
+5. PATCH /app/api/auth/me/avatar
+Authenticated User
+Updates user avatar icon.
+Request:
+```json
+{
+  "avatarUrl": "data:image/png;base64,..."
+}
+```
+
+
+###################Supplier Management APIs (Additional)###################
+
+These APIs complete the supplier lifecycle management options.
+
+1. PUT /app/api/suppliers/:id
+Shop Owner only
+Updates full profile attributes (e.g. mobile, email, notes) of a supplier.
+
+2. PATCH /app/api/suppliers/:id/status
+Shop Owner only
+Toggle active/inactive status. Request: `{ "status": "ACTIVE" | "INACTIVE" }`
+
+3. DELETE /app/api/suppliers/:id
+Shop Owner only
+Deletes the supplier from the platform.
+
 
 #####################Owner Registration Flow######################
 

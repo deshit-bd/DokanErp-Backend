@@ -71,6 +71,209 @@ function getMonthRange(source = new Date()) {
   return { start, end };
 }
 
+function getWeekRange(source = new Date()) {
+  const end = new Date(source);
+  const start = new Date(source);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 6);
+  const nextDay = new Date(source);
+  nextDay.setHours(0, 0, 0, 0);
+  nextDay.setDate(nextDay.getDate() + 1);
+  return { start, end: nextDay };
+}
+
+type SalesReportSale = {
+  id: string;
+  invoiceNo: string | null;
+  saleDate: Date;
+  totalAmount: unknown;
+  discountAmount: unknown;
+  taxAmount: unknown;
+  chargeAmount: unknown;
+  customerId: string;
+  customer: {
+    name: string;
+  } | null;
+  items: Array<{
+    masterProductId: string;
+    quantity: unknown;
+    totalAmount: unknown;
+    masterProduct: {
+      name: string;
+    } | null;
+  }>;
+};
+
+function toNumber(value: unknown) {
+  return Number(value ?? 0);
+}
+
+function getNetSaleAmount(sale: Pick<SalesReportSale, "totalAmount" | "discountAmount" | "taxAmount" | "chargeAmount">) {
+  return Number(
+    (
+      toNumber(sale.totalAmount) -
+      toNumber(sale.discountAmount) +
+      toNumber(sale.taxAmount) +
+      toNumber(sale.chargeAmount)
+    ).toFixed(2),
+  );
+}
+
+function summarizeSales(sales: SalesReportSale[]) {
+  const customerCount = new Set(sales.map((sale) => sale.customerId).filter(Boolean)).size;
+  const totalQty = Number(
+    sales
+      .reduce(
+        (sum, sale) =>
+          sum +
+          sale.items.reduce((itemSum, item) => itemSum + toNumber(item.quantity), 0),
+        0,
+      )
+      .toFixed(3),
+  );
+  const orderedSales = sales
+    .slice()
+    .sort((a, b) => a.saleDate.getTime() - b.saleDate.getTime());
+  const firstSaleAt = orderedSales[0]?.saleDate ?? null;
+  const lastSaleAt = orderedSales[orderedSales.length - 1]?.saleDate ?? null;
+
+  return {
+    totalSalesAmount: Number(sales.reduce((sum, sale) => sum + getNetSaleAmount(sale), 0).toFixed(2)),
+    salesCount: sales.length,
+    totalQty,
+    customerCount,
+    firstSaleAt,
+    lastSaleAt,
+  };
+}
+
+function buildRecentSales(sales: SalesReportSale[], limit = 3) {
+  return sales
+    .slice()
+    .sort((a, b) => b.saleDate.getTime() - a.saleDate.getTime())
+    .slice(0, limit)
+    .map((sale) => ({
+      id: sale.id,
+      invoiceNo: sale.invoiceNo,
+      customerName: sale.customer?.name ?? null,
+      amount: getNetSaleAmount(sale),
+      soldAt: sale.saleDate,
+    }));
+}
+
+function buildTopProducts(sales: SalesReportSale[], limit = 3) {
+  const productMap = new Map<string, { productId: string; name: string; quantity: number; value: number }>();
+
+  sales.forEach((sale) => {
+    sale.items.forEach((item) => {
+      const current = productMap.get(item.masterProductId) ?? {
+        productId: item.masterProductId,
+        name: item.masterProduct?.name ?? "Unknown",
+        quantity: 0,
+        value: 0,
+      };
+
+      current.quantity += toNumber(item.quantity);
+      current.value += toNumber(item.totalAmount);
+      productMap.set(item.masterProductId, current);
+    });
+  });
+
+  return Array.from(productMap.values())
+    .sort((a, b) => (b.quantity === a.quantity ? b.value - a.value : b.quantity - a.quantity))
+    .slice(0, limit)
+    .map((item, index) => ({
+      rank: index + 1,
+      productId: item.productId,
+      name: item.name,
+      quantity: Number(item.quantity.toFixed(3)),
+      value: Number(item.value.toFixed(2)),
+    }));
+}
+
+function buildTodayTrend(sales: SalesReportSale[]) {
+  const buckets = [
+    { key: "morning", label: "সকাল", startHour: 6, endHour: 12, value: 0 },
+    { key: "noon", label: "দুপুর", startHour: 12, endHour: 16, value: 0 },
+    { key: "evening", label: "বিকাল", startHour: 16, endHour: 20, value: 0 },
+    { key: "night", label: "রাত", startHour: 20, endHour: 24, value: 0 },
+  ];
+
+  sales.forEach((sale) => {
+    const saleHour = sale.saleDate.getHours();
+    const bucket = buckets.find((item) => saleHour >= item.startHour && saleHour < item.endHour) ?? buckets[0];
+    bucket.value += getNetSaleAmount(sale);
+  });
+
+  return buckets.map((bucket) => ({
+    key: bucket.key,
+    label: bucket.label,
+    value: Number(bucket.value.toFixed(2)),
+  }));
+}
+
+function buildWeekTrend(sales: SalesReportSale[], rangeStart: Date) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const bucketDate = new Date(rangeStart);
+    bucketDate.setDate(rangeStart.getDate() + index);
+    const bucketDay = bucketDate.toDateString();
+    const value = sales
+      .filter((sale) => sale.saleDate.toDateString() === bucketDay)
+      .reduce((sum, sale) => sum + getNetSaleAmount(sale), 0);
+
+    return {
+      key: bucketDate.toISOString(),
+      label: bucketDate.toLocaleDateString("bn-BD", { weekday: "short" }),
+      value: Number(value.toFixed(2)),
+    };
+  });
+}
+
+function buildMonthTrend(sales: SalesReportSale[], source = new Date()) {
+  const daysInMonth = new Date(source.getFullYear(), source.getMonth() + 1, 0).getDate();
+  return Array.from({ length: 4 }, (_, index) => {
+    const startDay = index * 7 + 1;
+    const endDay = index === 3 ? daysInMonth : Math.min(daysInMonth, startDay + 6);
+    const value = sales
+      .filter((sale) => {
+        const saleDay = sale.saleDate.getDate();
+        return saleDay >= startDay && saleDay <= endDay;
+      })
+      .reduce((sum, sale) => sum + getNetSaleAmount(sale), 0);
+
+    return {
+      key: `month-week-${index + 1}`,
+      label: `${startDay}-${endDay}`,
+      value: Number(value.toFixed(2)),
+    };
+  });
+}
+
+function buildSalesmanReportPayload(todaySales: SalesReportSale[], weekSales: SalesReportSale[], monthSales: SalesReportSale[], source = new Date()) {
+  const weekRange = getWeekRange(source);
+
+  return {
+    today: {
+      summary: summarizeSales(todaySales),
+      trend: buildTodayTrend(todaySales),
+      recentSales: buildRecentSales(todaySales),
+      topProducts: buildTopProducts(todaySales),
+    },
+    week: {
+      summary: summarizeSales(weekSales),
+      trend: buildWeekTrend(weekSales, weekRange.start),
+      recentSales: buildRecentSales(weekSales),
+      topProducts: buildTopProducts(weekSales),
+    },
+    month: {
+      summary: summarizeSales(monthSales),
+      trend: buildMonthTrend(monthSales, source),
+      recentSales: buildRecentSales(monthSales),
+      topProducts: buildTopProducts(monthSales),
+    },
+  };
+}
+
 router.get("/me/performance", async (request, response) => {
   try {
     const auth = await getAuthenticatedUser(request);
@@ -122,11 +325,40 @@ router.get("/me/performance", async (request, response) => {
 
     const now = new Date();
     const today = getDayRange(now);
+    const week = getWeekRange(now);
     const month = getMonthRange(now);
 
     const salesClient = prisma.customerSale;
 
-    const [todaySales, monthSales, allSalesCount, todayActivities] = await Promise.all([
+    const saleSelect = {
+      id: true,
+      invoiceNo: true,
+      saleDate: true,
+      totalAmount: true,
+      discountAmount: true,
+      taxAmount: true,
+      chargeAmount: true,
+      customerId: true,
+      customer: {
+        select: {
+          name: true,
+        },
+      },
+      items: {
+        select: {
+          masterProductId: true,
+          quantity: true,
+          totalAmount: true,
+          masterProduct: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    } as const;
+
+    const [todaySales, weekSales, monthSales, allSalesCount] = await Promise.all([
       salesClient.findMany({
         where: {
           shopId,
@@ -134,10 +366,16 @@ router.get("/me/performance", async (request, response) => {
           saleDate: { gte: today.start, lt: today.end },
           status: "ACTIVE",
         },
-        select: {
-          id: true,
-          totalAmount: true,
+        select: saleSelect,
+      }),
+      salesClient.findMany({
+        where: {
+          shopId,
+          createdByUserId: userId,
+          saleDate: { gte: week.start, lt: week.end },
+          status: "ACTIVE",
         },
+        select: saleSelect,
       }),
       salesClient.findMany({
         where: {
@@ -146,10 +384,7 @@ router.get("/me/performance", async (request, response) => {
           saleDate: { gte: month.start, lt: month.end },
           status: "ACTIVE",
         },
-        select: {
-          id: true,
-          totalAmount: true,
-        },
+        select: saleSelect,
       }),
       salesClient.count({
         where: {
@@ -158,50 +393,28 @@ router.get("/me/performance", async (request, response) => {
           status: "ACTIVE",
         },
       }),
-      salesClient.findMany({
-        where: {
-          shopId,
-          createdByUserId: userId,
-          saleDate: { gte: today.start, lt: today.end },
-          status: "ACTIVE",
-        },
-        select: {
-          id: true,
-          invoiceNo: true,
-          saleDate: true,
-          totalAmount: true,
-          customer: {
-            select: {
-              name: true,
-            },
-          },
-        },
-        orderBy: [{ saleDate: "desc" }, { createdAt: "desc" }],
-        take: 10,
-      }),
     ]);
 
     const staff = mapStaffMember(member);
+    const report = buildSalesmanReportPayload(todaySales as SalesReportSale[], weekSales as SalesReportSale[], monthSales as SalesReportSale[], now);
+    const todayActivities = report.today.recentSales;
+    const todaySummary = report.today.summary;
+    const monthSummary = report.month.summary;
 
     return response.json({
       staff: {
         ...staff,
         isBillable: member.isBillable,
-        todaySalesCount: todaySales.length,
-        monthSalesCount: monthSales.length,
+        todaySalesCount: todaySummary.salesCount,
+        monthSalesCount: monthSummary.salesCount,
       },
       summary: {
-        todaySalesAmount: Number(todaySales.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount ?? 0), 0).toFixed(2)),
-        monthSalesAmount: Number(monthSales.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount ?? 0), 0).toFixed(2)),
+        todaySalesAmount: todaySummary.totalSalesAmount,
+        monthSalesAmount: monthSummary.totalSalesAmount,
         totalSalesCount: allSalesCount,
       },
-      todayActivities: todayActivities.map((sale: any) => ({
-        id: sale.id,
-        invoiceNo: sale.invoiceNo,
-        customerName: sale.customer?.name ?? null,
-        amount: Number(sale.totalAmount ?? 0),
-        soldAt: sale.saleDate,
-      })),
+      todayActivities,
+      report,
     });
   } catch (error: any) {
     console.error("Failed to load salesman performance.", error);

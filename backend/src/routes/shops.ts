@@ -15,6 +15,41 @@ function normalizeOptionalText(value: unknown) {
   return text || null;
 }
 
+function toDisplayLabel(value: string) {
+  return value.replace(/_/g, " ");
+}
+
+function mapFinanceSourceMoneyBox(moneyBox: any) {
+  return {
+    id: moneyBox.id,
+    boxName: moneyBox.boxName,
+    code: moneyBox.code,
+    type: moneyBox.type,
+    typeLabel: toDisplayLabel(moneyBox.type),
+    openingBalance: toMoney(moneyBox.openingBalance),
+    currentBalance: toMoney(moneyBox.currentBalance),
+    details: moneyBox.details ?? null,
+    status: moneyBox.status,
+  };
+}
+
+function mapFinanceSourceBankAccount(bankAccount: any) {
+  return {
+    id: bankAccount.id,
+    accountName: bankAccount.accountName,
+    bankName: bankAccount.bankName,
+    branchName: bankAccount.branchName ?? null,
+    accountNumber: bankAccount.accountNumber,
+    accountType: bankAccount.accountType,
+    openingBalance: toMoney(bankAccount.openingBalance),
+    currentBalance: toMoney(bankAccount.currentBalance),
+    currency: bankAccount.currency,
+    status: bankAccount.status,
+    isDefault: Boolean(bankAccount.isDefault),
+    notes: bankAccount.notes ?? null,
+  };
+}
+
 function mapShopSettingsResponse(params: {
   shop: {
     id: string;
@@ -170,6 +205,59 @@ async function requireOwnerShopContext(request: Parameters<typeof getAuthenticat
   return { auth, shop };
 }
 
+async function requireShopFinanceReadContext(request: Parameters<typeof getAuthenticatedUser>[0]) {
+  const auth = await getAuthenticatedUser(request);
+
+  if (isAuthError(auth)) {
+    return auth;
+  }
+
+  if (auth.payload.appType !== "MOBILE" || !auth.payload.shopId || !["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role)) {
+    return {
+      status: 403,
+      body: { message: "Only shop owner or salesman can view finance sources." },
+    };
+  }
+
+  const shop = await prisma.shop.findUnique({
+    where: { id: auth.payload.shopId },
+    select: {
+      id: true,
+      shopCode: true,
+      shopName: true,
+      businessType: true,
+      status: true,
+    },
+  });
+
+  if (!shop) {
+    return {
+      status: 404,
+      body: { message: "Shop not found." },
+    };
+  }
+
+  if (auth.payload.role === "SALESMAN") {
+    const membership = await prisma.shopUser.findFirst({
+      where: {
+        shopId: shop.id,
+        userId: auth.user.id,
+        role: "SALESMAN",
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      return {
+        status: 403,
+        body: { message: "This salesman is not assigned to the selected shop." },
+      };
+    }
+  }
+
+  return { auth, shop };
+}
+
 router.get("/", async (request, response) => {
   try {
     const auth = await getAuthenticatedUser(request);
@@ -283,7 +371,7 @@ router.get("/me/settings", async (request, response) => {
 
 router.get("/me/finance-sources", async (request, response) => {
   try {
-    const context = await requireOwnerShopContext(request);
+    const context = await requireShopFinanceReadContext(request);
 
     if (isAuthError(context as any)) {
       return sendAuthError(response, context as any);
@@ -312,28 +400,376 @@ router.get("/me/finance-sources", async (request, response) => {
 
     return response.json({
       shop: context.shop,
-      moneyBoxes: moneyBoxes.map((moneyBox: any) => ({
-        id: moneyBox.id,
-        boxName: moneyBox.boxName,
-        code: moneyBox.code,
-        type: moneyBox.type,
-        openingBalance: toMoney(moneyBox.openingBalance),
-        currentBalance: toMoney(moneyBox.currentBalance),
-      })),
-      bankAccounts: bankAccounts.map((bankAccount: any) => ({
-        id: bankAccount.id,
-        accountName: bankAccount.accountName,
-        bankName: bankAccount.bankName,
-        accountNumber: bankAccount.accountNumber,
-        currentBalance: toMoney(bankAccount.currentBalance),
-        isDefault: Boolean(bankAccount.isDefault),
-      })),
+      moneyBoxes: moneyBoxes.map(mapFinanceSourceMoneyBox),
+      bankAccounts: bankAccounts.map(mapFinanceSourceBankAccount),
     });
   } catch (error) {
     console.error("Failed to load shop finance sources.", error);
 
     return response.status(503).json({
       message: "Shop finance sources could not be loaded right now.",
+    });
+  }
+});
+
+router.post("/me/money-boxes", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      boxName?: string;
+      code?: string;
+      type?: "CASH" | "BKASH" | "NAGAD";
+      openingBalance?: number | string;
+      details?: string | null;
+      status?: "ACTIVE" | "INACTIVE";
+    };
+
+    const boxName = `${body.boxName ?? ""}`.trim();
+    const code = `${body.code ?? ""}`.trim();
+    const type = body.type;
+    const details = normalizeOptionalText(body.details);
+    const status = body.status ?? "ACTIVE";
+    const openingBalance = Number(body.openingBalance ?? 0);
+
+    if (!boxName || !code || !type) {
+      return response.status(400).json({ message: "boxName, code, and type are required." });
+    }
+
+    if (!Number.isFinite(openingBalance)) {
+      return response.status(400).json({ message: "Opening balance must be a valid number." });
+    }
+
+    const existingCode = await (prisma as any).moneyBox.findUnique({
+      where: { code },
+      select: { id: true },
+    });
+
+    if (existingCode) {
+      return response.status(409).json({ message: "Money box code already exists." });
+    }
+
+    const moneyBox = await (prisma as any).moneyBox.create({
+      data: {
+        shopId: context.shop.id,
+        boxName,
+        code,
+        type,
+        openingBalance,
+        currentBalance: openingBalance,
+        details,
+        status,
+      },
+    });
+
+    return response.status(201).json({
+      message: "Money box created successfully.",
+      moneyBox: mapFinanceSourceMoneyBox(moneyBox),
+    });
+  } catch (error) {
+    console.error("Failed to create shop money box.", error);
+
+    return response.status(503).json({
+      message: "Money box could not be created right now.",
+    });
+  }
+});
+
+router.put("/me/money-boxes/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const existing = await (prisma as any).moneyBox.findFirst({
+      where: {
+        id: request.params.id,
+        shopId: context.shop.id,
+      },
+    });
+
+    if (!existing) {
+      return response.status(404).json({ message: "Money box not found in this shop." });
+    }
+
+    const body = request.body as {
+      boxName?: string;
+      code?: string;
+      type?: "CASH" | "BKASH" | "NAGAD";
+      openingBalance?: number | string;
+      details?: string | null;
+      status?: "ACTIVE" | "INACTIVE";
+    };
+
+    const boxName = `${body.boxName ?? existing.boxName ?? ""}`.trim();
+    const code = `${body.code ?? existing.code ?? ""}`.trim();
+    const type = body.type ?? existing.type;
+    const details = body.details === undefined ? existing.details : normalizeOptionalText(body.details);
+    const status = body.status ?? existing.status;
+    const openingBalance = body.openingBalance === undefined ? Number(existing.openingBalance ?? 0) : Number(body.openingBalance ?? 0);
+
+    if (!boxName || !code || !type) {
+      return response.status(400).json({ message: "boxName, code, and type are required." });
+    }
+
+    if (!Number.isFinite(openingBalance)) {
+      return response.status(400).json({ message: "Opening balance must be a valid number." });
+    }
+
+    const duplicateCode = await (prisma as any).moneyBox.findFirst({
+      where: {
+        code,
+        id: { not: existing.id },
+      },
+      select: { id: true },
+    });
+
+    if (duplicateCode) {
+      return response.status(409).json({ message: "Money box code already exists." });
+    }
+
+    const openingDelta = openingBalance - Number(existing.openingBalance ?? 0);
+
+    const updated = await (prisma as any).moneyBox.update({
+      where: { id: existing.id },
+      data: {
+        boxName,
+        code,
+        type,
+        details,
+        status,
+        openingBalance,
+        currentBalance: Number(existing.currentBalance ?? 0) + openingDelta,
+      },
+    });
+
+    return response.json({
+      message: "Money box updated successfully.",
+      moneyBox: mapFinanceSourceMoneyBox(updated),
+    });
+  } catch (error) {
+    console.error("Failed to update shop money box.", error);
+
+    return response.status(503).json({
+      message: "Money box could not be updated right now.",
+    });
+  }
+});
+
+router.post("/me/bank-accounts", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      accountName?: string;
+      bankName?: string;
+      branchName?: string | null;
+      accountNumber?: string;
+      accountType?: "CURRENT" | "SAVINGS";
+      openingBalance?: number | string;
+      currency?: string;
+      status?: "ACTIVE" | "INACTIVE" | "CLOSED";
+      isDefault?: boolean;
+      notes?: string | null;
+    };
+
+    const accountName = `${body.accountName ?? ""}`.trim();
+    const bankName = `${body.bankName ?? ""}`.trim();
+    const branchName = normalizeOptionalText(body.branchName);
+    const accountNumber = `${body.accountNumber ?? ""}`.trim();
+    const accountType = body.accountType;
+    const openingBalance = Number(body.openingBalance ?? 0);
+    const currency = `${body.currency ?? "BDT"}`.trim().toUpperCase() || "BDT";
+    const status = body.status ?? "ACTIVE";
+    const isDefault = Boolean(body.isDefault);
+    const notes = normalizeOptionalText(body.notes);
+
+    if (!accountName || !bankName || !accountNumber || !accountType) {
+      return response.status(400).json({ message: "accountName, bankName, accountNumber, and accountType are required." });
+    }
+
+    if (!Number.isFinite(openingBalance)) {
+      return response.status(400).json({ message: "Opening balance must be a valid number." });
+    }
+
+    const existingAccount = await (prisma as any).bankAccount.findFirst({
+      where: {
+        bankName,
+        accountNumber,
+      },
+      select: { id: true },
+    });
+
+    if (existingAccount) {
+      return response.status(409).json({ message: "A bank account with this bank and account number already exists." });
+    }
+
+    const created = await prisma.$transaction(async (transaction) => {
+      if (isDefault) {
+        await (transaction as any).bankAccount.updateMany({
+          where: { shopId: context.shop.id },
+          data: { isDefault: false },
+        });
+      }
+
+      return (transaction as any).bankAccount.create({
+        data: {
+          shopId: context.shop.id,
+          accountName,
+          bankName,
+          branchName,
+          accountNumber,
+          accountType,
+          openingBalance,
+          currentBalance: openingBalance,
+          currency,
+          status,
+          isDefault,
+          notes,
+        },
+      });
+    });
+
+    return response.status(201).json({
+      message: "Bank account created successfully.",
+      bankAccount: mapFinanceSourceBankAccount(created),
+    });
+  } catch (error) {
+    console.error("Failed to create shop bank account.", error);
+
+    return response.status(503).json({
+      message: "Bank account could not be created right now.",
+    });
+  }
+});
+
+router.put("/me/bank-accounts/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const existing = await (prisma as any).bankAccount.findFirst({
+      where: {
+        id: request.params.id,
+        shopId: context.shop.id,
+      },
+    });
+
+    if (!existing) {
+      return response.status(404).json({ message: "Bank account not found in this shop." });
+    }
+
+    const body = request.body as {
+      accountName?: string;
+      bankName?: string;
+      branchName?: string | null;
+      accountNumber?: string;
+      accountType?: "CURRENT" | "SAVINGS";
+      openingBalance?: number | string;
+      currency?: string;
+      status?: "ACTIVE" | "INACTIVE" | "CLOSED";
+      isDefault?: boolean;
+      notes?: string | null;
+    };
+
+    const accountName = `${body.accountName ?? existing.accountName ?? ""}`.trim();
+    const bankName = `${body.bankName ?? existing.bankName ?? ""}`.trim();
+    const branchName = body.branchName === undefined ? existing.branchName : normalizeOptionalText(body.branchName);
+    const accountNumber = `${body.accountNumber ?? existing.accountNumber ?? ""}`.trim();
+    const accountType = body.accountType ?? existing.accountType;
+    const openingBalance = body.openingBalance === undefined ? Number(existing.openingBalance ?? 0) : Number(body.openingBalance ?? 0);
+    const currency = `${body.currency ?? existing.currency ?? "BDT"}`.trim().toUpperCase() || "BDT";
+    const status = body.status ?? existing.status;
+    const isDefault = body.isDefault === undefined ? Boolean(existing.isDefault) : Boolean(body.isDefault);
+    const notes = body.notes === undefined ? existing.notes : normalizeOptionalText(body.notes);
+
+    if (!accountName || !bankName || !accountNumber || !accountType) {
+      return response.status(400).json({ message: "accountName, bankName, accountNumber, and accountType are required." });
+    }
+
+    if (!Number.isFinite(openingBalance)) {
+      return response.status(400).json({ message: "Opening balance must be a valid number." });
+    }
+
+    const duplicateAccount = await (prisma as any).bankAccount.findFirst({
+      where: {
+        bankName,
+        accountNumber,
+        id: { not: existing.id },
+      },
+      select: { id: true },
+    });
+
+    if (duplicateAccount) {
+      return response.status(409).json({ message: "A bank account with this bank and account number already exists." });
+    }
+
+    const updated = await prisma.$transaction(async (transaction) => {
+      if (isDefault) {
+        await (transaction as any).bankAccount.updateMany({
+          where: { shopId: context.shop.id, id: { not: existing.id } },
+          data: { isDefault: false },
+        });
+      }
+
+      const openingDelta = openingBalance - Number(existing.openingBalance ?? 0);
+
+      return (transaction as any).bankAccount.update({
+        where: { id: existing.id },
+        data: {
+          accountName,
+          bankName,
+          branchName,
+          accountNumber,
+          accountType,
+          openingBalance,
+          currentBalance: Number(existing.currentBalance ?? 0) + openingDelta,
+          currency,
+          status,
+          isDefault,
+          notes,
+        },
+      });
+    });
+
+    return response.json({
+      message: "Bank account updated successfully.",
+      bankAccount: mapFinanceSourceBankAccount(updated),
+    });
+  } catch (error) {
+    console.error("Failed to update shop bank account.", error);
+
+    return response.status(503).json({
+      message: "Bank account could not be updated right now.",
     });
   }
 });

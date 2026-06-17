@@ -2234,6 +2234,67 @@ router.patch("/me", async (request, response) => {
   });
 });
 
+router.patch("/me/password", async (request, response) => {
+  const auth = await getAuthenticatedUser(request);
+
+  if (isAuthError(auth)) {
+    return sendAuthError(response, auth);
+  }
+
+  const body = request.body as {
+    currentPassword?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+  };
+
+  const currentPassword = body.currentPassword?.trim() ?? "";
+  const newPassword = body.newPassword?.trim() ?? "";
+  const confirmPassword = body.confirmPassword?.trim() ?? "";
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return response.status(400).json({ message: "Current password, new password, and confirm password are required." });
+  }
+
+  if (!validatePasswordRules(newPassword)) {
+    return response.status(400).json({ message: "New password must be at least 4 characters." });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return response.status(400).json({ message: "Confirm password does not match." });
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { id: auth.user.id },
+    select: {
+      id: true,
+      passwordHash: true,
+    },
+  });
+
+  if (!existingUser) {
+    return response.status(404).json({ message: "User not found." });
+  }
+
+  if (!verifyPassword(currentPassword, existingUser.passwordHash)) {
+    return response.status(400).json({ message: "Current password is incorrect." });
+  }
+
+  if (currentPassword === newPassword) {
+    return response.status(400).json({ message: "New password must be different from current password." });
+  }
+
+  await prisma.user.update({
+    where: { id: auth.user.id },
+    data: {
+      passwordHash: newPassword,
+    },
+  });
+
+  return response.json({
+    message: "Password updated successfully.",
+  });
+});
+
 router.patch("/me/avatar", async (request, response) => {
   const auth = await getAuthenticatedUser(request);
 
