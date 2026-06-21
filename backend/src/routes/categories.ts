@@ -7,6 +7,12 @@ import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/curren
 
 const router = Router();
 
+type CategoryImportItem = {
+  name?: string;
+  description?: string | null;
+  status?: CategoryStatus;
+};
+
 function toDisplayStatus(status: CategoryStatus) {
   return status.replace(/_/g, " ");
 }
@@ -183,6 +189,106 @@ router.post("/", async (request, response) => {
       updatedAt: category.updatedAt,
       createdBy: category.createdBy,
       updatedBy: category.updatedBy,
+    },
+  });
+});
+
+router.post("/import", async (request, response) => {
+  const auth = await requirePlatformUser(request);
+
+  if (isAuthError(auth)) {
+    return sendAuthError(response, auth);
+  }
+
+  if (!["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+    return response.status(403).json({ message: "Only administrators can import master categories." });
+  }
+
+  const body = request.body as {
+    categories?: CategoryImportItem[];
+  };
+
+  const rows = Array.isArray(body.categories) ? body.categories : [];
+
+  if (rows.length === 0) {
+    return response.status(400).json({ message: "No categories were provided for import." });
+  }
+
+  const normalizedRows = rows
+    .map((row) => ({
+      name: row.name?.trim() ?? "",
+      description: row.description?.trim() || null,
+      status: row.status ?? CategoryStatus.ACTIVE,
+    }))
+    .filter((row) => row.name.length > 0);
+
+  if (normalizedRows.length === 0) {
+    return response.status(400).json({ message: "No valid category names were found in the import file." });
+  }
+
+  const uniqueRows = Array.from(
+    new Map(
+      normalizedRows.map((row) => [
+        row.name.toLocaleLowerCase("en-US"),
+        row,
+      ]),
+    ).values(),
+  );
+
+  const existingCategories = await prisma.productCategory.findMany({
+    where: {
+      isGlobal: true,
+    },
+    select: {
+      name: true,
+    },
+  });
+
+  const existingNames = new Set(existingCategories.map((item) => item.name.toLocaleLowerCase("en-US")));
+  const categoriesToCreate = uniqueRows.filter((row) => !existingNames.has(row.name.toLocaleLowerCase("en-US")));
+
+  if (categoriesToCreate.length > 0) {
+    await prisma.$transaction(
+      categoriesToCreate.map((row) =>
+        prisma.productCategory.create({
+          data: {
+            name: row.name,
+            description: row.description,
+            status: row.status,
+            shopId: null,
+            isGlobal: true,
+            isApproved: true,
+            createdByUserId: auth.user.id,
+            updatedByUserId: auth.user.id,
+            logs: {
+              create: {
+                action: CategoryLogAction.CREATED,
+                newData: {
+                  name: row.name,
+                  description: row.description,
+                  status: row.status,
+                  shopId: null,
+                  isGlobal: true,
+                  isApproved: true,
+                  source: "excel-import",
+                },
+                performedById: auth.user.id,
+              },
+            },
+          },
+        }),
+      ),
+    );
+  }
+
+  return response.json({
+    message: `Category import completed. Created ${categoriesToCreate.length} and skipped ${uniqueRows.length - categoriesToCreate.length}.`,
+    summary: {
+      received: rows.length,
+      valid: normalizedRows.length,
+      unique: uniqueRows.length,
+      created: categoriesToCreate.length,
+      skipped: uniqueRows.length - categoriesToCreate.length,
     },
   });
 });

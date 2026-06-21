@@ -59,6 +59,44 @@ async function upsertUserByEmailOrPhone(data: SeedUserInput) {
   });
 }
 
+async function upsertCategory({
+  name,
+  description,
+  status,
+  createdByUserId,
+  updatedByUserId,
+}: {
+  name: string;
+  description: string;
+  status: CategoryStatus;
+  createdByUserId: string;
+  updatedByUserId: string;
+}) {
+  const existing = await prisma.productCategory.findFirst({
+    where: { name },
+  });
+  if (existing) {
+    return prisma.productCategory.update({
+      where: { id: existing.id },
+      data: {
+        description,
+        status,
+        createdByUserId,
+        updatedByUserId,
+      },
+    });
+  }
+  return prisma.productCategory.create({
+    data: {
+      name,
+      description,
+      status,
+      createdByUserId,
+      updatedByUserId,
+    },
+  });
+}
+
 async function main() {
   const superAdmin = await upsertUserByEmailOrPhone({
     name: "Demo Super Admin",
@@ -254,55 +292,28 @@ async function main() {
     });
   }
 
-  const beveragesCategory = await prisma.productCategory.upsert({
-    where: { name: "Beverages" },
-    update: {
-      description: "Soft drinks, juices, energy drinks, and bottled water.",
-      status: CategoryStatus.ACTIVE,
-      createdByUserId: superAdmin.id,
-      updatedByUserId: superAdmin.id,
-    },
-    create: {
-      name: "Beverages",
-      description: "Soft drinks, juices, energy drinks, and bottled water.",
-      status: CategoryStatus.ACTIVE,
-      createdByUserId: superAdmin.id,
-      updatedByUserId: superAdmin.id,
-    },
+  const beveragesCategory = await upsertCategory({
+    name: "Beverages",
+    description: "Soft drinks, juices, energy drinks, and bottled water.",
+    status: CategoryStatus.ACTIVE,
+    createdByUserId: superAdmin.id,
+    updatedByUserId: superAdmin.id,
   });
 
-  const snacksCategory = await prisma.productCategory.upsert({
-    where: { name: "Snacks" },
-    update: {
-      description: "Biscuits, chips, noodles, and packaged snack items.",
-      status: CategoryStatus.ACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: admin.id,
-    },
-    create: {
-      name: "Snacks",
-      description: "Biscuits, chips, noodles, and packaged snack items.",
-      status: CategoryStatus.ACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: admin.id,
-    },
+  const snacksCategory = await upsertCategory({
+    name: "Snacks",
+    description: "Biscuits, chips, noodles, and packaged snack items.",
+    status: CategoryStatus.ACTIVE,
+    createdByUserId: admin.id,
+    updatedByUserId: admin.id,
   });
 
-  const seasonalCategory = await prisma.productCategory.upsert({
-    where: { name: "Seasonal Items" },
-    update: {
-      description: "Special campaigns, festive bundles, and time-based items.",
-      status: CategoryStatus.INACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: superAdmin.id,
-    },
-    create: {
-      name: "Seasonal Items",
-      description: "Special campaigns, festive bundles, and time-based items.",
-      status: CategoryStatus.INACTIVE,
-      createdByUserId: admin.id,
-      updatedByUserId: superAdmin.id,
-    },
+  const seasonalCategory = await upsertCategory({
+    name: "Seasonal Items",
+    description: "Special campaigns, festive bundles, and time-based items.",
+    status: CategoryStatus.INACTIVE,
+    createdByUserId: admin.id,
+    updatedByUserId: superAdmin.id,
   });
 
   const pranBrand = await prisma.brand.upsert({
@@ -395,22 +406,30 @@ async function main() {
   ] as const;
 
   for (const unit of unitSeedData) {
-    await prisma.unit.upsert({
+    const existing = await prisma.unit.findFirst({
       where: { name: unit.name },
-      update: unit,
-      create: unit,
     });
+    if (existing) {
+      await prisma.unit.update({
+        where: { id: existing.id },
+        data: unit,
+      });
+    } else {
+      await prisma.unit.create({
+        data: unit,
+      });
+    }
   }
 
-  const pieceUnit = await prisma.unit.findUnique({
+  const pieceUnit = await prisma.unit.findFirst({
     where: { name: "Piece" },
   });
 
-  const kilogramUnit = await prisma.unit.findUnique({
+  const kilogramUnit = await prisma.unit.findFirst({
     where: { name: "Kilogram" },
   });
 
-  const literUnit = await prisma.unit.findUnique({
+  const literUnit = await prisma.unit.findFirst({
     where: { name: "Liter" },
   });
 

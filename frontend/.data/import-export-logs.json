@@ -1,0 +1,307 @@
+{
+  "imports": [
+    {
+      "id": "1782042773115",
+      "fileName": "Product_Catalog_Prices_Cleaned.xlsx",
+      "module": "Product Catalog",
+      "importedBy": "Demo Super Admin",
+      "totalRecords": 10,
+      "success": 10,
+      "failed": 0,
+      "status": "Completed",
+      "date": "21 Jun 2026, 05:52 pm",
+      "createdAt": "2026-06-21T11:52:53.115Z",
+      "duplicateHandling": "UPDATE_EXISTING",
+      "errorHandling": "SKIP_ERROR_ROWS",
+      "notes": null,
+      "summary": {
+        "totalRows": 10,
+        "created": 10,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "stoppedEarly": false,
+        "errors": []
+      }
+    },
+    {
+      "id": "1782042565855",
+      "fileName": "Product_Catalog_Prices_Cleaned.xlsx",
+      "module": "Product Catalog",
+      "importedBy": "Demo Super Admin",
+      "totalRecords": 10,
+      "success": 0,
+      "failed": 10,
+      "status": "Failed",
+      "date": "21 Jun 2026, 05:49 pm",
+      "createdAt": "2026-06-21T11:49:25.855Z",
+      "duplicateHandling": "UPDATE_EXISTING",
+      "errorHandling": "SKIP_ERROR_ROWS",
+      "notes": null,
+      "summary": {
+        "totalRows": 10,
+        "created": 0,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 10,
+        "stoppedEarly": false,
+        "errors": [
+          {
+            "row": 2,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 3,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 4,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 5,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 6,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 7,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 8,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 9,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 10,
+            "message": "Category \"Juice & Drinks\" was not found."
+          },
+          {
+            "row": 11,
+            "message": "Category \"Juice & Drinks\" was not found."
+          }
+        ]
+      }
+    },
+    {
+      "id": "1782033905077",
+      "fileName": "Dokan_ERP_500_Brands_LogoURL_Fixed.xlsx",
+      "module": "Brand",
+      "importedBy": "Demo Super Admin",
+      "totalRecords": 500,
+      "success": 482,
+      "failed": 0,
+      "status": "Partial",
+      "date": "21 Jun 2026, 03:25 pm",
+      "createdAt": "2026-06-21T09:25:05.077Z",
+      "duplicateHandling": "SKIP_DUPLICATE",
+      "errorHandling": "SKIP_ERROR_ROWS",
+      "notes": null,
+      "summary": {
+        "totalRows": 500,
+        "created": 482,
+        "updated": 0,
+        "skipped": 18,
+        "failed": 0,
+        "stoppedEarly": false,
+        "errors": []
+      }
+    },
+    {
+      "id": "1782032472845",
+      "fileName": "Dokan_ERP_Brand_Template_Format.xlsx",
+      "module": "Brand",
+      "importedBy": "Demo Super Admin",
+      "totalRecords": 11,
+      "success": 11,
+      "failed": 0,
+      "status": "Completed",
+      "date": "21 Jun 2026, 03:01 pm",
+      "createdAt": "2026-06-21T09:01:12.845Z",
+      "duplicateHandling": "UPDATE_EXISTING",
+      "errorHandling": "SKIP_ERROR_ROWS",
+      "notes": null,
+      "summary": {
+        "totalRows": 11,
+        "created": 11,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "stoppedEarly": false,
+        "errors": []
+      }
+    },
+    {
+      "id": "1782031665234",
+      "fileName": "Dokan_ERP_Brand_Template_Format.xlsx",
+      "module": "Brand",
+      "importedBy": "Demo Super Admin",
+      "totalRecords": 8,
+      "success": 6,
+      "failed": 0,
+      "status": "Partial",
+      "date": "21 Jun 2026, 02:47 pm",
+      "createdAt": "2026-06-21T08:47:45.234Z",
+      "duplicateHandling": "UPDATE_EXISTING",
+      "errorHandling": "SKIP_ERROR_ROWS",
+      "notes": null,
+      "summary": {
+        "totalRows": 8,
+        "created": 6,
+        "updated": 0,
+        "skipped": 2,
+        "failed": 0,
+        "stoppedEarly": false,
+        "errors": []
+      }
+    },
+    {
+      "id": "1782030329394",
+      "fileName": "Dokan_ERP_Unit_Master_Data_Template_Format.xlsx",
+      "module": "Unit",
+      "importedBy": "Demo Super Admin",
+      "totalRecords": 108,
+      "success": 48,
+      "failed": 29,
+      "status": "Partial",
+      "date": "21 Jun 2026, 02:25 pm",
+      "createdAt": "2026-06-21T08:25:29.394Z",
+      "duplicateHandling": "SKIP_DUPLICATE",
+      "errorHandling": "SKIP_ERROR_ROWS",
+      "notes": null,
+      "summary": {
+        "totalRows": 108,
+        "created": 48,
+        "updated": 0,
+        "skipped": 31,
+        "failed": 29,
+        "stoppedEarly": false,
+        "errors": [
+          {
+            "row": 30,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 34,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 35,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 36,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 37,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 38,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 39,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 40,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 41,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 84,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 85,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 88,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 89,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 90,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 91,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 92,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 93,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 98,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 99,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 100,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 101,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 102,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 103,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 104,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 105,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 106,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 107,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 108,
+            "message": "Unit type is required."
+          },
+          {
+            "row": 109,
+            "message": "Unit type is required."
+          }
+        ]
+      }
+    }
+  ],
+  "exports": []
+}

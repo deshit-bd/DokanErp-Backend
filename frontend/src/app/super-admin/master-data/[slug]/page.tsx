@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type FormEvent, use, useEffect, useRef, useState } from "react";
+import { Fragment, type ChangeEvent, type FormEvent, use, useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiCheckCircle, FiCopy, FiCreditCard, FiDollarSign, FiDownload, FiEdit, FiEye, FiFileText, FiFolder, FiMoreVertical, FiPackage, FiPauseCircle, FiRefreshCw, FiToggleLeft, FiTrash2 } from "react-icons/fi";
 import { LuArchive, LuBadgeCheck, LuBadgeInfo, LuCircleOff } from "react-icons/lu";
 
@@ -30,6 +30,18 @@ const importRows = [
   { id: 3, fileName: "units-setup.xlsx", module: "Unit", importedBy: "Operations", totalRecords: 48, success: 44, failed: 4, status: "Partial", date: "29 may 2024" },
   { id: 4, fileName: "brands-master.csv", module: "Brand", importedBy: "Super Admin", totalRecords: 190, success: 170, failed: 20, status: "Failed", date: "28 may 2024" },
 ];
+
+const importModuleOptions = [
+  { value: "product-catalog", label: "Product Catalog", templatePath: "/templates/product-catalog-template.xlsx" },
+  { value: "product-category", label: "Product Category", templatePath: "/templates/product-category-template.xlsx" },
+  { value: "brand", label: "Brand", templatePath: "/templates/brand-template.xlsx" },
+  { value: "unit", label: "Unit", templatePath: "/templates/unit-template.xlsx" },
+  { value: "supplier-data", label: "Supplier Data", templatePath: "/templates/supplier-data-template.xlsx" },
+  { value: "barcode-database", label: "Barcode Database", templatePath: "/templates/barcode-database-template.xlsx" },
+  { value: "bank-account", label: "Bank Account", templatePath: "/templates/bank-account-template.xlsx" },
+  { value: "money-box", label: "Money Box", templatePath: "/templates/money-box-template.xlsx" },
+  { value: "product-template", label: "Product Template", templatePath: "/templates/product-template-template.xlsx" },
+] as const;
 
 const exportRows = [
   { id: 1, fileName: "products-export-may.xlsx", module: "Product Catalog", exportedBy: "Super Admin", records: 1240, format: "Excel", date: "31 may 2024" },
@@ -343,7 +355,8 @@ type UnitFormState = {
   status: UnitStatusValue;
 };
 
-type UnitPageSizeValue = 5 | 10 | 11 | 20 | 50;
+type UnitPageSizeValue = 5 | 10 | 20 | 50;
+type BrandPageSizeValue = 5 | 10 | 20 | 50;
 
 type BrandStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
 
@@ -656,6 +669,62 @@ type ProductTemplateFormState = {
   status: ProductTemplateStatusValue;
 };
 
+type DuplicateHandlingValue = "SKIP_DUPLICATE" | "UPDATE_EXISTING" | "STOP_IMPORT";
+type ImportErrorHandlingValue = "SKIP_ERROR_ROWS" | "STOP_ON_FIRST_ERROR" | "IMPORT_VALID_ROWS_ONLY";
+
+type ImportSummary = {
+  totalRows: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  stoppedEarly: boolean;
+  errors: Array<{
+    row: number;
+    message: string;
+  }>;
+};
+
+type ImportLogRow = {
+  id: string;
+  fileName: string;
+  module: string;
+  importedBy: string;
+  totalRecords: number;
+  success: number;
+  failed: number;
+  status: "Completed" | "Partial" | "Failed";
+  date: string;
+  createdAt: string;
+};
+
+type ExportLogRow = {
+  id: string;
+  fileName: string;
+  module: string;
+  exportedBy: string;
+  records: number;
+  format: string;
+  date: string;
+  createdAt: string;
+};
+
+type ImportExportApiResponse = {
+  imports?: ImportLogRow[];
+  exports?: ExportLogRow[];
+  stats?: {
+    totalImports: number;
+    successfulImports: number;
+    failedImports: number;
+    totalExports: number;
+    totalExportedRecords: number;
+  };
+  message?: string;
+};
+
+type ImportExportStatusFilterValue = "" | "Completed" | "Partial" | "Failed";
+type ImportExportPageSizeValue = 5 | 10 | 20 | 50;
+
 const unitTypeOptions: Array<{ value: UnitTypeValue; label: string }> = [
   { value: "COUNTABLE", label: "Countable" },
   { value: "WEIGHT", label: "Weight" },
@@ -679,7 +748,8 @@ const defaultUnitFormState: UnitFormState = {
   status: "ACTIVE",
 };
 
-const unitPageSizeOptions: UnitPageSizeValue[] = [5, 10, 11, 20, 50];
+const unitPageSizeOptions: UnitPageSizeValue[] = [5, 10, 20, 50];
+const brandPageSizeOptions: BrandPageSizeValue[] = [5, 10, 20, 50];
 
 const defaultBrandFormState: BrandFormState = {
   name: "",
@@ -1933,11 +2003,39 @@ export default function MasterDataSubmodulePage({
   const [openProductCatalogActionMenuId, setOpenProductCatalogActionMenuId] = useState<string | null>(null);
   const [openProductTemplateActionMenuId, setOpenProductTemplateActionMenuId] = useState<string | null>(null);
   const [openUnitActionMenuId, setOpenUnitActionMenuId] = useState<string | null>(null);
-  const [openImportActionMenuId, setOpenImportActionMenuId] = useState<number | null>(null);
-  const [openExportActionMenuId, setOpenExportActionMenuId] = useState<number | null>(null);
+  const [openImportActionMenuId, setOpenImportActionMenuId] = useState<string | null>(null);
+  const [openExportActionMenuId, setOpenExportActionMenuId] = useState<string | null>(null);
   const [importExportTab, setImportExportTab] = useState<"import" | "export">("import");
   const [isImportDataModalOpen, setIsImportDataModalOpen] = useState(false);
   const [isExportDataModalOpen, setIsExportDataModalOpen] = useState(false);
+  const [importExportSearch, setImportExportSearch] = useState("");
+  const [importExportModuleFilter, setImportExportModuleFilter] = useState("");
+  const [importExportStatusFilter, setImportExportStatusFilter] = useState<ImportExportStatusFilterValue>("");
+  const [importCurrentPage, setImportCurrentPage] = useState(1);
+  const [exportCurrentPage, setExportCurrentPage] = useState(1);
+  const [importExportPageSize, setImportExportPageSize] = useState<ImportExportPageSizeValue>(10);
+  const [selectedImportModule, setSelectedImportModule] = useState("");
+  const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
+  const [importDuplicateHandling, setImportDuplicateHandling] = useState<DuplicateHandlingValue>("SKIP_DUPLICATE");
+  const [importErrorHandling, setImportErrorHandling] = useState<ImportErrorHandlingValue>("SKIP_ERROR_ROWS");
+  const [importNotes, setImportNotes] = useState("");
+  const [shouldSendImportReport, setShouldSendImportReport] = useState(true);
+  const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [importModalError, setImportModalError] = useState("");
+  const [importModalFeedback, setImportModalFeedback] = useState("");
+  const [importResultSummary, setImportResultSummary] = useState<ImportSummary | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [importLogs, setImportLogs] = useState<ImportLogRow[]>([]);
+  const [exportLogs, setExportLogs] = useState<ExportLogRow[]>([]);
+  const [isImportExportLoading, setIsImportExportLoading] = useState(false);
+  const [importExportLoadError, setImportExportLoadError] = useState("");
+  const [importExportStatsData, setImportExportStatsData] = useState({
+    totalImports: 0,
+    successfulImports: 0,
+    failedImports: 0,
+    totalExports: 0,
+    totalExportedRecords: 0,
+  });
   const [brandData, setBrandData] = useState<BrandApiResponse>({
     stats: {
       total: 0,
@@ -1947,12 +2045,268 @@ export default function MasterDataSubmodulePage({
     },
     brands: [],
   });
+  const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
+  const [openBrandActionMenuId, setOpenBrandActionMenuId] = useState<string | null>(null);
+
+  const selectedImportModuleOption =
+    importModuleOptions.find((option) => option.value === selectedImportModule) ?? null;
+  const importExportStatsLive = [
+    {
+      label: "Total Imports",
+      value: String(importExportStatsData.totalImports),
+      note: "All Import Jobs",
+      accent: "indigo" as const,
+      type: "import" as const,
+    },
+    {
+      label: "Successful Imports",
+      value: String(importExportStatsData.successfulImports),
+      note: "Rows Imported Successfully",
+      accent: "green" as const,
+      type: "success" as const,
+    },
+    {
+      label: "Failed Imports",
+      value: String(importExportStatsData.failedImports),
+      note: "Rows Needing Review",
+      accent: "amber" as const,
+      type: "failed" as const,
+    },
+    {
+      label: "Total Exports",
+      value: String(importExportStatsData.totalExports),
+      note: `${importExportStatsData.totalExportedRecords} rows exported`,
+      accent: "red" as const,
+      type: "export" as const,
+    },
+  ];
+
+  const filteredImportLogs = importLogs.filter((row) => {
+    if (importExportModuleFilter && row.module !== importExportModuleFilter) {
+      return false;
+    }
+
+    if (importExportStatusFilter && row.status !== importExportStatusFilter) {
+      return false;
+    }
+
+    if (!importExportSearch.trim()) {
+      return true;
+    }
+
+    return isSubsequenceMatch(
+      importExportSearch,
+      [row.fileName, row.module, row.importedBy, row.date, row.status].join(" "),
+    );
+  });
+
+  const filteredExportLogs = exportLogs.filter((row) => {
+    if (importExportModuleFilter && row.module !== importExportModuleFilter) {
+      return false;
+    }
+
+    if (!importExportSearch.trim()) {
+      return true;
+    }
+
+    return isSubsequenceMatch(
+      importExportSearch,
+      [row.fileName, row.module, row.exportedBy, row.format, row.date].join(" "),
+    );
+  });
+
+  const importTotalPages = Math.max(1, Math.ceil(filteredImportLogs.length / importExportPageSize));
+  const exportTotalPages = Math.max(1, Math.ceil(filteredExportLogs.length / importExportPageSize));
+  const safeImportCurrentPage = Math.min(importCurrentPage, importTotalPages);
+  const safeExportCurrentPage = Math.min(exportCurrentPage, exportTotalPages);
+  const paginatedImportLogs = filteredImportLogs.slice(
+    (safeImportCurrentPage - 1) * importExportPageSize,
+    safeImportCurrentPage * importExportPageSize,
+  );
+  const paginatedExportLogs = filteredExportLogs.slice(
+    (safeExportCurrentPage - 1) * importExportPageSize,
+    safeExportCurrentPage * importExportPageSize,
+  );
+  const importRangeStart = paginatedImportLogs.length === 0 ? 0 : (safeImportCurrentPage - 1) * importExportPageSize + 1;
+  const importRangeEnd = (safeImportCurrentPage - 1) * importExportPageSize + paginatedImportLogs.length;
+  const exportRangeStart = paginatedExportLogs.length === 0 ? 0 : (safeExportCurrentPage - 1) * importExportPageSize + 1;
+  const exportRangeEnd = (safeExportCurrentPage - 1) * importExportPageSize + paginatedExportLogs.length;
+
+  function getVisiblePagination(currentPage: number, totalPages: number) {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, totalPages];
+    }
+
+    if (currentPage >= totalPages - 2) {
+      return [1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+
+    return [1, currentPage - 1, currentPage, currentPage + 1, totalPages];
+  }
+
+  const importVisiblePages = getVisiblePagination(safeImportCurrentPage, importTotalPages);
+  const exportVisiblePages = getVisiblePagination(safeExportCurrentPage, exportTotalPages);
+
+  function handleDownloadImportTemplate() {
+    if (!selectedImportModuleOption) {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = selectedImportModuleOption.templatePath;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  function resetImportModalState() {
+    setSelectedImportModule("");
+    setSelectedImportFile(null);
+    setImportDuplicateHandling("SKIP_DUPLICATE");
+    setImportErrorHandling("SKIP_ERROR_ROWS");
+    setImportNotes("");
+    setShouldSendImportReport(true);
+    setImportModalError("");
+    setImportModalFeedback("");
+    setImportResultSummary(null);
+  }
+
+  function closeImportDataModal() {
+    setIsImportDataModalOpen(false);
+    resetImportModalState();
+  }
+
+  function resetImportExportFilters() {
+    setImportExportSearch("");
+    setImportExportModuleFilter("");
+    setImportExportStatusFilter("");
+    setImportCurrentPage(1);
+    setExportCurrentPage(1);
+  }
+
+  async function loadImportExportLogs() {
+    setIsImportExportLoading(true);
+
+    try {
+      const response = await fetch("/api/bulk-upload", {
+        cache: "no-store",
+      });
+      const result = (await response.json()) as ImportExportApiResponse;
+
+      if (!response.ok) {
+        setImportExportLoadError(result.message ?? "Failed to load import/export logs.");
+        return;
+      }
+
+      setImportLogs(result.imports ?? []);
+      setExportLogs(result.exports ?? []);
+      setImportExportStatsData(
+        result.stats ?? {
+          totalImports: 0,
+          successfulImports: 0,
+          failedImports: 0,
+          totalExports: 0,
+          totalExportedRecords: 0,
+        },
+      );
+      setImportExportLoadError("");
+    } catch {
+      setImportExportLoadError("Unable to load import/export logs right now.");
+    } finally {
+      setIsImportExportLoading(false);
+    }
+  }
+
+  function handleImportFileSelection(file: File | null) {
+    setImportModalError("");
+    setImportModalFeedback("");
+    setImportResultSummary(null);
+    setSelectedImportFile(file);
+  }
+
+  async function handleImportDataSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedImportModule) {
+      setImportModalError("Please select a module.");
+      return;
+    }
+
+    if (!selectedImportFile) {
+      setImportModalError("Please choose an Excel or CSV file.");
+      return;
+    }
+
+    setIsImportSubmitting(true);
+    setImportModalError("");
+    setImportModalFeedback("");
+    setImportResultSummary(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("module", selectedImportModule);
+      formData.append("file", selectedImportFile);
+      formData.append("duplicateHandling", importDuplicateHandling);
+      formData.append("errorHandling", importErrorHandling);
+      formData.append("notes", importNotes);
+      formData.append("sendReportByEmail", shouldSendImportReport ? "true" : "false");
+
+      const response = await fetch("/api/bulk-upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = (await response.json()) as {
+        message?: string;
+        summary?: ImportSummary;
+      };
+
+      if (!response.ok) {
+        setImportModalError(result.message ?? "Import failed.");
+        return;
+      }
+
+      setImportModalFeedback(result.message ?? "Import completed successfully.");
+      setImportResultSummary(result.summary ?? null);
+      await loadImportExportLogs();
+    } catch {
+      setImportModalError("Unable to import data right now.");
+    } finally {
+      setIsImportSubmitting(false);
+    }
+  }
+
+  useEffect(() => {
+    if (slug !== "import-export") {
+      return;
+    }
+
+    void loadImportExportLogs();
+  }, [slug]);
+
+  useEffect(() => {
+    setImportCurrentPage(1);
+  }, [importExportSearch, importExportModuleFilter, importExportStatusFilter, importExportPageSize]);
+
+  useEffect(() => {
+    setExportCurrentPage(1);
+  }, [importExportSearch, importExportModuleFilter, importExportPageSize]);
+
   const [isBrandLoading, setIsBrandLoading] = useState(false);
   const [brandLoadError, setBrandLoadError] = useState<string | null>(null);
   const [brandSearch, setBrandSearch] = useState("");
   const [brandStatusFilter, setBrandStatusFilter] = useState<BrandStatusValue | "">("");
+  const [brandCurrentPage, setBrandCurrentPage] = useState(1);
+  const [brandPageSize, setBrandPageSize] = useState<BrandPageSizeValue>(10);
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
   const [brandForm, setBrandForm] = useState<BrandFormState>(defaultBrandFormState);
   const [brandFormError, setBrandFormError] = useState<string | null>(null);
+  const [brandLogoType, setBrandLogoType] = useState<"upload" | "url">("upload");
   const [isBrandSaving, setIsBrandSaving] = useState(false);
   const [unitData, setUnitData] = useState<UnitApiResponse>({
     stats: {
@@ -1972,7 +2326,7 @@ export default function MasterDataSubmodulePage({
   const [unitFormError, setUnitFormError] = useState<string | null>(null);
   const [isUnitSaving, setIsUnitSaving] = useState(false);
   const [unitCurrentPage, setUnitCurrentPage] = useState(1);
-  const [unitPageSize, setUnitPageSize] = useState<UnitPageSizeValue>(11);
+  const [unitPageSize, setUnitPageSize] = useState<UnitPageSizeValue>(10);
   const barcodeFormRef = useRef<HTMLFormElement | null>(null);
   const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const isBrandPage = slug === "brand";
@@ -2665,12 +3019,40 @@ export default function MasterDataSubmodulePage({
   function resetBrandFilters() {
     setBrandSearch("");
     setBrandStatusFilter("");
+    setSelectedBrandIds([]);
+  }
+
+  function openCreateBrandModal() {
+    setEditingBrandId(null);
+    setOpenBrandActionMenuId(null);
+    setBrandForm(defaultBrandFormState);
+    setBrandFormError(null);
+    setBrandLogoType("upload");
+    setIsBrandModalOpen(true);
+  }
+
+  function openEditBrandModal(brand: BrandRecord) {
+    setEditingBrandId(brand.id);
+    setOpenBrandActionMenuId(null);
+    const isExternalUrl = !!brand.logoUrl && brand.logoUrl.startsWith("http") && !brand.logoUrl.includes("/uploads/brands/");
+    setBrandLogoType(isExternalUrl ? "url" : "upload");
+    setBrandForm({
+      name: brand.name,
+      description: brand.description ?? "",
+      status: brand.status,
+      logoUrl: brand.logoUrl ?? "",
+      logoName: brand.logoUrl ? (isExternalUrl ? "URL Image" : `${brand.name} logo`) : "",
+    });
+    setBrandFormError(null);
+    setIsBrandModalOpen(true);
   }
 
   function closeBrandModal() {
     setIsBrandModalOpen(false);
+    setEditingBrandId(null);
     setBrandForm(defaultBrandFormState);
     setBrandFormError(null);
+    setBrandLogoType("upload");
   }
 
   async function refreshSuppliers() {
@@ -3120,6 +3502,31 @@ export default function MasterDataSubmodulePage({
     );
   });
 
+  useEffect(() => {
+    setBrandCurrentPage(1);
+  }, [brandSearch, brandStatusFilter, brandPageSize]);
+
+  const brandTotalPages = Math.max(1, Math.ceil(filteredBrands.length / brandPageSize));
+  const safeBrandCurrentPage = Math.min(brandCurrentPage, brandTotalPages);
+  const brandPageStartIndex = (safeBrandCurrentPage - 1) * brandPageSize;
+  const paginatedBrands = filteredBrands.slice(brandPageStartIndex, brandPageStartIndex + brandPageSize);
+
+  const brandVisiblePages = (() => {
+    if (brandTotalPages <= 5) {
+      return Array.from({ length: brandTotalPages }, (_, index) => index + 1);
+    }
+
+    if (safeBrandCurrentPage <= 3) {
+      return [1, 2, 3, 4, brandTotalPages];
+    }
+
+    if (safeBrandCurrentPage >= brandTotalPages - 2) {
+      return [1, brandTotalPages - 3, brandTotalPages - 2, brandTotalPages - 1, brandTotalPages];
+    }
+
+    return [1, safeBrandCurrentPage - 1, safeBrandCurrentPage, safeBrandCurrentPage + 1, brandTotalPages];
+  })();
+
   function resetProductCatalogFilters() {
     setProductCatalogSearch("");
     setProductCatalogCategoryFilter("");
@@ -3479,6 +3886,7 @@ export default function MasterDataSubmodulePage({
 
       if (payload && "brands" in payload) {
         setBrandData(payload);
+        setSelectedBrandIds([]);
       }
     } catch (error) {
       setBrandLoadError(error instanceof Error ? error.message : "Failed to load brands.");
@@ -3822,8 +4230,8 @@ async function refreshProductCatalog() {
     setBrandFormError(null);
 
     try {
-      const response = await fetch("/api/brands", {
-        method: "POST",
+      const response = await fetch(editingBrandId ? `/api/brands/${editingBrandId}` : "/api/brands", {
+        method: editingBrandId ? "PUT" : "POST",
         credentials: "include",
         headers: {
           "content-type": "application/json",
@@ -3891,6 +4299,90 @@ async function refreshProductCatalog() {
       setBrandFormError(error instanceof Error ? error.message : "Failed to read logo file.");
     } finally {
       event.target.value = "";
+    }
+  }
+
+  async function handleBrandStatusChange(brand: BrandRecord, status: BrandStatusValue) {
+    setBrandLoadError(null);
+    setOpenBrandActionMenuId(null);
+
+    try {
+      const response = await fetch(`/api/brands/${brand.id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name: brand.name,
+          description: brand.description,
+          status,
+          logoUrl: brand.logoUrl,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to update brand status.");
+      }
+
+      await refreshBrands();
+    } catch (error) {
+      setBrandLoadError(error instanceof Error ? error.message : "Failed to update brand status.");
+    }
+  }
+
+  async function handleDeleteBrand(brand: BrandRecord) {
+    setBrandLoadError(null);
+    setOpenBrandActionMenuId(null);
+
+    try {
+      const response = await fetch(`/api/brands/${brand.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok && response.status !== 409) {
+        throw new Error(payload?.message || "Failed to delete brand.");
+      }
+
+      await refreshBrands();
+    } catch (error) {
+      setBrandLoadError(error instanceof Error ? error.message : "Failed to delete brand.");
+    }
+  }
+
+  async function handleBulkDeleteBrands() {
+    if (selectedBrandIds.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete the ${selectedBrandIds.length} selected brands?`)) {
+      return;
+    }
+
+    setBrandLoadError(null);
+
+    try {
+      const response = await fetch("/api/brands", {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ ids: selectedBrandIds }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to delete brands.");
+      }
+
+      await refreshBrands();
+    } catch (error) {
+      setBrandLoadError(error instanceof Error ? error.message : "Failed to delete brands.");
     }
   }
 
@@ -4064,14 +4556,20 @@ async function refreshProductCatalog() {
               Clear Filters
             </button>
 
+            {selectedBrandIds.length > 0 ? (
+              <button
+                type="button"
+                className="master-category-danger-button"
+                onClick={handleBulkDeleteBrands}
+              >
+                Delete Selected ({selectedBrandIds.length})
+              </button>
+            ) : null}
+
             <button
               type="button"
               className="master-category-primary-button brand-page-add-button"
-              onClick={() => {
-                setBrandForm(defaultBrandFormState);
-                setBrandFormError(null);
-                setIsBrandModalOpen(true);
-              }}
+              onClick={openCreateBrandModal}
             >
               + Add Brand
             </button>
@@ -4083,6 +4581,25 @@ async function refreshProductCatalog() {
 
           <div className="brand-page-table">
             <div className="brand-page-table-head">
+              <span>
+                <input
+                  type="checkbox"
+                  checked={
+                    paginatedBrands.length > 0 &&
+                    paginatedBrands.every((row) => selectedBrandIds.includes(row.id))
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const pageIds = paginatedBrands.map((row) => row.id);
+                      setSelectedBrandIds((current) => Array.from(new Set([...current, ...pageIds])));
+                    } else {
+                      const pageIds = paginatedBrands.map((row) => row.id);
+                      setSelectedBrandIds((current) => current.filter((id) => !pageIds.includes(id)));
+                    }
+                  }}
+                  className="brand-list-checkbox"
+                />
+              </span>
               <span>#</span>
               <span>Brand</span>
               <span>Description</span>
@@ -4101,10 +4618,24 @@ async function refreshProductCatalog() {
               <div className="brand-page-table-row">
                 <span style={{ gridColumn: "1 / -1", color: "#667085" }}>No brands found for the current filters.</span>
               </div>
-            ) : (
-              filteredBrands.map((row, index) => (
+                        ) : (
+              paginatedBrands.map((row, index) => (
                 <div className="brand-page-table-row" key={row.id}>
-                  <span>{index + 1}</span>
+                  <span>
+                    <input
+                      type="checkbox"
+                      checked={selectedBrandIds.includes(row.id)}
+                      onChange={(e) => {
+                        setSelectedBrandIds((current) =>
+                          e.target.checked
+                            ? [...current, row.id]
+                            : current.filter((id) => id !== row.id),
+                        );
+                      }}
+                      className="brand-list-checkbox"
+                    />
+                  </span>
+                  <span>{brandPageStartIndex + index + 1}</span>
                   <span className="brand-page-brand-cell">
                     {row.logoUrl ? (
                       <img
@@ -4137,12 +4668,69 @@ async function refreshProductCatalog() {
                   </span>
                   <span>{formatUnitDate(row.createdAt)}</span>
                   <span className="master-category-actions">
-                    <button type="button" className="master-category-icon-button master-category-icon-button-edit">
+                    <button
+                      type="button"
+                      className="master-category-icon-button master-category-icon-button-edit"
+                      onClick={() => openEditBrandModal(row)}
+                      aria-label={`Edit ${row.name}`}
+                    >
                       <MoneyBoxActionIcon type="edit" />
                     </button>
-                    <button type="button" className="master-category-icon-button master-category-icon-button-more">
-                      <ProductCatalogControlIcon type="more" />
-                    </button>
+                    <span className="master-category-action-menu">
+                      <button
+                        type="button"
+                        className="master-category-icon-button master-category-icon-button-more"
+                        onClick={() =>
+                          setOpenBrandActionMenuId((current) => (current === row.id ? null : row.id))
+                        }
+                        aria-haspopup="menu"
+                        aria-expanded={openBrandActionMenuId === row.id}
+                        aria-label={`More actions for ${row.name}`}
+                      >
+                        <ProductCatalogControlIcon type="more" />
+                      </button>
+                      {openBrandActionMenuId === row.id ? (
+                        <div className="master-category-action-dropdown" role="menu">
+                          <button
+                            type="button"
+                            className="master-category-action-dropdown-item"
+                            role="menuitem"
+                            onClick={() => openEditBrandModal(row)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="master-category-action-dropdown-item"
+                            role="menuitem"
+                            onClick={() =>
+                              void handleBrandStatusChange(
+                                row,
+                                row.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                              )
+                            }
+                          >
+                            {row.status === "ACTIVE" ? "Change Status to Inactive" : "Change Status to Active"}
+                          </button>
+                          <button
+                            type="button"
+                            className="master-category-action-dropdown-item"
+                            role="menuitem"
+                            onClick={() => void handleBrandStatusChange(row, "ARCHIVED")}
+                          >
+                            Archive
+                          </button>
+                          <button
+                            type="button"
+                            className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
+                            role="menuitem"
+                            onClick={() => void handleDeleteBrand(row)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </span>
                   </span>
                 </div>
               ))
@@ -4150,19 +4738,71 @@ async function refreshProductCatalog() {
           </div>
 
           <div className="master-category-footer">
-            <span className="master-category-footer-text">Showing {filteredBrands.length} brands total</span>
+            <span className="master-category-footer-text">
+              Showing{" "}
+              {filteredBrands.length === 0
+                ? 0
+                : `${brandPageStartIndex + 1}-${Math.min(
+                    brandPageStartIndex + paginatedBrands.length,
+                    filteredBrands.length,
+                  )}`}{" "}
+              of {filteredBrands.length} filtered brands
+            </span>
 
             <div className="master-category-pagination">
-              <button type="button" className="master-category-page-button">{"<"} Preview</button>
-              <button type="button" className="master-category-page-chip master-category-page-chip-active">1</button>
-              <button type="button" className="master-category-page-chip">2</button>
-              <button type="button" className="master-category-page-chip">...</button>
-              <button type="button" className="master-category-page-chip">150</button>
-              <button type="button" className="master-category-page-button">Next Page {">"}</button>
+              <button
+                type="button"
+                className="master-category-page-button"
+                onClick={() => setBrandCurrentPage((current) => Math.max(1, current - 1))}
+                disabled={safeBrandCurrentPage === 1}
+              >
+                {"<"} Preview
+              </button>
+
+              {brandVisiblePages.map((page, index) => {
+                const previousPage = brandVisiblePages[index - 1];
+                const shouldShowEllipsis = previousPage && page - previousPage > 1;
+
+                return (
+                  <span key={page} style={{ display: "contents" }}>
+                    {shouldShowEllipsis ? (
+                      <button type="button" className="master-category-page-chip" disabled>
+                        ...
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={`master-category-page-chip${
+                        page === safeBrandCurrentPage ? " master-category-page-chip-active" : ""
+                      }`}
+                      onClick={() => setBrandCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  </span>
+                );
+              })}
+
+              <button
+                type="button"
+                className="master-category-page-button"
+                onClick={() => setBrandCurrentPage((current) => Math.min(brandTotalPages, current + 1))}
+                disabled={safeBrandCurrentPage === brandTotalPages}
+              >
+                Next Page {">"}
+              </button>
             </div>
 
-            <select className="master-category-page-size" defaultValue="10">
-              <option>10</option>
+            <select
+              className="master-category-page-size"
+              value={String(brandPageSize)}
+              onChange={(event) => setBrandPageSize(Number(event.target.value) as BrandPageSizeValue)}
+            >
+              {brandPageSizeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </div>
         </section>
@@ -4178,7 +4818,7 @@ async function refreshProductCatalog() {
             >
               <div className="payment-modal-header brand-modal-header">
                 <div>
-                  <h3 id="brand-modal-title">Add New Brand</h3>
+                  <h3 id="brand-modal-title">{editingBrandId ? "Edit Brand" : "Add New Brand"}</h3>
                 </div>
                 <button
                   type="button"
@@ -4222,46 +4862,113 @@ async function refreshProductCatalog() {
 
                 <div className="master-category-form-field">
                   <span>Brand Logo</span>
-                  <label className="brand-modal-upload-box">
-                    <input
-                      type="file"
-                      accept=".jpg,.jpeg,.png,.svg,image/jpeg,image/png,image/svg+xml"
-                      onChange={handleBrandLogoChange}
-                      style={{ display: "none" }}
-                    />
-                    {brandForm.logoUrl ? (
-                      <>
-                        <img
-                          src={brandForm.logoUrl}
-                          alt="Brand logo preview"
-                          className="brand-modal-upload-preview"
-                        />
-                        <strong>{brandForm.logoName || "Selected logo"}</strong>
-                        <small>Click to replace</small>
-                      </>
-                    ) : (
-                      <>
-                        <strong>Upload logo</strong>
-                        <small>JPG, PNG, or SVG</small>
-                        <small>Recommended for square brand marks</small>
-                      </>
-                    )}
-                  </label>
-                  {brandForm.logoUrl ? (
+                  
+                  <div className="brand-logo-toggle-container">
                     <button
                       type="button"
-                      className="brand-modal-upload-clear"
-                      onClick={() =>
-                        setBrandForm((current) => ({
-                          ...current,
-                          logoUrl: "",
-                          logoName: "",
-                        }))
-                      }
+                      className={`brand-logo-toggle-btn ${brandLogoType === "upload" ? "active" : ""}`}
+                      onClick={() => setBrandLogoType("upload")}
                     >
-                      Remove Logo
+                      Upload File
                     </button>
-                  ) : null}
+                    <button
+                      type="button"
+                      className={`brand-logo-toggle-btn ${brandLogoType === "url" ? "active" : ""}`}
+                      onClick={() => setBrandLogoType("url")}
+                    >
+                      Image URL
+                    </button>
+                  </div>
+
+                  {brandLogoType === "upload" ? (
+                    <>
+                      <label className="brand-modal-upload-box">
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.svg,image/jpeg,image/png,image/svg+xml"
+                          onChange={handleBrandLogoChange}
+                          style={{ display: "none" }}
+                        />
+                        {brandForm.logoUrl ? (
+                          <>
+                            <img
+                              src={brandForm.logoUrl}
+                              alt="Brand logo preview"
+                              className="brand-modal-upload-preview"
+                            />
+                            <strong>{brandForm.logoName || "Selected logo"}</strong>
+                            <small>Click to replace</small>
+                          </>
+                        ) : (
+                          <>
+                            <strong>Upload logo</strong>
+                            <small>JPG, PNG, or SVG</small>
+                            <small>Recommended for square brand marks</small>
+                          </>
+                        )}
+                      </label>
+                      {brandForm.logoUrl ? (
+                        <button
+                          type="button"
+                          className="brand-modal-upload-clear"
+                          onClick={() =>
+                            setBrandForm((current) => ({
+                              ...current,
+                              logoUrl: "",
+                              logoName: "",
+                            }))
+                          }
+                        >
+                          Remove Logo
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="brand-logo-url-input-container">
+                      <input
+                        type="url"
+                        placeholder="https://example.com/logo.png"
+                        value={brandForm.logoUrl && !brandForm.logoUrl.startsWith("data:") ? brandForm.logoUrl : ""}
+                        onChange={(event) =>
+                          setBrandForm((current) => ({
+                            ...current,
+                            logoUrl: event.target.value,
+                            logoName: event.target.value ? "URL Image" : "",
+                          }))
+                        }
+                      />
+                      {brandForm.logoUrl && !brandForm.logoUrl.startsWith("data:") ? (
+                        <div className="brand-logo-url-preview-card">
+                          <img
+                            src={brandForm.logoUrl}
+                            alt="Brand logo preview"
+                            className="brand-modal-upload-preview"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = "";
+                            }}
+                          />
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <strong style={{ fontSize: "0.75rem", color: "#475569", wordBreak: "break-all" }}>
+                              {brandForm.logoUrl}
+                            </strong>
+                            <button
+                              type="button"
+                              className="brand-modal-upload-clear"
+                              onClick={() =>
+                                setBrandForm((current) => ({
+                                  ...current,
+                                  logoUrl: "",
+                                  logoName: "",
+                                }))
+                              }
+                            >
+                              Remove URL
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
 
                 <label className="master-category-form-field">
@@ -4294,7 +5001,7 @@ async function refreshProductCatalog() {
                     Cancel
                   </button>
                   <button type="submit" className="master-category-save-button" disabled={isBrandSaving}>
-                    {isBrandSaving ? "Saving..." : "Save Brand"}
+                    {isBrandSaving ? "Saving..." : editingBrandId ? "Update Brand" : "Save Brand"}
                   </button>
                 </div>
               </form>
@@ -4954,7 +5661,7 @@ async function refreshProductCatalog() {
                 <button type="button" className="master-category-page-button">Next Page {">"}</button>
               </div>
 
-              <select className="master-category-page-size" defaultValue="11">
+              <select className="master-category-page-size" defaultValue="10">
                 <option>11</option>
               </select>
             </div>
@@ -7853,7 +8560,7 @@ async function refreshProductCatalog() {
     return (
       <section className="master-category-page">
         <div className="master-category-stats">
-          {importExportStats.map((item) => (
+          {importExportStatsLive.map((item) => (
             <article className="master-category-stat-card" key={item.label}>
               <ImportExportStatIcon accent={item.accent} type={item.type} />
               <div className="master-category-stat-copy">
@@ -7892,31 +8599,40 @@ async function refreshProductCatalog() {
               <span className="product-catalog-search-icon" aria-hidden="true">
                 <ProductCatalogControlIcon type="search" />
               </span>
-              <input type="text" placeholder="Search file name..." />
+              <input
+                type="text"
+                placeholder="Search file name..."
+                value={importExportSearch}
+                onChange={(event) => setImportExportSearch(event.target.value)}
+              />
             </label>
 
-            <select className="master-category-select" defaultValue="All Modules">
-              <option>All Modules</option>
-              <option>Product Catalog</option>
-              <option>Product Category</option>
-              <option>Brand</option>
-              <option>Unit</option>
-              <option>Supplier Data</option>
-              <option>Barcode Database</option>
-              <option>Bank Account</option>
-              <option>Money Box</option>
-              <option>Product Template</option>
+            <select
+              className="master-category-select"
+              value={importExportModuleFilter}
+              onChange={(event) => setImportExportModuleFilter(event.target.value)}
+            >
+              <option value="">All Modules</option>
+              {importModuleOptions.map((option) => (
+                <option key={option.value} value={option.label}>
+                  {option.label}
+                </option>
+              ))}
             </select>
 
-            <select className="master-category-select" defaultValue="All Status">
-              <option>All Status</option>
-              <option>Completed</option>
-              <option>Partial</option>
-              <option>Failed</option>
-              <option>Pending</option>
+            <select
+              className="master-category-select"
+              value={importExportStatusFilter}
+              onChange={(event) => setImportExportStatusFilter(event.target.value as ImportExportStatusFilterValue)}
+              disabled={importExportTab !== "import"}
+            >
+              <option value="">All Status</option>
+              <option value="Completed">Completed</option>
+              <option value="Partial">Partial</option>
+              <option value="Failed">Failed</option>
             </select>
 
-            <button type="button" className="master-category-outline-button">
+            <button type="button" className="master-category-outline-button" onClick={resetImportExportFilters}>
               Clear Filters
             </button>
           </div>
@@ -7931,112 +8647,147 @@ async function refreshProductCatalog() {
                 <button
                   type="button"
                   className="master-category-primary-button import-export-open-button"
-                  onClick={() => setIsImportDataModalOpen(true)}
+                  onClick={() => {
+                    resetImportModalState();
+                    setIsImportDataModalOpen(true);
+                  }}
                 >
                   Import Data
                 </button>
               </div>
 
-              <div className="import-export-table">
-                <div className="import-export-table-head import-export-table-head-import">
-                  <span>#</span>
-                  <span>File Name</span>
-                  <span>Module</span>
-                  <span>Imported By</span>
-                  <span>Total Records</span>
-                  <span>Success</span>
-                  <span>Failed</span>
-                  <span>Status</span>
-                  <span>Date</span>
-                  <span>Actions</span>
+              {importExportLoadError ? (
+                <p className="profile-form-feedback profile-form-feedback-error">{importExportLoadError}</p>
+              ) : null}
+
+              {isImportExportLoading ? (
+                <div className="master-category-table-empty">
+                  <strong>Loading import logs...</strong>
+                  <p>We are fetching the latest import activity from the server.</p>
                 </div>
-
-                {importRows.map((row) => (
-                  <div className="import-export-table-row import-export-table-row-import" key={row.id}>
-                    <span>{row.id}</span>
-                    <span>{row.fileName}</span>
-                    <span>{row.module}</span>
-                    <span>{row.importedBy}</span>
-                    <span>{row.totalRecords}</span>
-                    <span>{row.success}</span>
-                    <span>{row.failed}</span>
-                    <span>
-                      <em
-                        className={`product-template-status-badge${
-                          row.status === "Partial"
-                            ? " unit-page-status-badge-inactive"
-                            : row.status === "Failed"
-                              ? " bank-account-status-badge-closed"
-                              : ""
-                        }`}
-                      >
-                        {row.status}
-                      </em>
-                    </span>
-                    <span>{row.date}</span>
-                    <span className="master-category-actions import-export-actions">
-                      <button type="button" className="master-category-icon-button import-export-icon-button-view" aria-label="View">
-                        <FiEye />
-                      </button>
-                      <span className="master-category-action-menu">
-                        <button
-                          type="button"
-                          className="master-category-icon-button import-export-icon-button-more"
-                          onClick={() => setOpenImportActionMenuId((current) => (current === row.id ? null : row.id))}
-                          aria-haspopup="menu"
-                          aria-expanded={openImportActionMenuId === row.id}
-                          aria-label="More"
-                        >
-                          <FiMoreVertical />
-                        </button>
-                        {openImportActionMenuId === row.id ? (
-                          <div className="master-category-action-dropdown" role="menu">
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiEye />
-                              <span>View Details</span>
-                            </button>
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiDownload />
-                              <span>Download Original File</span>
-                            </button>
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiDownload />
-                              <span>Download Error Log</span>
-                            </button>
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiRefreshCw />
-                              <span>Retry Import</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
-                              role="menuitem"
-                            >
-                              <FiTrash2 />
-                              <span>Delete Log</span>
-                            </button>
-                          </div>
-                        ) : null}
-                      </span>
-                    </span>
+              ) : filteredImportLogs.length === 0 ? (
+                <div className="master-category-table-empty">
+                  <strong>No import logs yet</strong>
+                  <p>Your real import history will appear here after the first upload completes.</p>
+                </div>
+              ) : (
+                <div className="import-export-table">
+                  <div className="import-export-table-head import-export-table-head-import">
+                    <span>#</span>
+                    <span>File Name</span>
+                    <span>Module</span>
+                    <span>Imported By</span>
+                    <span>Total Records</span>
+                    <span>Success</span>
+                    <span>Failed</span>
+                    <span>Status</span>
+                    <span>Date</span>
+                    <span>Actions</span>
                   </div>
-                ))}
-              </div>
 
-              <div className="master-category-footer">
-                <span className="master-category-footer-text">Showing {importRows.length} import logs total</span>
+                  {paginatedImportLogs.map((row, index) => (
+                    <div className="import-export-table-row import-export-table-row-import" key={row.id}>
+                      <span>{(safeImportCurrentPage - 1) * importExportPageSize + index + 1}</span>
+                      <span className="import-export-file-name-cell" title={row.fileName}>{row.fileName}</span>
+                      <span>{row.module}</span>
+                      <span>{row.importedBy}</span>
+                      <span>{row.totalRecords}</span>
+                      <span>{row.success}</span>
+                      <span>{row.failed}</span>
+                      <span>
+                        <em
+                          className={`product-template-status-badge${
+                            row.status === "Partial"
+                              ? " unit-page-status-badge-inactive"
+                              : row.status === "Failed"
+                                ? " bank-account-status-badge-closed"
+                                : ""
+                          }`}
+                        >
+                          {row.status}
+                        </em>
+                      </span>
+                      <span className="import-export-date-cell">{row.date}</span>
+                      <span className="master-category-actions import-export-actions">
+                        <button type="button" className="master-category-icon-button import-export-icon-button-view" aria-label="View">
+                          <FiEye />
+                        </button>
+                        <span className="master-category-action-menu">
+                          <button
+                            type="button"
+                            className="master-category-icon-button import-export-icon-button-more"
+                            onClick={() => setOpenImportActionMenuId((current) => (current === row.id ? null : row.id))}
+                            aria-haspopup="menu"
+                            aria-expanded={openImportActionMenuId === row.id}
+                            aria-label="More"
+                          >
+                            <FiMoreVertical />
+                          </button>
+                          {openImportActionMenuId === row.id ? (
+                            <div className="master-category-action-dropdown" role="menu">
+                              <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                                <FiEye />
+                                <span>View Details</span>
+                              </button>
+                            </div>
+                          ) : null}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="master-category-footer import-export-footer">
+                <span className="master-category-footer-text">
+                  Showing {importRangeStart}-{importRangeEnd} of {filteredImportLogs.length} import logs
+                </span>
 
                 <div className="master-category-pagination">
-                  <button type="button" className="master-category-page-button">{"<"} Preview</button>
-                  <button type="button" className="master-category-page-chip master-category-page-chip-active">1</button>
-                  <button type="button" className="master-category-page-chip">2</button>
-                  <button type="button" className="master-category-page-chip">...</button>
-                  <button type="button" className="master-category-page-chip">24</button>
-                  <button type="button" className="master-category-page-button">Next Page {">"}</button>
+                  <button
+                    type="button"
+                    className="master-category-page-button"
+                    disabled={safeImportCurrentPage === 1}
+                    onClick={() => setImportCurrentPage((current) => Math.max(1, current - 1))}
+                  >
+                    {"<"} Preview
+                  </button>
+                  {importVisiblePages.map((page, index) => {
+                    const previousPage = importVisiblePages[index - 1];
+                    const shouldShowEllipsis = previousPage != null && page - previousPage > 1;
+
+                    return (
+                      <Fragment key={`import-page-${page}`}>
+                        {shouldShowEllipsis ? <button type="button" className="master-category-page-chip" disabled>...</button> : null}
+                        <button
+                          type="button"
+                          className={`master-category-page-chip${page === safeImportCurrentPage ? " master-category-page-chip-active" : ""}`}
+                          onClick={() => setImportCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      </Fragment>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className="master-category-page-button"
+                    disabled={safeImportCurrentPage === importTotalPages}
+                    onClick={() => setImportCurrentPage((current) => Math.min(importTotalPages, current + 1))}
+                  >
+                    Next Page {">"}
+                  </button>
                 </div>
 
-                <select className="master-category-page-size" defaultValue="10">
-                  <option>10</option>
+                <select
+                  className="master-category-page-size"
+                  value={importExportPageSize}
+                  onChange={(event) => setImportExportPageSize(Number(event.target.value) as ImportExportPageSizeValue)}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
                 </select>
               </div>
             </>
@@ -8056,86 +8807,122 @@ async function refreshProductCatalog() {
                 </button>
               </div>
 
-              <div className="import-export-table">
-                <div className="import-export-table-head import-export-table-head-export">
-                  <span>#</span>
-                  <span>File Name</span>
-                  <span>Module</span>
-                  <span>Exported By</span>
-                  <span>Records</span>
-                  <span>Format</span>
-                  <span>Date</span>
-                  <span>Actions</span>
+              {importExportLoadError ? (
+                <p className="profile-form-feedback profile-form-feedback-error">{importExportLoadError}</p>
+              ) : null}
+
+              {isImportExportLoading ? (
+                <div className="master-category-table-empty">
+                  <strong>Loading export logs...</strong>
+                  <p>We are fetching the latest export activity from the server.</p>
                 </div>
-
-                {exportRows.map((row) => (
-                  <div className="import-export-table-row import-export-table-row-export" key={row.id}>
-                    <span>{row.id}</span>
-                    <span>{row.fileName}</span>
-                    <span>{row.module}</span>
-                    <span>{row.exportedBy}</span>
-                    <span>{row.records}</span>
-                    <span>{row.format}</span>
-                    <span>{row.date}</span>
-                    <span className="master-category-actions import-export-actions">
-                      <button type="button" className="master-category-icon-button import-export-icon-button-download" aria-label="Download">
-                        <FiDownload />
-                      </button>
-                      <span className="master-category-action-menu">
-                        <button
-                          type="button"
-                          className="master-category-icon-button import-export-icon-button-more"
-                          onClick={() => setOpenExportActionMenuId((current) => (current === row.id ? null : row.id))}
-                          aria-haspopup="menu"
-                          aria-expanded={openExportActionMenuId === row.id}
-                          aria-label="More"
-                        >
-                          <FiMoreVertical />
-                        </button>
-                        {openExportActionMenuId === row.id ? (
-                          <div className="master-category-action-dropdown" role="menu">
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiDownload />
-                              <span>Download File</span>
-                            </button>
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiEye />
-                              <span>View Export Details</span>
-                            </button>
-                            <button type="button" className="master-category-action-dropdown-item" role="menuitem">
-                              <FiRefreshCw />
-                              <span>Generate Again</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="master-category-action-dropdown-item master-category-action-dropdown-item-danger"
-                              role="menuitem"
-                            >
-                              <FiTrash2 />
-                              <span>Delete Log</span>
-                            </button>
-                          </div>
-                        ) : null}
-                      </span>
-                    </span>
+              ) : filteredExportLogs.length === 0 ? (
+                <div className="master-category-table-empty">
+                  <strong>No export logs yet</strong>
+                  <p>Real export history will appear here after export jobs are connected.</p>
+                </div>
+              ) : (
+                <div className="import-export-table">
+                  <div className="import-export-table-head import-export-table-head-export">
+                    <span>#</span>
+                    <span>File Name</span>
+                    <span>Module</span>
+                    <span>Exported By</span>
+                    <span>Records</span>
+                    <span>Format</span>
+                    <span>Date</span>
+                    <span>Actions</span>
                   </div>
-                ))}
-              </div>
 
-              <div className="master-category-footer">
-                <span className="master-category-footer-text">Showing {exportRows.length} export logs total</span>
+                  {paginatedExportLogs.map((row, index) => (
+                    <div className="import-export-table-row import-export-table-row-export" key={row.id}>
+                      <span>{(safeExportCurrentPage - 1) * importExportPageSize + index + 1}</span>
+                      <span className="import-export-file-name-cell" title={row.fileName}>{row.fileName}</span>
+                      <span>{row.module}</span>
+                      <span>{row.exportedBy}</span>
+                      <span>{row.records}</span>
+                      <span>{row.format}</span>
+                      <span className="import-export-date-cell">{row.date}</span>
+                      <span className="master-category-actions import-export-actions">
+                        <button type="button" className="master-category-icon-button import-export-icon-button-download" aria-label="Download">
+                          <FiDownload />
+                        </button>
+                        <span className="master-category-action-menu">
+                          <button
+                            type="button"
+                            className="master-category-icon-button import-export-icon-button-more"
+                            onClick={() => setOpenExportActionMenuId((current) => (current === row.id ? null : row.id))}
+                            aria-haspopup="menu"
+                            aria-expanded={openExportActionMenuId === row.id}
+                            aria-label="More"
+                          >
+                            <FiMoreVertical />
+                          </button>
+                          {openExportActionMenuId === row.id ? (
+                            <div className="master-category-action-dropdown" role="menu">
+                              <button type="button" className="master-category-action-dropdown-item" role="menuitem">
+                                <FiEye />
+                                <span>View Export Details</span>
+                              </button>
+                            </div>
+                          ) : null}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="master-category-footer import-export-footer">
+                <span className="master-category-footer-text">
+                  Showing {exportRangeStart}-{exportRangeEnd} of {filteredExportLogs.length} export logs
+                </span>
 
                 <div className="master-category-pagination">
-                  <button type="button" className="master-category-page-button">{"<"} Preview</button>
-                  <button type="button" className="master-category-page-chip master-category-page-chip-active">1</button>
-                  <button type="button" className="master-category-page-chip">2</button>
-                  <button type="button" className="master-category-page-chip">...</button>
-                  <button type="button" className="master-category-page-chip">18</button>
-                  <button type="button" className="master-category-page-button">Next Page {">"}</button>
+                  <button
+                    type="button"
+                    className="master-category-page-button"
+                    disabled={safeExportCurrentPage === 1}
+                    onClick={() => setExportCurrentPage((current) => Math.max(1, current - 1))}
+                  >
+                    {"<"} Preview
+                  </button>
+                  {exportVisiblePages.map((page, index) => {
+                    const previousPage = exportVisiblePages[index - 1];
+                    const shouldShowEllipsis = previousPage != null && page - previousPage > 1;
+
+                    return (
+                      <Fragment key={`export-page-${page}`}>
+                        {shouldShowEllipsis ? <button type="button" className="master-category-page-chip" disabled>...</button> : null}
+                        <button
+                          type="button"
+                          className={`master-category-page-chip${page === safeExportCurrentPage ? " master-category-page-chip-active" : ""}`}
+                          onClick={() => setExportCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      </Fragment>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className="master-category-page-button"
+                    disabled={safeExportCurrentPage === exportTotalPages}
+                    onClick={() => setExportCurrentPage((current) => Math.min(exportTotalPages, current + 1))}
+                  >
+                    Next Page {">"}
+                  </button>
                 </div>
 
-                <select className="master-category-page-size" defaultValue="10">
-                  <option>10</option>
+                <select
+                  className="master-category-page-size"
+                  value={importExportPageSize}
+                  onChange={(event) => setImportExportPageSize(Number(event.target.value) as ImportExportPageSizeValue)}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
                 </select>
               </div>
             </>
@@ -8143,7 +8930,7 @@ async function refreshProductCatalog() {
         </section>
 
         {isImportDataModalOpen ? (
-          <div className="payment-modal-backdrop" onClick={() => setIsImportDataModalOpen(false)}>
+          <div className="payment-modal-backdrop" onClick={closeImportDataModal}>
             <div
               className="payment-modal import-export-modal"
               onClick={(event) => event.stopPropagation()}
@@ -8158,83 +8945,140 @@ async function refreshProductCatalog() {
                 <button
                   type="button"
                   className="payment-modal-close"
-                  onClick={() => setIsImportDataModalOpen(false)}
+                  onClick={closeImportDataModal}
                   aria-label="Close modal"
                 >
                   ×
                 </button>
               </div>
 
-              <form className="payment-modal-form import-export-modal-form">
+              <form className="payment-modal-form import-export-modal-form" onSubmit={handleImportDataSubmit}>
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Module *</span>
-                  <select defaultValue="">
+                  <select value={selectedImportModule} onChange={(event) => setSelectedImportModule(event.target.value)}>
                     <option value="" disabled>Select Module</option>
-                    <option>Product Catalog</option>
-                    <option>Product Category</option>
-                    <option>Brand</option>
-                    <option>Unit</option>
-                    <option>Supplier Data</option>
-                    <option>Barcode Database</option>
-                    <option>Bank Account</option>
-                    <option>Money Box</option>
-                    <option>Product Template</option>
+                    {importModuleOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </label>
 
                 <div className="payment-modal-field payment-modal-field-full">
                   <span>Download Template</span>
-                  <button type="button" className="master-category-outline-button import-export-modal-secondary-action">
+                  <button
+                    type="button"
+                    className="master-category-outline-button import-export-modal-secondary-action"
+                    onClick={handleDownloadImportTemplate}
+                    disabled={!selectedImportModuleOption}
+                  >
                     Download Template
                   </button>
                 </div>
 
                 <div className="payment-modal-field payment-modal-field-full">
                   <span>Upload File *</span>
-                  <button type="button" className="import-export-upload-box">
-                    <strong>Drag & drop Excel/CSV file</strong>
-                    <small>Supported formats: .xlsx, .xls, .csv</small>
+                  <input
+                    ref={importFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    style={{ display: "none" }}
+                    onChange={(event) => handleImportFileSelection(event.target.files?.[0] ?? null)}
+                  />
+                  <button
+                    type="button"
+                    className="import-export-upload-box"
+                    onClick={() => importFileInputRef.current?.click()}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      handleImportFileSelection(event.dataTransfer.files?.[0] ?? null);
+                    }}
+                  >
+                    <strong>{selectedImportFile ? selectedImportFile.name : "Drag & drop Excel/CSV file"}</strong>
+                    <small>
+                      {selectedImportFile
+                        ? `${Math.max(1, Math.round(selectedImportFile.size / 1024))} KB selected`
+                        : "Supported formats: .xlsx, .xls, .csv"}
+                    </small>
                   </button>
                 </div>
 
                 <label className="payment-modal-field">
                   <span>Duplicate Handling *</span>
-                  <select defaultValue="Skip Duplicate">
-                    <option>Skip Duplicate</option>
-                    <option>Update Existing</option>
-                    <option>Stop Import</option>
+                  <select
+                    value={importDuplicateHandling}
+                    onChange={(event) => setImportDuplicateHandling(event.target.value as DuplicateHandlingValue)}
+                  >
+                    <option value="SKIP_DUPLICATE">Skip Duplicate</option>
+                    <option value="UPDATE_EXISTING">Update Existing</option>
+                    <option value="STOP_IMPORT">Stop Import</option>
                   </select>
                 </label>
 
                 <label className="payment-modal-field">
                   <span>Error Handling *</span>
-                  <select defaultValue="Skip Error Rows">
-                    <option>Skip Error Rows</option>
-                    <option>Stop on First Error</option>
-                    <option>Import Valid Rows Only</option>
+                  <select
+                    value={importErrorHandling}
+                    onChange={(event) => setImportErrorHandling(event.target.value as ImportErrorHandlingValue)}
+                  >
+                    <option value="SKIP_ERROR_ROWS">Skip Error Rows</option>
+                    <option value="STOP_ON_FIRST_ERROR">Stop on First Error</option>
+                    <option value="IMPORT_VALID_ROWS_ONLY">Import Valid Rows Only</option>
                   </select>
                 </label>
 
                 <label className="payment-modal-field payment-modal-field-full">
                   <span>Notes</span>
-                  <textarea placeholder="Optional note" />
+                  <textarea placeholder="Optional note" value={importNotes} onChange={(event) => setImportNotes(event.target.value)} />
                 </label>
 
                 <label className="import-export-modal-check payment-modal-field-full">
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    type="checkbox"
+                    checked={shouldSendImportReport}
+                    onChange={(event) => setShouldSendImportReport(event.target.checked)}
+                  />
                   <span>Send report by email</span>
                 </label>
+
+                {importModalFeedback ? (
+                  <p className="profile-form-feedback profile-form-feedback-success payment-modal-field-full">
+                    {importModalFeedback}
+                  </p>
+                ) : null}
+
+                {importModalError ? (
+                  <p className="profile-form-feedback profile-form-feedback-error payment-modal-field-full">
+                    {importModalError}
+                  </p>
+                ) : null}
+
+                {importResultSummary ? (
+                  <div className="payment-modal-field payment-modal-field-full" style={{ display: "grid", gap: "6px" }}>
+                    <strong style={{ fontSize: "0.82rem", color: "#334155" }}>Import Summary</strong>
+                    <small style={{ color: "#64748b" }}>
+                      Rows: {importResultSummary.totalRows}, Created: {importResultSummary.created}, Updated: {importResultSummary.updated}, Skipped: {importResultSummary.skipped}, Failed: {importResultSummary.failed}
+                    </small>
+                    {importResultSummary.errors.length > 0 ? (
+                      <small style={{ color: "#b45309" }}>
+                        First error: row {importResultSummary.errors[0].row} - {importResultSummary.errors[0].message}
+                      </small>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div className="payment-modal-actions import-export-modal-actions">
                   <button
                     type="button"
                     className="payment-modal-secondary-button"
-                    onClick={() => setIsImportDataModalOpen(false)}
+                    onClick={closeImportDataModal}
                   >
                     Cancel
                   </button>
-                  <button type="button" className="payment-modal-primary-button">
-                    Import Data
+                  <button type="submit" className="payment-modal-primary-button" disabled={isImportSubmitting}>
+                    {isImportSubmitting ? "Importing..." : "Import Data"}
                   </button>
                 </div>
               </form>

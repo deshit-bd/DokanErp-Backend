@@ -7,3 +7,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return proxyToBackend(request, "/api/brands");
 }
+
+export async function DELETE(request: Request) {
+  return proxyToBackend(request, "/api/brands");
+}

@@ -768,6 +768,52 @@ async function revokeRefreshFamily(family: string) {
   });
 }
 
+router.post("/check-mobile", async (request, response) => {
+  try {
+    const body = request.body as { mobile?: string };
+    const mobile = normalizeMobile(body.mobile ?? (body as any).phone);
+
+    if (!mobile) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { phone: mobile },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      return response.status(409).json({ message: "Mobile number is already in use by a salesman or owner." });
+    }
+
+    const duplicateDraft = await (prisma as any).ownerRegistrationDraft.findFirst({
+      where: {
+        mobile,
+        status: {
+          notIn: ["CANCELLED", "EXPIRED", "COMPLETED"],
+        },
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: { id: true },
+    });
+
+    if (duplicateDraft) {
+      return response.status(409).json({
+        message: "A pending registration already exists for this mobile number.",
+      });
+    }
+
+    return response.json({ message: "Mobile number is available." });
+  } catch (error) {
+    console.error("Check mobile route error:", error);
+    return response.status(500).json({
+      message: "An error occurred while validating the mobile number.",
+    });
+  }
+});
+
 router.post("/register-owner", async (request, response) => {
   try {
     const scopedRequest = request as ScopedRequest;
@@ -1227,16 +1273,10 @@ router.post("/send-otp", async (request, response) => {
 
     const body = request.body as SendOtpBody;
     const registrationId = body.registrationId?.trim() ?? "";
-    const mobile = normalizeMobile(body.mobile);
+    const mobile = normalizeMobile(body.mobile ?? (body as any).phone);
 
-    if (!registrationId || !mobile) {
-      return response.status(400).json({ message: "registrationId and mobile are required." });
-    }
-
-    const draft = await getActiveRegistrationDraft(registrationId);
-
-    if (!draft || draft.mobile !== mobile) {
-      return response.status(404).json({ message: "Registration draft not found." });
+    if (!mobile) {
+      return response.status(400).json({ message: "Mobile number is required." });
     }
 
     const code = generateOtpCode();
@@ -1256,19 +1296,24 @@ router.post("/send-otp", async (request, response) => {
       },
     });
 
-    await (prisma as any).ownerRegistrationDraft.update({
-      where: { id: draft.id },
-      data: {
-        otpVerificationId: otp.id,
-        status: "OTP_SENT",
-      },
-    });
+    if (registrationId) {
+      const draft = await getActiveRegistrationDraft(registrationId);
+      if (draft && draft.mobile === mobile) {
+        await (prisma as any).ownerRegistrationDraft.update({
+          where: { id: draft.id },
+          data: {
+            otpVerificationId: otp.id,
+            status: "OTP_SENT",
+          },
+        });
+      }
+    }
 
-    console.log(`[auth] OTP for ${mobile} (${draft.id}): ${code}`);
+    console.log(`[auth] OTP for ${mobile}: ${code}`);
 
     return response.json({
       message: "OTP sent successfully.",
-      registrationId: draft.id,
+      registrationId: registrationId || otp.id,
       expiresAt: otp.expiresAt,
       demoOtp: code,
     });
@@ -1291,25 +1336,22 @@ router.post("/verify-otp", async (request, response) => {
 
     const body = request.body as VerifyOtpBody;
     const registrationId = body.registrationId?.trim() ?? "";
-    const mobile = normalizeMobile(body.mobile);
-    const otpCode = body.otp?.trim() ?? "";
+    const mobile = normalizeMobile(body.mobile ?? (body as any).phone);
+    const otpCode = body.otp?.trim() ?? (body as any).code?.trim();
 
-    if (!registrationId || !mobile || !otpCode) {
-      return response.status(400).json({ message: "registrationId, mobile, and otp are required." });
+    if (!mobile || !otpCode) {
+      return response.status(400).json({ message: "Mobile number and OTP are required." });
     }
 
-    const draft = await (prisma as any).ownerRegistrationDraft.findUnique({
-      where: { id: registrationId },
-      include: {
-        otpVerification: true,
+    const otp = await (prisma as any).otpVerification.findFirst({
+      where: {
+        recipient: mobile,
+        status: "PENDING",
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     });
-
-    if (!draft || draft.mobile !== mobile) {
-      return response.status(404).json({ message: "Registration draft not found." });
-    }
-
-    const otp = draft.otpVerification;
 
     if (!otp || otp.status !== "PENDING") {
       return response.status(400).json({ message: "No active OTP found for this registration." });
@@ -1351,20 +1393,87 @@ router.post("/verify-otp", async (request, response) => {
         },
       });
 
-      await (transaction as any).ownerRegistrationDraft.update({
-        where: { id: draft.id },
-        data: {
-          otpVerifiedAt: verifiedAt,
-          status: "OTP_VERIFIED",
-          expiresAt: getPostOtpVerifiedExpiryDate(),
-        },
-      });
+      if (registrationId) {
+        await (transaction as any).ownerRegistrationDraft.update({
+          where: { id: registrationId },
+          data: {
+            otpVerifiedAt: verifiedAt,
+            status: "OTP_VERIFIED",
+            expiresAt: getPostOtpVerifiedExpiryDate(),
+          },
+        });
+      }
     });
+
+    const user = await prisma.user.findFirst({
+      where: {
+        phone: {
+          in: [mobile, "0" + mobile, "+880" + mobile, "880" + mobile],
+        },
+      },
+      include: {
+        ownedShops: true,
+        shopUsers: {
+          include: {
+            shop: true,
+          },
+        },
+      },
+    });
+
+    let tokenResponse = {};
+    if (user) {
+      const authContext = resolveAuthContext(user, AppType.MOBILE);
+      if (authContext) {
+        const sessionFamily = createSessionFamily();
+        const accessToken = createAccessToken({
+          userId: user.id,
+          role: authContext.role,
+          appType: AppType.MOBILE,
+          sessionFamily,
+          shopId: authContext.shopId,
+        });
+        const refreshToken = createRefreshTokenValue();
+        
+        await prisma.refreshToken.create({
+          data: {
+            userId: user.id,
+            tokenHash: hashRefreshToken(refreshToken),
+            family: sessionFamily,
+            appType: "MOBILE",
+            expiresAt: getRefreshTokenExpiryDate(),
+          },
+        });
+
+        tokenResponse = {
+          authenticated: true,
+          role: authContext.role,
+          appType: AppType.MOBILE,
+          tokens: {
+            accessToken,
+            refreshToken,
+          },
+          user: {
+            id: user.id,
+            name: user.name,
+            mobile: user.phone,
+          },
+          shop: authContext.shopId
+            ? {
+                id: authContext.shopId,
+                shopCode: user.ownedShops.find((s: any) => s.id === authContext.shopId)?.shopCode ?? null,
+                shopName: user.ownedShops.find((s: any) => s.id === authContext.shopId)?.shopName ?? null,
+              }
+            : null,
+        };
+      }
+    }
 
     return response.json({
       message: "OTP verified successfully.",
       verified: true,
-      registrationId: draft.id,
+      registrationId: registrationId || otp.id,
+      ...tokenResponse,
     });
   } catch (error) {
     console.error("Verify OTP route error:", error);
@@ -1901,7 +2010,7 @@ router.post("/salesmans-verify-otp", async (request, response) => {
 router.post("/login", async (request, response) => {
   try {
     const body = request.body as LoginBody;
-    const identity = body.identity?.trim();
+    const identity = body.identity?.trim() ?? (body as any).phone?.trim() ?? (body as any).mobile?.trim();
     const password = body.password?.trim();
     const requestedShopIdentifier = body.shopId?.trim();
     const appType = body.appType ?? (request as ScopedRequest).apiClientAppType ?? AppType.WEB;

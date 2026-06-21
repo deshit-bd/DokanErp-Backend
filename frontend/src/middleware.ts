@@ -113,6 +113,16 @@ export async function middleware(request: NextRequest) {
     return clearAccessCookie(NextResponse.redirect(new URL("/login", request.url)));
   }
 
+  if (pathname === "/") {
+    if (payload.appType === "WEB") {
+      return NextResponse.redirect(new URL("/super-admin/dashboard", request.url));
+    }
+
+    if (payload.appType === "MOBILE") {
+      return NextResponse.redirect(new URL("/shop/dashboard", request.url));
+    }
+  }
+
   if (pathname === "/login") {
     if (payload.appType === "WEB") {
       return NextResponse.redirect(new URL("/super-admin/dashboard", request.url));

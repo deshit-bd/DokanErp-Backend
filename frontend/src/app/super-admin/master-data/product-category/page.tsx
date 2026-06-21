@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { FiCheckCircle, FiFolderMinus, FiGrid, FiPauseCircle } from "react-icons/fi";
 
 type CategoryStatus = "ACTIVE" | "INACTIVE" | "ARCHIVED";
@@ -155,12 +155,16 @@ function matchesWithTwoPointers(source: string, query: string) {
 }
 
 export default function ProductCategoryPage() {
+  const pageSizeOptions = [10, 20, 40];
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [stats, setStats] = useState(emptyStats);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | CategoryStatus>("ALL");
+  const [pageSize, setPageSize] = useState<number | "all">(20);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -170,6 +174,7 @@ export default function ProductCategoryPage() {
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formStatus, setFormStatus] = useState<CategoryStatus>("ACTIVE");
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const editingCategory = categories.find((row) => row.id === editingCategoryId) ?? null;
   const selectedCategory = categories.find((row) => row.id === selectedCategoryId) ?? null;
@@ -228,6 +233,33 @@ export default function ProductCategoryPage() {
       return matchesQuery && matchesStatus;
     });
   }, [categories, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, pageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, pageSize === "all" ? 1 : Math.ceil(filteredCategories.length / pageSize));
+
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [currentPage, filteredCategories.length, pageSize]);
+
+  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(filteredCategories.length / pageSize));
+  const pageStartIndex = pageSize === "all" ? 0 : (currentPage - 1) * pageSize;
+  const paginatedCategories =
+    pageSize === "all" ? filteredCategories : filteredCategories.slice(pageStartIndex, pageStartIndex + pageSize);
+  const visibleStart = filteredCategories.length === 0 ? 0 : pageStartIndex + 1;
+  const visibleEnd = filteredCategories.length === 0 ? 0 : pageStartIndex + paginatedCategories.length;
+  const paginationChips = (() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+    return Array.from({ length: 5 }, (_, index) => start + index);
+  })();
 
   const categoryStats = [
     { label: "Total Categories", value: String(stats.total), note: "All Categories", accent: "indigo" as const, icon: FiGrid },
@@ -420,6 +452,42 @@ export default function ProductCategoryPage() {
     }
   }
 
+  async function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setIsImporting(true);
+    setFeedback("");
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/categories/import", {
+        method: "POST",
+        body: formData,
+      });
+      const result = (await response.json()) as CategoryResponse & { summary?: { created: number; skipped: number } };
+
+      if (!response.ok) {
+        setError(result.message ?? "Failed to import categories.");
+        return;
+      }
+
+      setFeedback(result.message ?? "Categories imported successfully.");
+      await loadCategories();
+    } catch {
+      setError("Unable to import categories right now.");
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   return (
     <>
       <section className="master-category-page">
@@ -462,6 +530,23 @@ export default function ProductCategoryPage() {
               Refresh
             </button>
 
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: "none" }}
+              onChange={(event) => void handleImportFileChange(event)}
+            />
+
+            <button
+              type="button"
+              className="master-category-outline-button product-category-import-button"
+              onClick={() => importInputRef.current?.click()}
+              disabled={isImporting}
+            >
+              {isImporting ? "Importing..." : "Upload Categories"}
+            </button>
+
             <button
               type="button"
               className="master-category-primary-button product-category-create-button"
@@ -496,9 +581,9 @@ export default function ProductCategoryPage() {
                 <span>Actions</span>
               </div>
 
-              {filteredCategories.map((row, index) => (
+              {paginatedCategories.map((row, index) => (
                 <div className="master-category-table-row" key={row.id}>
-                  <span>{index + 1}</span>
+                  <span>{pageStartIndex + index + 1}</span>
                   <span className="master-category-name-cell">{row.name}</span>
                   <span>{row.description || "No description"}</span>
                   <span>{row.products}</span>
@@ -589,15 +674,53 @@ export default function ProductCategoryPage() {
           )}
 
           <div className="master-category-footer">
-            <span className="master-category-footer-text">Showing {filteredCategories.length} categories total</span>
+            <span className="master-category-footer-text">
+              Showing {visibleStart}-{visibleEnd} of {filteredCategories.length} categories
+            </span>
 
             <div className="master-category-pagination">
-              <button type="button" className="master-category-page-chip master-category-page-chip-active">
-                1
+              <button
+                type="button"
+                className="master-category-page-button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1 || totalPages <= 1}
+              >
+                Prev
+              </button>
+              {paginationChips.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={`master-category-page-chip${page === currentPage ? " master-category-page-chip-active" : ""}`}
+                  onClick={() => setCurrentPage(page)}
+                  aria-current={page === currentPage ? "page" : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="master-category-page-button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages || totalPages <= 1}
+              >
+                Next
               </button>
             </div>
 
-            <select className="master-category-page-size" value="all" disabled>
+            <select
+              className="master-category-page-size"
+              value={String(pageSize)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setPageSize(value === "all" ? "all" : Number(value));
+              }}
+            >
+              {pageSizeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option} / page
+                </option>
+              ))}
               <option value="all">All</option>
             </select>
           </div>
