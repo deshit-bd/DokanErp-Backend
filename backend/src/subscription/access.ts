@@ -40,9 +40,19 @@ function getBillingDate(source = new Date()) {
   return billingDate;
 }
 
+function getNextMidnight(source: Date) {
+  const result = new Date(source);
+  result.setHours(24, 0, 0, 0);
+  return result;
+}
+
 function getTrialWindow(startAt = new Date()) {
   const trialStartedAt = new Date(startAt);
-  const trialEndsAt = addDays(trialStartedAt, TRIAL_DURATION_DAYS);
+  const targetDate = new Date(trialStartedAt);
+  if (TRIAL_DURATION_DAYS > 1) {
+    targetDate.setDate(targetDate.getDate() + (TRIAL_DURATION_DAYS - 1));
+  }
+  const trialEndsAt = getNextMidnight(targetDate);
 
   return {
     trialStartedAt,

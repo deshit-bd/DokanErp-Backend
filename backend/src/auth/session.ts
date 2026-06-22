@@ -47,8 +47,9 @@ export function createAccessToken(input: {
   );
 }
 
-export function getRefreshTokenExpiryDate() {
-  return new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
+export function getRefreshTokenExpiryDate(rememberMe: boolean = false) {
+  const duration = rememberMe ? 60 * 60 * 24 * 3 : 60 * 60 * 24 * 1; // 3 days vs 1 day
+  return new Date(Date.now() + duration * 1000);
 }
 
 function getCookieOptions(maxAge: number) {
@@ -65,8 +66,9 @@ export function setAccessCookie(response: Response, token: string) {
   response.cookie(ACCESS_TOKEN_COOKIE, token, getCookieOptions(ACCESS_TOKEN_TTL_SECONDS));
 }
 
-export function setRefreshCookie(response: Response, token: string) {
-  response.cookie(REFRESH_TOKEN_COOKIE, token, getCookieOptions(REFRESH_TOKEN_TTL_SECONDS));
+export function setRefreshCookie(response: Response, token: string, rememberMe: boolean = false) {
+  const duration = rememberMe ? 60 * 60 * 24 * 3 : 60 * 60 * 24 * 1; // 3 days vs 1 day
+  response.cookie(REFRESH_TOKEN_COOKIE, token, getCookieOptions(duration));
 }
 
 export function clearAuthCookies(response: Response) {

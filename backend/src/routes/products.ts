@@ -289,30 +289,143 @@ function buildDuplicateSku(baseSku: string) {
 
 router.get("/", async (request, response) => {
   try {
-    const auth = await requirePlatformUser(request);
+    const auth = await getAuthenticatedUser(request);
 
     if (isAuthError(auth)) {
       return sendAuthError(response, auth);
     }
 
-    const [products, filters] = await Promise.all([
-      (prisma as any).masterProduct.findMany({
-        orderBy: [{ createdAt: "desc" }, { name: "asc" }],
-        include: productInclude,
-      }),
-      buildProductFilters(),
-    ]);
+    if (["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      const [products, filters] = await Promise.all([
+        (prisma as any).masterProduct.findMany({
+          orderBy: [{ createdAt: "desc" }, { name: "asc" }],
+          include: productInclude,
+        }),
+        buildProductFilters(),
+      ]);
 
-    return response.json({
-      stats: {
-        total: products.length,
-        active: products.filter((item: { status: MasterProductStatusValue }) => item.status === "ACTIVE").length,
-        inactive: products.filter((item: { status: MasterProductStatusValue }) => item.status === "INACTIVE").length,
-        usingShops: 0,
-      },
-      filters,
-      products: products.map(mapProduct),
-    });
+      return response.json({
+        stats: {
+          total: products.length,
+          active: products.filter((item: { status: MasterProductStatusValue }) => item.status === "ACTIVE").length,
+          inactive: products.filter((item: { status: MasterProductStatusValue }) => item.status === "INACTIVE").length,
+          usingShops: 0,
+        },
+        filters,
+        products: products.map(mapProduct),
+      });
+    } else if (["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role) && auth.payload.shopId) {
+      const page = Number(request.query.page || 1);
+      const perPage = Number(request.query.per_page || 500);
+      const search = typeof request.query.search === "string" ? request.query.search.trim() : "";
+      const category = typeof request.query.category === "string" ? request.query.category.trim() : "";
+
+      const whereClause: any = { shopId: auth.payload.shopId };
+
+      if (category && category !== "সব" && category !== "Uncategorized") {
+        whereClause.OR = [
+          { localCategory: { contains: category, mode: 'insensitive' } },
+          { masterProduct: { category: { name: { contains: category, mode: 'insensitive' } } } }
+        ];
+      }
+      if (search) {
+        whereClause.AND = [
+          ...(whereClause.AND || []),
+          {
+            OR: [
+              { localName: { contains: search, mode: 'insensitive' } },
+              { localBarcode: { contains: search, mode: 'insensitive' } },
+              { masterProduct: { name: { contains: search, mode: 'insensitive' } } },
+              { masterProduct: { sku: { contains: search, mode: 'insensitive' } } },
+              { masterProduct: { barcodes: { some: { barcode: { contains: search, mode: 'insensitive' } } } } }
+            ]
+          }
+        ];
+      }
+
+      const shopProducts = await (prisma as any).shopProduct.findMany({
+        where: whereClause,
+        include: {
+          masterProduct: {
+            include: {
+              category: { select: { id: true, name: true } },
+              brand: { select: { id: true, name: true, logoUrl: true } },
+              unit: { select: { id: true, name: true, shortName: true } },
+              barcodes: {
+                orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+                select: {
+                  id: true,
+                  barcode: true,
+                  packSize: true,
+                  status: true,
+                },
+              },
+            },
+          },
+          approvalRequest: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * perPage,
+        take: perPage,
+      });
+
+      const mappedProducts = shopProducts.map((item: any) => {
+        const primaryBarcode = item.masterProduct
+          ? selectPrimaryBarcode(item.masterProduct.barcodes)
+          : null;
+
+        const barcodeVal = item.localBarcode ?? primaryBarcode?.barcode ?? item.masterProduct?.sku ?? item.id;
+
+        return {
+          id: barcodeVal,
+          sku: barcodeVal,
+          barcode: barcodeVal,
+          name: item.masterProduct?.name ?? item.localName ?? "Unnamed product",
+          category_name: item.masterProduct?.category?.name ?? item.localCategory ?? "Uncategorized",
+          category: item.masterProduct?.category?.name ?? item.localCategory ?? "Uncategorized",
+          emoji: productVisualType(
+            item.masterProduct?.name ?? item.localName ?? "",
+            item.masterProduct?.category?.name ?? item.localCategory ?? null
+          ) === "oil" ? "🛢️" : "📦",
+          brand_name: item.masterProduct?.brand?.name ?? item.localBrand ?? "No Brand",
+          brand: item.masterProduct?.brand?.name ?? item.localBrand ?? "No Brand",
+          unit_name: item.masterProduct?.unit?.shortName?.toUpperCase() ?? item.masterProduct?.unit?.name ?? item.localUnit ?? "No Unit",
+          unit: item.masterProduct?.unit?.shortName?.toUpperCase() ?? item.masterProduct?.unit?.name ?? item.localUnit ?? "No Unit",
+          image_url: item.masterProduct?.pictureUrl ?? item.localPictureUrl ?? null,
+          imageLabel: item.masterProduct?.pictureUrl ?? item.localPictureUrl ?? null,
+          sale_price: normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0),
+          salePrice: normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0),
+          price: normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0),
+          purchase_price: normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0),
+          purchasePrice: normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0),
+          cost_price: normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0),
+          stock: Number(item.openingStock ?? 0),
+          quantity: Number(item.openingStock ?? 0),
+          stock_quantity: Number(item.openingStock ?? 0),
+          low_stock_threshold: Number(item.lowStockLimit ?? 0),
+          lowStockThreshold: Number(item.lowStockLimit ?? 0),
+          stock_threshold: Number(item.lowStockLimit ?? 0),
+          sales_count: 0,
+          salesCount: 0,
+          pack_info: primaryBarcode?.packSize ?? item.masterProduct?.packageSize ?? item.localUnit ?? "",
+          packInfo: primaryBarcode?.packSize ?? item.masterProduct?.packageSize ?? item.localUnit ?? "",
+          source: item.source,
+          approvalStatus: item.approvalRequest?.status ?? null,
+        };
+      });
+
+      return response.json({
+        data: mappedProducts,
+        products: mappedProducts,
+      });
+    } else {
+      return response.status(403).json({ message: "You do not have permission to manage products." });
+    }
   } catch (error) {
     console.error("Failed to load products.", error);
 
@@ -365,111 +478,262 @@ router.get("/:id/barcode.svg", async (request, response) => {
 
 router.post("/", async (request, response) => {
   try {
-    const auth = await requirePlatformUser(request);
+    const auth = await getAuthenticatedUser(request);
 
     if (isAuthError(auth)) {
       return sendAuthError(response, auth);
     }
 
-    const body = request.body as {
-      name?: string;
-      sku?: string;
-      price?: number | string | null;
-      barcode?: string | null;
-      suggestedPrice?: number | string | null;
-      categoryId?: string | null;
-      brandId?: string | null;
-      unitId?: string | null;
-      packageSize?: string | null;
-      description?: string | null;
-      pictureUrl?: string | null;
-    };
+    if (["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      const body = request.body as {
+        name?: string;
+        sku?: string;
+        price?: number | string | null;
+        barcode?: string | null;
+        suggestedPrice?: number | string | null;
+        categoryId?: string | null;
+        brandId?: string | null;
+        unitId?: string | null;
+        packageSize?: string | null;
+        description?: string | null;
+        pictureUrl?: string | null;
+      };
 
-    const name = body.name?.trim();
-    const sku = body.sku?.trim();
-    const barcode = body.barcode?.trim() || null;
-    const categoryId = body.categoryId?.trim() || null;
-    const brandId = body.brandId?.trim() || null;
-    const unitId = body.unitId?.trim() || null;
-    const packageSize = body.packageSize?.trim() || null;
-    const description = body.description?.trim() || null;
-    const rawPictureUrl = body.pictureUrl?.trim() || null;
-    const parsedPrice = body.price === "" || body.price == null ? null : Number(body.price);
-    const parsedSuggestedPrice =
-      body.suggestedPrice === "" || body.suggestedPrice == null ? null : Number(body.suggestedPrice);
+      const name = body.name?.trim();
+      const sku = body.sku?.trim();
+      const barcode = body.barcode?.trim() || null;
+      const categoryId = body.categoryId?.trim() || null;
+      const brandId = body.brandId?.trim() || null;
+      const unitId = body.unitId?.trim() || null;
+      const packageSize = body.packageSize?.trim() || null;
+      const description = body.description?.trim() || null;
+      const rawPictureUrl = body.pictureUrl?.trim() || null;
+      const parsedPrice = body.price === "" || body.price == null ? null : Number(body.price);
+      const parsedSuggestedPrice =
+        body.suggestedPrice === "" || body.suggestedPrice == null ? null : Number(body.suggestedPrice);
 
-    if (!name) {
-      return response.status(400).json({ message: "Product name is required." });
-    }
+      if (!name) {
+        return response.status(400).json({ message: "Product name is required." });
+      }
 
-    if (!sku) {
-      return response.status(400).json({ message: "SKU is required." });
-    }
+      if (!sku) {
+        return response.status(400).json({ message: "SKU is required." });
+      }
 
-    if (parsedPrice != null && Number.isNaN(parsedPrice)) {
-      return response.status(400).json({ message: "Price must be a valid number." });
-    }
+      if (parsedPrice != null && Number.isNaN(parsedPrice)) {
+        return response.status(400).json({ message: "Price must be a valid number." });
+      }
 
-    if (parsedSuggestedPrice != null && Number.isNaN(parsedSuggestedPrice)) {
-      return response.status(400).json({ message: "Suggested selling price must be a valid number." });
-    }
+      if (parsedSuggestedPrice != null && Number.isNaN(parsedSuggestedPrice)) {
+        return response.status(400).json({ message: "Suggested selling price must be a valid number." });
+      }
 
-    const [existingSku, existingBarcode] = await Promise.all([
-      (prisma as any).masterProduct.findUnique({
-        where: { sku },
+      const [existingSku, existingBarcode] = await Promise.all([
+        (prisma as any).masterProduct.findUnique({
+          where: { sku },
+          select: { id: true },
+        }),
+        barcode
+          ? (prisma as any).masterProductBarcode.findUnique({
+              where: { barcode },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (existingSku) {
+        return response.status(409).json({ message: "SKU already exists." });
+      }
+
+      if (existingBarcode) {
+        return response.status(409).json({ message: "Barcode already exists." });
+      }
+
+      const pictureUrl = rawPictureUrl ? await persistProductPicture(rawPictureUrl, request) : null;
+
+      const createdProduct = await (prisma as any).masterProduct.create({
+        data: {
+          name,
+          sku,
+          price: parsedPrice,
+          suggestedPrice: parsedSuggestedPrice,
+          categoryId,
+          brandId,
+          unitId,
+          packageSize,
+          description,
+          pictureUrl,
+          status: "ACTIVE",
+          createdByUserId: auth.user.id,
+          updatedByUserId: auth.user.id,
+        },
         select: { id: true },
-      }),
-      barcode
-        ? (prisma as any).masterProductBarcode.findUnique({
-            where: { barcode },
+      });
+
+      await syncProductBarcodeRecord({
+        barcode,
+        packageSize,
+        productId: createdProduct.id,
+        productStatus: "ACTIVE",
+        userId: auth.user.id,
+      });
+
+      const product = await loadProductById(createdProduct.id);
+
+      return response.status(201).json({
+        message: "Product created successfully.",
+        product: mapProduct(product),
+      });
+    } else if (["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role) && auth.payload.shopId) {
+      const body = request.body as {
+        name?: string;
+        barcode?: string | null;
+        category?: string | null;
+        brand?: string | null;
+        unit?: string | null;
+        image_url?: string | null;
+        sale_price?: number | string | null;
+        purchase_price?: number | string | null;
+        stock?: number | string | null;
+        low_stock_threshold?: number | string | null;
+        pack_info?: string | null;
+      };
+
+      const name = body.name?.trim();
+      const category = body.category?.trim() || "Uncategorized";
+      const brand = body.brand?.trim() || null;
+      const unit = body.unit?.trim() || "pcs";
+      const barcode = body.barcode?.trim() || null;
+      const pictureUrl = body.image_url?.trim() || null;
+      const salePrice = body.sale_price == null || body.sale_price === "" ? null : Number(body.sale_price);
+      const purchasePrice = body.purchase_price == null || body.purchase_price === "" ? null : Number(body.purchase_price);
+      const openingStock = body.stock == null || body.stock === "" ? 0 : Number(body.stock);
+      const lowStockLimit = body.low_stock_threshold == null || body.low_stock_threshold === "" ? 0 : Number(body.low_stock_threshold);
+
+      if (!name) {
+        return response.status(400).json({ message: "Product name is required." });
+      }
+
+      if (!Number.isFinite(openingStock) || openingStock < 0) {
+        return response.status(400).json({ message: "Stock must be a valid number." });
+      }
+
+      if (!Number.isFinite(lowStockLimit) || lowStockLimit < 0) {
+        return response.status(400).json({ message: "Low stock limit must be a valid number." });
+      }
+
+      const existingLocalBarcode = barcode
+        ? await (prisma as any).shopProduct.findFirst({
+            where: {
+              shopId: auth.payload.shopId,
+              OR: [{ localBarcode: barcode }, { masterProduct: { barcodes: { some: { barcode } } } }],
+            },
             select: { id: true },
           })
-        : Promise.resolve(null),
-    ]);
+        : null;
 
-    if (existingSku) {
-      return response.status(409).json({ message: "SKU already exists." });
+      if (existingLocalBarcode) {
+        return response.status(409).json({ message: "Barcode already exists in this shop." });
+      }
+
+      const { countDistinctShopProducts } = await import("../subscription/access");
+      const { evaluateShopSubscriptionAccess } = await import("../subscription/access");
+      const currentProductCount = await countDistinctShopProducts(auth.payload.shopId);
+      const access = await evaluateShopSubscriptionAccess(auth.payload.shopId);
+      if (access.tier === "TRIAL" && currentProductCount >= 50) {
+        return response.status(402).json({
+          message: `Free tier allows up to 50 products per shop.`,
+          subscription: access,
+        });
+      }
+
+      const created = await (prisma as any).$transaction(async (tx: any) => {
+        const requestRow = await tx.masterProductRequest.create({
+          data: {
+            shopId: auth.payload.shopId,
+            createdByUserId: auth.user.id,
+            name,
+            category,
+            brand,
+            unit,
+            barcode,
+            pictureUrl,
+            purchasePrice,
+            salePrice,
+            openingStock,
+            lowStockLimit,
+            status: "PENDING",
+          },
+        });
+
+        const shopProduct = await tx.shopProduct.create({
+          data: {
+            shopId: auth.payload.shopId,
+            source: "SHOP_LOCAL",
+            localName: name,
+            localCategory: category,
+            localBrand: brand,
+            localUnit: unit,
+            localBarcode: barcode,
+            localPictureUrl: pictureUrl,
+            openingStock,
+            lowStockLimit,
+            salePrice,
+            purchasePrice,
+            approvalRequestId: requestRow.id,
+          },
+        });
+
+        await tx.masterProductRequest.update({
+          where: { id: requestRow.id },
+          data: { shopProductId: shopProduct.id },
+        });
+
+        return shopProduct;
+      });
+
+      const mappedProduct = {
+        id: created.localBarcode ?? created.id,
+        sku: created.localBarcode ?? created.id,
+        barcode: created.localBarcode ?? created.id,
+        name: created.localName ?? "Unnamed product",
+        category_name: created.localCategory ?? "Uncategorized",
+        category: created.localCategory ?? "Uncategorized",
+        emoji: productVisualType(created.localName ?? "", created.localCategory) === "oil" ? "🛢️" : "📦",
+        brand_name: created.localBrand ?? "No Brand",
+        brand: created.localBrand ?? "No Brand",
+        unit_name: created.localUnit ?? "No Unit",
+        unit: created.localUnit ?? "No Unit",
+        image_url: created.localPictureUrl ?? null,
+        imageLabel: created.localPictureUrl ?? null,
+        sale_price: normalizeMoney(created.salePrice ?? 0),
+        salePrice: normalizeMoney(created.salePrice ?? 0),
+        price: normalizeMoney(created.salePrice ?? 0),
+        purchase_price: normalizeMoney(created.purchasePrice ?? 0),
+        purchasePrice: normalizeMoney(created.purchasePrice ?? 0),
+        cost_price: normalizeMoney(created.purchasePrice ?? 0),
+        stock: Number(created.openingStock ?? 0),
+        quantity: Number(created.openingStock ?? 0),
+        stock_quantity: Number(created.openingStock ?? 0),
+        low_stock_threshold: Number(created.lowStockLimit ?? 0),
+        lowStockThreshold: Number(created.lowStockLimit ?? 0),
+        stock_threshold: Number(created.lowStockLimit ?? 0),
+        sales_count: 0,
+        salesCount: 0,
+        pack_info: created.localUnit ?? "",
+        packInfo: created.localUnit ?? "",
+        source: created.source,
+        approvalStatus: "PENDING",
+      };
+
+      return response.status(201).json({
+        message: "Shop product created successfully and sent for admin approval.",
+        product: mappedProduct,
+        data: mappedProduct,
+      });
+    } else {
+      return response.status(403).json({ message: "You do not have permission to manage products." });
     }
-
-    if (existingBarcode) {
-      return response.status(409).json({ message: "Barcode already exists." });
-    }
-
-    const pictureUrl = rawPictureUrl ? await persistProductPicture(rawPictureUrl, request) : null;
-
-    const createdProduct = await (prisma as any).masterProduct.create({
-      data: {
-        name,
-        sku,
-        price: parsedPrice,
-        suggestedPrice: parsedSuggestedPrice,
-        categoryId,
-        brandId,
-        unitId,
-        packageSize,
-        description,
-        pictureUrl,
-        status: "ACTIVE",
-        createdByUserId: auth.user.id,
-        updatedByUserId: auth.user.id,
-      },
-      select: { id: true },
-    });
-
-    await syncProductBarcodeRecord({
-      barcode,
-      packageSize,
-      productId: createdProduct.id,
-      productStatus: "ACTIVE",
-      userId: auth.user.id,
-    });
-
-    const product = await loadProductById(createdProduct.id);
-
-    return response.status(201).json({
-      message: "Product created successfully.",
-      product: mapProduct(product),
-    });
   } catch (error) {
     console.error("Failed to save product.", error);
 
@@ -480,135 +744,285 @@ router.post("/", async (request, response) => {
   }
 });
 
-router.put("/:id", async (request, response) => {
+const handleUpdate = async (request: any, response: any) => {
   try {
-    const auth = await requirePlatformUser(request);
+    const auth = await getAuthenticatedUser(request);
 
     if (isAuthError(auth)) {
       return sendAuthError(response, auth);
     }
 
-    const productId = request.params.id;
-    const body = request.body as {
-      name?: string;
-      sku?: string;
-      price?: number | string | null;
-      barcode?: string | null;
-      suggestedPrice?: number | string | null;
-      categoryId?: string | null;
-      brandId?: string | null;
-      unitId?: string | null;
-      packageSize?: string | null;
-      description?: string | null;
-      pictureUrl?: string | null;
-    };
+    const barcodeOrId = request.params.id;
 
-    const existingProduct = await (prisma as any).masterProduct.findUnique({
-      where: { id: productId },
-      select: { id: true, status: true },
-    });
+    if (["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      const productId = barcodeOrId;
+      const body = request.body as {
+        name?: string;
+        sku?: string;
+        price?: number | string | null;
+        barcode?: string | null;
+        suggestedPrice?: number | string | null;
+        categoryId?: string | null;
+        brandId?: string | null;
+        unitId?: string | null;
+        packageSize?: string | null;
+        description?: string | null;
+        pictureUrl?: string | null;
+      };
 
-    if (!existingProduct) {
-      return response.status(404).json({ message: "Product not found." });
-    }
+      const existingProduct = await (prisma as any).masterProduct.findUnique({
+        where: { id: productId },
+        select: { id: true, status: true },
+      });
 
-    const name = body.name?.trim();
-    const sku = body.sku?.trim();
-    const barcode = body.barcode?.trim() || null;
-    const categoryId = body.categoryId?.trim() || null;
-    const brandId = body.brandId?.trim() || null;
-    const unitId = body.unitId?.trim() || null;
-    const packageSize = body.packageSize?.trim() || null;
-    const description = body.description?.trim() || null;
-    const rawPictureUrl = body.pictureUrl?.trim() || null;
-    const parsedPrice = body.price === "" || body.price == null ? null : Number(body.price);
-    const parsedSuggestedPrice =
-      body.suggestedPrice === "" || body.suggestedPrice == null ? null : Number(body.suggestedPrice);
+      if (!existingProduct) {
+        return response.status(404).json({ message: "Product not found." });
+      }
 
-    if (!name) {
-      return response.status(400).json({ message: "Product name is required." });
-    }
+      const name = body.name?.trim();
+      const sku = body.sku?.trim();
+      const barcode = body.barcode?.trim() || null;
+      const categoryId = body.categoryId?.trim() || null;
+      const brandId = body.brandId?.trim() || null;
+      const unitId = body.unitId?.trim() || null;
+      const packageSize = body.packageSize?.trim() || null;
+      const description = body.description?.trim() || null;
+      const rawPictureUrl = body.pictureUrl?.trim() || null;
+      const parsedPrice = body.price === "" || body.price == null ? null : Number(body.price);
+      const parsedSuggestedPrice =
+        body.suggestedPrice === "" || body.suggestedPrice == null ? null : Number(body.suggestedPrice);
 
-    if (!sku) {
-      return response.status(400).json({ message: "SKU is required." });
-    }
+      if (!name) {
+        return response.status(400).json({ message: "Product name is required." });
+      }
 
-    if (parsedPrice != null && Number.isNaN(parsedPrice)) {
-      return response.status(400).json({ message: "Price must be a valid number." });
-    }
+      if (!sku) {
+        return response.status(400).json({ message: "SKU is required." });
+      }
 
-    if (parsedSuggestedPrice != null && Number.isNaN(parsedSuggestedPrice)) {
-      return response.status(400).json({ message: "Suggested selling price must be a valid number." });
-    }
+      if (parsedPrice != null && Number.isNaN(parsedPrice)) {
+        return response.status(400).json({ message: "Price must be a valid number." });
+      }
 
-    const [existingSku, existingBarcode] = await Promise.all([
-      (prisma as any).masterProduct.findFirst({
-        where: {
+      if (parsedSuggestedPrice != null && Number.isNaN(parsedSuggestedPrice)) {
+        return response.status(400).json({ message: "Suggested selling price must be a valid number." });
+      }
+
+      const [existingSku, existingBarcode] = await Promise.all([
+        (prisma as any).masterProduct.findFirst({
+          where: {
+            sku,
+            NOT: { id: productId },
+          },
+          select: { id: true },
+        }),
+        barcode
+          ? (prisma as any).masterProductBarcode.findFirst({
+              where: {
+                barcode,
+                NOT: { masterProductId: productId },
+              },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (existingSku) {
+        return response.status(409).json({ message: "SKU already exists." });
+      }
+
+      if (existingBarcode) {
+        return response.status(409).json({ message: "Barcode already exists." });
+      }
+
+      const pictureUrl = rawPictureUrl ? await persistProductPicture(rawPictureUrl, request) : null;
+
+      await (prisma as any).masterProduct.update({
+        where: { id: productId },
+        data: {
+          name,
           sku,
-          NOT: { id: productId },
+          price: parsedPrice,
+          suggestedPrice: parsedSuggestedPrice,
+          categoryId,
+          brandId,
+          unitId,
+          packageSize,
+          description,
+          pictureUrl,
+          updatedByUserId: auth.user.id,
         },
-        select: { id: true },
-      }),
-      barcode
-        ? (prisma as any).masterProductBarcode.findFirst({
-            where: {
-              barcode,
-              NOT: { masterProductId: productId },
-            },
-            select: { id: true },
-          })
-        : Promise.resolve(null),
-    ]);
+      });
 
-    if (existingSku) {
-      return response.status(409).json({ message: "SKU already exists." });
-    }
-
-    if (existingBarcode) {
-      return response.status(409).json({ message: "Barcode already exists." });
-    }
-
-    const pictureUrl = rawPictureUrl ? await persistProductPicture(rawPictureUrl, request) : null;
-
-    await (prisma as any).masterProduct.update({
-      where: { id: productId },
-      data: {
-        name,
-        sku,
-        price: parsedPrice,
-        suggestedPrice: parsedSuggestedPrice,
-        categoryId,
-        brandId,
-        unitId,
+      await syncProductBarcodeRecord({
+        barcode,
         packageSize,
-        description,
-        pictureUrl,
-        updatedByUserId: auth.user.id,
-      },
-    });
+        productId,
+        productStatus: existingProduct.status ?? "ACTIVE",
+        userId: auth.user.id,
+      });
 
-    await syncProductBarcodeRecord({
-      barcode,
-      packageSize,
-      productId,
-      productStatus: existingProduct.status ?? "ACTIVE",
-      userId: auth.user.id,
-    });
+      const product = await loadProductById(productId);
 
-    const product = await loadProductById(productId);
+      return response.json({
+        message: "Product updated successfully.",
+        product: mapProduct(product),
+      });
+    } else if (["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role) && auth.payload.shopId) {
+      const body = request.body as {
+        name?: string;
+        category?: string | null;
+        brand?: string | null;
+        unit?: string | null;
+        image_url?: string | null;
+        sale_price?: number | string | null;
+        purchase_price?: number | string | null;
+        stock?: number | string | null;
+        low_stock_threshold?: number | string | null;
+        pack_info?: string | null;
+      };
 
-    return response.json({
-      message: "Product updated successfully.",
-      product: mapProduct(product),
-    });
+      const shopProduct = await (prisma as any).shopProduct.findFirst({
+        where: {
+          shopId: auth.payload.shopId,
+          OR: [
+            { id: barcodeOrId },
+            { localBarcode: barcodeOrId },
+            { masterProduct: { barcodes: { some: { barcode: barcodeOrId } } } },
+            { masterProduct: { sku: barcodeOrId } }
+          ]
+        },
+        include: {
+          masterProduct: true,
+        }
+      });
+
+      if (!shopProduct) {
+        return response.status(404).json({ message: "Product not found." });
+      }
+
+      const updateData: any = {};
+      if (body.stock !== undefined) {
+        updateData.openingStock = body.stock == null || body.stock === "" ? 0 : Number(body.stock);
+      }
+      if (body.sale_price !== undefined) {
+        updateData.salePrice = body.sale_price == null || body.sale_price === "" ? null : Number(body.sale_price);
+      }
+      if (body.purchase_price !== undefined) {
+        updateData.purchasePrice = body.purchase_price == null || body.purchase_price === "" ? null : Number(body.purchase_price);
+      }
+      if (body.low_stock_threshold !== undefined) {
+        updateData.lowStockLimit = body.low_stock_threshold == null || body.low_stock_threshold === "" ? 0 : Number(body.low_stock_threshold);
+      }
+
+      if (shopProduct.source === "SHOP_LOCAL") {
+        if (body.name !== undefined) {
+          updateData.localName = body.name?.trim();
+        }
+        if (body.category !== undefined) {
+          updateData.localCategory = body.category?.trim() || null;
+        }
+        if (body.brand !== undefined) {
+          updateData.localBrand = body.brand?.trim() || null;
+        }
+        if (body.unit !== undefined) {
+          updateData.localUnit = body.unit?.trim() || null;
+        }
+        if (body.image_url !== undefined) {
+          updateData.localPictureUrl = body.image_url?.trim() || null;
+        }
+      }
+
+      const updated = await (prisma as any).shopProduct.update({
+        where: { id: shopProduct.id },
+        data: updateData,
+        include: {
+          masterProduct: {
+            include: {
+              category: { select: { id: true, name: true } },
+              brand: { select: { id: true, name: true, logoUrl: true } },
+              unit: { select: { id: true, name: true, shortName: true } },
+              barcodes: {
+                orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+                select: {
+                  id: true,
+                  barcode: true,
+                  packSize: true,
+                  status: true,
+                },
+              },
+            },
+          },
+          approvalRequest: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        }
+      });
+
+      const primaryBarcode = updated.masterProduct
+        ? selectPrimaryBarcode(updated.masterProduct.barcodes)
+        : null;
+
+      const barcodeVal = updated.localBarcode ?? primaryBarcode?.barcode ?? updated.masterProduct?.sku ?? updated.id;
+
+      const mappedProduct = {
+        id: barcodeVal,
+        sku: barcodeVal,
+        barcode: barcodeVal,
+        name: updated.masterProduct?.name ?? updated.localName ?? "Unnamed product",
+        category_name: updated.masterProduct?.category?.name ?? updated.localCategory ?? "Uncategorized",
+        category: updated.masterProduct?.category?.name ?? updated.localCategory ?? "Uncategorized",
+        emoji: productVisualType(
+          updated.masterProduct?.name ?? updated.localName ?? "",
+          updated.masterProduct?.category?.name ?? updated.localCategory ?? null
+        ) === "oil" ? "🛢️" : "📦",
+        brand_name: updated.masterProduct?.brand?.name ?? updated.localBrand ?? "No Brand",
+        brand: updated.masterProduct?.brand?.name ?? updated.localBrand ?? "No Brand",
+        unit_name: updated.masterProduct?.unit?.shortName?.toUpperCase() ?? updated.masterProduct?.unit?.name ?? updated.localUnit ?? "No Unit",
+        unit: updated.masterProduct?.unit?.shortName?.toUpperCase() ?? updated.masterProduct?.unit?.name ?? updated.localUnit ?? "No Unit",
+        image_url: updated.masterProduct?.pictureUrl ?? updated.localPictureUrl ?? null,
+        imageLabel: updated.masterProduct?.pictureUrl ?? updated.localPictureUrl ?? null,
+        sale_price: normalizeMoney(updated.salePrice ?? updated.masterProduct?.suggestedPrice ?? updated.masterProduct?.price ?? 0),
+        salePrice: normalizeMoney(updated.salePrice ?? updated.masterProduct?.suggestedPrice ?? updated.masterProduct?.price ?? 0),
+        price: normalizeMoney(updated.salePrice ?? updated.masterProduct?.suggestedPrice ?? updated.masterProduct?.price ?? 0),
+        purchase_price: normalizeMoney(updated.purchasePrice ?? updated.masterProduct?.price ?? 0),
+        purchasePrice: normalizeMoney(updated.purchasePrice ?? updated.masterProduct?.price ?? 0),
+        cost_price: normalizeMoney(updated.purchasePrice ?? updated.masterProduct?.price ?? 0),
+        stock: Number(updated.openingStock ?? 0),
+        quantity: Number(updated.openingStock ?? 0),
+        stock_quantity: Number(updated.openingStock ?? 0),
+        low_stock_threshold: Number(updated.lowStockLimit ?? 0),
+        lowStockThreshold: Number(updated.lowStockLimit ?? 0),
+        stock_threshold: Number(updated.lowStockLimit ?? 0),
+        sales_count: 0,
+        salesCount: 0,
+        pack_info: primaryBarcode?.packSize ?? updated.masterProduct?.packageSize ?? updated.localUnit ?? "",
+        packInfo: primaryBarcode?.packSize ?? updated.masterProduct?.packageSize ?? updated.localUnit ?? "",
+        source: updated.source,
+        approvalStatus: updated.approvalRequest?.status ?? null,
+      };
+
+      return response.json({
+        message: "Shop product updated successfully.",
+        product: mappedProduct,
+        data: mappedProduct,
+      });
+    } else {
+      return response.status(403).json({ message: "You do not have permission to manage products." });
+    }
   } catch (error) {
     console.error("Failed to update product.", error);
-
     return response.status(503).json({
       message: "Product could not be updated right now.",
     });
   }
-});
+};
+
+router.put("/:id", handleUpdate);
+router.patch("/:id", handleUpdate);
 
 router.post("/:id/duplicate", async (request, response) => {
   try {
@@ -874,31 +1288,59 @@ router.patch("/:id/status", async (request, response) => {
 
 router.delete("/:id", async (request, response) => {
   try {
-    const auth = await requirePlatformUser(request);
+    const auth = await getAuthenticatedUser(request);
 
     if (isAuthError(auth)) {
       return sendAuthError(response, auth);
     }
 
-    const productId = request.params.id;
-    const existingProduct = await (prisma as any).masterProduct.findUnique({
-      where: { id: productId },
-      select: { id: true },
-    });
+    const barcodeOrId = request.params.id;
 
-    if (!existingProduct) {
-      return response.status(404).json({ message: "Product not found." });
+    if (["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role)) {
+      const productId = barcodeOrId;
+      const existingProduct = await (prisma as any).masterProduct.findUnique({
+        where: { id: productId },
+        select: { id: true },
+      });
+
+      if (!existingProduct) {
+        return response.status(404).json({ message: "Product not found." });
+      }
+
+      await (prisma as any).masterProductBarcode.deleteMany({
+        where: { masterProductId: productId },
+      });
+
+      await (prisma as any).masterProduct.delete({
+        where: { id: productId },
+      });
+
+      return response.json({ message: "Product deleted successfully." });
+    } else if (["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role) && auth.payload.shopId) {
+      const shopProduct = await (prisma as any).shopProduct.findFirst({
+        where: {
+          shopId: auth.payload.shopId,
+          OR: [
+            { id: barcodeOrId },
+            { localBarcode: barcodeOrId },
+            { masterProduct: { barcodes: { some: { barcode: barcodeOrId } } } },
+            { masterProduct: { sku: barcodeOrId } }
+          ]
+        }
+      });
+
+      if (!shopProduct) {
+        return response.status(404).json({ message: "Product not found." });
+      }
+
+      await (prisma as any).shopProduct.delete({
+        where: { id: shopProduct.id }
+      });
+
+      return response.json({ message: "Product deleted successfully." });
+    } else {
+      return response.status(403).json({ message: "You do not have permission to manage products." });
     }
-
-    await (prisma as any).masterProductBarcode.deleteMany({
-      where: { masterProductId: productId },
-    });
-
-    await (prisma as any).masterProduct.delete({
-      where: { id: productId },
-    });
-
-    return response.json({ message: "Product deleted successfully." });
   } catch (error) {
     console.error("Failed to delete product.", error);
 

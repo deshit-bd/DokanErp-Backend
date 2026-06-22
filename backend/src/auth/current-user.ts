@@ -27,7 +27,14 @@ export type AuthenticatedUser = {
 };
 
 export async function getAuthenticatedUser(request: Request) {
-  const accessToken = parseCookies(request)[ACCESS_TOKEN_COOKIE];
+  let accessToken = parseCookies(request)[ACCESS_TOKEN_COOKIE];
+
+  if (!accessToken) {
+    const authHeader = request.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      accessToken = authHeader.substring(7);
+    }
+  }
 
   if (!accessToken) {
     return { status: 401, body: { message: "Not authenticated." } };

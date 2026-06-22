@@ -141,6 +141,20 @@ async function resolveCustomerIdentifier(customerIdentifier?: string | null) {
   });
 }
 
+async function resolveCustomerLinkedToShop(customerId: string, shopId: string) {
+  return (prisma as any).customer.findFirst({
+    where: {
+      id: customerId,
+      deletedAt: null,
+      OR: [
+        { sales: { some: { shopId } } },
+        { payments: { some: { shopId } } },
+        { ledgerEntries: { some: { shopId } } },
+      ],
+    },
+  });
+}
+
 async function resolveShopIdentifier(shopIdentifier?: string | null) {
   const normalized = shopIdentifier?.trim();
 
@@ -392,24 +406,13 @@ router.get("/", async (request, response) => {
           deletedAt: null,
           ...(status ? { status } : {}),
           AND: [
-            ...(search
-              ? []
-              : [
-                  {
-                    OR: [
-                      { sales: { some: { shopId: context.shop.id } } },
-                      { payments: { some: { shopId: context.shop.id } } },
-                      { ledgerEntries: { some: { shopId: context.shop.id } } },
-                      {
-                        AND: [
-                          { sales: { none: {} } },
-                          { payments: { none: {} } },
-                          { ledgerEntries: { none: {} } },
-                        ],
-                      },
-                    ],
-                  },
-                ]),
+            {
+              OR: [
+                { sales: { some: { shopId: context.shop.id } } },
+                { payments: { some: { shopId: context.shop.id } } },
+                { ledgerEntries: { some: { shopId: context.shop.id } } },
+              ],
+            },
             ...(search
               ? [
                   {
@@ -604,15 +607,49 @@ router.post("/", async (request, response) => {
     });
 
     if (duplicateCustomer) {
-      return response.status(409).json({
-        message: "Customer already exists. Duplicate customer add is blocked.",
-        customer: {
-          id: duplicateCustomer.id,
-          customerCode: duplicateCustomer.customerCode,
-          name: duplicateCustomer.name,
-          companyOrPersonName: duplicateCustomer.name,
-          mobile: duplicateCustomer.mobile,
+      const existingShopLink = await resolveCustomerLinkedToShop(
+        duplicateCustomer.id,
+        shop.id,
+      );
+
+      if (existingShopLink) {
+        return response.status(409).json({
+          message: "Customer already added for this shop.",
+          customer: {
+            id: duplicateCustomer.id,
+            customerCode: duplicateCustomer.customerCode,
+            name: duplicateCustomer.name,
+            companyOrPersonName: duplicateCustomer.name,
+            mobile: duplicateCustomer.mobile,
+          },
+        });
+      }
+
+      const openingDue = Number(body.openingDue ?? 0);
+
+      await (prisma as any).customerLedger.create({
+        data: {
+          shopId: shop.id,
+          customerId: duplicateCustomer.id,
+          entryType: "OPENING_DUE",
+          referenceNo: `REG-${duplicateCustomer.customerCode}`,
+          debit: openingDue,
+          credit: 0,
+          notes:
+            openingDue > 0
+              ? "প্রারম্ভিক বকেয়া"
+              : "বিদ্যমান গ্রাহককে এই দোকানের সাথে যুক্ত করা হয়েছে",
+          entryDate: new Date(),
         },
+      });
+
+      const linkedCustomer = await (prisma as any).customer.findUnique({
+        where: { id: duplicateCustomer.id },
+      });
+
+      return response.status(200).json({
+        message: "Existing global customer linked to this shop successfully.",
+        customer: mapCustomerMaster(linkedCustomer),
       });
     }
 
@@ -1107,10 +1144,15 @@ router.post("/sales", async (request, response) => {
       }>;
     };
 
-    const customer = await resolveCustomerIdentifier(body.customerId);
+    const customer = body.customerId
+      ? await resolveCustomerLinkedToShop(body.customerId, context.shop.id)
+      : null;
 
     if (!customer) {
-      return response.status(404).json({ message: "Customer not found." });
+      return response.status(404).json({
+        message:
+          "Customer is not linked to this shop. Add the customer to this store first.",
+      });
     }
 
     const items = body.items ?? [];
@@ -1503,10 +1545,13 @@ router.get("/:id/sales", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
-    const customer = await resolveCustomerIdentifier(request.params.id);
+    const customer = await resolveCustomerLinkedToShop(
+      request.params.id,
+      context.shop.id,
+    );
 
     if (!customer) {
-      return response.status(404).json({ message: "Customer not found." });
+      return response.status(404).json({ message: "Customer not found for this shop." });
     }
 
     const sales = await (prisma as any).customerSale.findMany({
@@ -1572,10 +1617,13 @@ router.post("/:id/payments", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
-    const customer = await resolveCustomerIdentifier(request.params.id);
+    const customer = await resolveCustomerLinkedToShop(
+      request.params.id,
+      context.shop.id,
+    );
 
     if (!customer) {
-      return response.status(404).json({ message: "Customer not found." });
+      return response.status(404).json({ message: "Customer not found for this shop." });
     }
 
     const body = request.body as {
@@ -1700,10 +1748,13 @@ router.get("/:id/ledger", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
-    const customer = await resolveCustomerIdentifier(request.params.id);
+    const customer = await resolveCustomerLinkedToShop(
+      request.params.id,
+      context.shop.id,
+    );
 
     if (!customer) {
-      return response.status(404).json({ message: "Customer not found." });
+      return response.status(404).json({ message: "Customer not found for this shop." });
     }
 
     const ledgerEntries = await (prisma as any).customerLedger.findMany({
@@ -1803,10 +1854,13 @@ router.get("/:id", async (request, response) => {
         return response.status(context.status).json(context.body);
       }
 
-      const customer = await resolveCustomerIdentifier(request.params.id);
+      const customer = await resolveCustomerLinkedToShop(
+        request.params.id,
+        context.shop.id,
+      );
 
       if (!customer) {
-        return response.status(404).json({ message: "Customer not found." });
+        return response.status(404).json({ message: "Customer not found for this shop." });
       }
 
       const [summary, sales, payments, ledgerEntries] = await Promise.all([

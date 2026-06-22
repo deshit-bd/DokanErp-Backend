@@ -90,12 +90,37 @@ function mapRack(rack: any) {
   };
 }
 
+function serializeShelfName(name: string, direction: string): string {
+  return `${name.trim()}:::${direction.trim()}`;
+}
+
+function deserializeShelfName(serialized: string): { name: string; direction: string } {
+  if (serialized.includes(":::")) {
+    const parts = serialized.split(":::");
+    return { name: parts[0], direction: parts[1] };
+  }
+  return { name: serialized, direction: "উপরের সারি" };
+}
+
+function getBinQuantity(bin: any): number {
+  if (bin.items && bin.items.length > 0) {
+    return bin.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
+  }
+  if (bin.quantityLabel) {
+    const parsed = parseInt(bin.quantityLabel, 10);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
 function mapShelf(shelf: any) {
+  const deserialized = deserializeShelfName(shelf.name);
   return {
     id: shelf.id,
     zoneId: shelf.zoneId,
     rackId: shelf.rackId,
-    name: shelf.name,
+    name: deserialized.name,
+    direction: deserialized.direction,
     totalBins: shelf.totalBins,
     usedBins: shelf.usedBins,
     createdAt: shelf.createdAt,
@@ -104,6 +129,7 @@ function mapShelf(shelf: any) {
 }
 
 function mapBin(bin: any) {
+  const qty = getBinQuantity(bin);
   return {
     id: bin.id,
     zoneId: bin.zoneId,
@@ -111,9 +137,10 @@ function mapBin(bin: any) {
     shelfId: bin.shelfId,
     code: bin.code,
     productName: toLabel(bin.productName, "খালি"),
-    status: bin.status,
-    quantityLabel: toLabel(bin.quantityLabel, bin.status === "EMPTY" ? "খালি" : "১ পিস"),
-    daysLabel: toLabel(bin.daysLabel, bin.status === "EMPTY" ? "খালি" : "১ দিন"),
+    status: qty <= 0 ? "EMPTY" : qty < 10 ? "LOW" : "FULL",
+    quantity: qty,
+    quantityLabel: `${qty} পিস`,
+    daysLabel: toLabel(bin.daysLabel, qty <= 0 ? "খালি" : "১ দিন"),
     createdAt: bin.createdAt,
     updatedAt: bin.updatedAt,
   };
@@ -121,7 +148,7 @@ function mapBin(bin: any) {
 
 function deriveBinStatusFromQuantity(quantity: number): InventoryBinStatusValue {
   if (quantity <= 0) return "EMPTY";
-  if (quantity <= 2) return "LOW";
+  if (quantity < 10) return "LOW";
   return "FULL";
 }
 
@@ -342,6 +369,78 @@ router.get("/general-store", async (request, response) => {
   }
 });
 
+router.get("/layout-tree", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const zones = await (prisma as any).inventoryZone.findMany({
+      where: { shopId: context.shop.id },
+      include: {
+        racks: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          include: {
+            shelves: {
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              include: {
+                bins: {
+                  orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+                  include: {
+                    items: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+
+    const tree = zones.map((zone: any) => ({
+      id: zone.id,
+      name: zone.name,
+      racks: zone.racks.map((rack: any) => ({
+        id: rack.id,
+        name: rack.name,
+        shelves: rack.shelves.map((shelf: any) => {
+          const deserialized = deserializeShelfName(shelf.name);
+          return {
+            id: shelf.id,
+            name: deserialized.name,
+            direction: deserialized.direction,
+            bins: shelf.bins.map((bin: any) => {
+              const qty = getBinQuantity(bin);
+              return {
+                id: bin.id,
+                code: bin.code,
+                quantity: qty,
+                rackName: rack.name,
+                shelfName: deserialized.name,
+              };
+            }),
+          };
+        }),
+      })),
+    }));
+
+    return response.json({
+      shop: context.shop,
+      zones: tree,
+    });
+  } catch (error) {
+    console.error("Failed to load layout tree.", error);
+    return response.status(503).json({ message: "Layout tree could not be loaded right now." });
+  }
+});
+
 router.get("/zones", async (request, response) => {
   try {
     const context = await requireOwnerInventoryContext(request);
@@ -510,8 +609,8 @@ router.post("/racks", async (request, response) => {
       return response.status(400).json({ message: "zoneId and rack name are required." });
     }
 
-    if (!Number.isFinite(shelfCount) || shelfCount <= 0 || !Number.isFinite(binsPerShelf) || binsPerShelf <= 0) {
-      return response.status(400).json({ message: "shelfCount and binsPerShelf must be greater than 0." });
+    if (autoGenerate && (!Number.isFinite(shelfCount) || shelfCount <= 0 || !Number.isFinite(binsPerShelf) || binsPerShelf <= 0)) {
+      return response.status(400).json({ message: "shelfCount and binsPerShelf must be greater than 0 when autoGenerate is true." });
     }
 
     const zone = await (prisma as any).inventoryZone.findFirst({
@@ -913,6 +1012,338 @@ router.post("/placements", async (request, response) => {
     return response.status(503).json({
       message: error instanceof Error ? error.message : "Inventory placement could not be saved right now.",
     });
+  }
+});
+
+// PATCH /zones/:id
+router.patch("/zones/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+    const { name, subtitle, icon } = request.body as { name?: string; subtitle?: string; icon?: string };
+
+    const zone = await (prisma as any).inventoryZone.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!zone) {
+      return response.status(404).json({ message: "Zone not found." });
+    }
+
+    const updated = await (prisma as any).inventoryZone.update({
+      where: { id },
+      data: {
+        ...(name ? { name: name.trim() } : {}),
+        ...(subtitle !== undefined ? { subtitle: subtitle.trim() || null } : {}),
+        ...(icon !== undefined ? { icon: icon.trim() || null } : {}),
+      }
+    });
+
+    return response.json({
+      message: "Zone updated successfully.",
+      zone: mapZone(updated)
+    });
+  } catch (error) {
+    console.error("Failed to update zone:", error);
+    return response.status(500).json({ message: "Failed to update zone." });
+  }
+});
+
+// DELETE /zones/:id
+router.delete("/zones/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+
+    const zone = await (prisma as any).inventoryZone.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!zone) {
+      return response.status(404).json({ message: "Zone not found." });
+    }
+
+    await (prisma as any).inventoryZone.delete({
+      where: { id }
+    });
+
+    return response.json({ message: "Zone deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete zone:", error);
+    return response.status(500).json({ message: "Failed to delete zone." });
+  }
+});
+
+// PATCH /racks/:id
+router.patch("/racks/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+    const { name, note } = request.body as { name?: string; note?: string };
+
+    const rack = await (prisma as any).inventoryRack.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!rack) {
+      return response.status(404).json({ message: "Rack not found." });
+    }
+
+    const updated = await (prisma as any).inventoryRack.update({
+      where: { id },
+      data: {
+        ...(name ? { name: name.trim() } : {}),
+        ...(note !== undefined ? { note: note.trim() || null } : {}),
+      }
+    });
+
+    return response.json({
+      message: "Rack updated successfully.",
+      rack: mapRack(updated)
+    });
+  } catch (error) {
+    console.error("Failed to update rack:", error);
+    return response.status(500).json({ message: "Failed to update rack." });
+  }
+});
+
+// DELETE /racks/:id
+router.delete("/racks/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+
+    const rack = await (prisma as any).inventoryRack.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!rack) {
+      return response.status(404).json({ message: "Rack not found." });
+    }
+
+    await (prisma as any).inventoryRack.delete({
+      where: { id }
+    });
+
+    return response.json({ message: "Rack deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete rack:", error);
+    return response.status(500).json({ message: "Failed to delete rack." });
+  }
+});
+
+// POST /shelves
+router.post("/shelves", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { zoneId, rackId, name, direction } = request.body as {
+      zoneId?: string;
+      rackId?: string;
+      name?: string;
+      direction?: string;
+    };
+
+    if (!zoneId || !rackId || !name) {
+      return response.status(400).json({ message: "zoneId, rackId, and shelf name are required." });
+    }
+
+    const rack = await (prisma as any).inventoryRack.findFirst({
+      where: { id: rackId, zoneId, shopId: context.shop.id }
+    });
+
+    if (!rack) {
+      return response.status(404).json({ message: "Rack not found." });
+    }
+
+    const nextSortOrder = await (prisma as any).inventoryShelf.count({
+      where: { shopId: context.shop.id, rackId }
+    });
+
+    const serializedName = serializeShelfName(name, direction || "উপরের সারি");
+
+    const shelf = await (prisma as any).inventoryShelf.create({
+      data: {
+        shopId: context.shop.id,
+        zoneId,
+        rackId,
+        name: serializedName,
+        sortOrder: nextSortOrder,
+      }
+    });
+
+    await (prisma as any).inventoryRack.update({
+      where: { id: rackId },
+      data: { shelfCount: { increment: 1 } }
+    });
+
+    return response.status(201).json({
+      message: "Shelf created successfully.",
+      shelf: mapShelf(shelf)
+    });
+  } catch (error) {
+    console.error("Failed to create shelf:", error);
+    return response.status(500).json({ message: "Failed to create shelf." });
+  }
+});
+
+// PATCH /shelves/:id
+router.patch("/shelves/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+    const { name, direction } = request.body as { name?: string; direction?: string };
+
+    const shelf = await (prisma as any).inventoryShelf.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!shelf) {
+      return response.status(404).json({ message: "Shelf not found." });
+    }
+
+    const parsed = deserializeShelfName(shelf.name);
+    const newName = name !== undefined ? name.trim() : parsed.name;
+    const newDir = direction !== undefined ? direction.trim() : parsed.direction;
+
+    const updated = await (prisma as any).inventoryShelf.update({
+      where: { id },
+      data: {
+        name: serializeShelfName(newName, newDir)
+      }
+    });
+
+    return response.json({
+      message: "Shelf updated successfully.",
+      shelf: mapShelf(updated)
+    });
+  } catch (error) {
+    console.error("Failed to update shelf:", error);
+    return response.status(500).json({ message: "Failed to update shelf." });
+  }
+});
+
+// DELETE /shelves/:id
+router.delete("/shelves/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+
+    const shelf = await (prisma as any).inventoryShelf.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!shelf) {
+      return response.status(404).json({ message: "Shelf not found." });
+    }
+
+    await (prisma as any).$transaction([
+      (prisma as any).inventoryShelf.delete({ where: { id } }),
+      (prisma as any).inventoryRack.update({
+        where: { id: shelf.rackId },
+        data: { shelfCount: { decrement: 1 } }
+      })
+    ]);
+
+    return response.json({ message: "Shelf deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete shelf:", error);
+    return response.status(500).json({ message: "Failed to delete shelf." });
+  }
+});
+
+// PATCH /bins/:id
+router.patch("/bins/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+    const { code, quantity } = request.body as { code?: string; quantity?: number };
+
+    const bin = await (prisma as any).inventoryBin.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!bin) {
+      return response.status(404).json({ message: "Bin not found." });
+    }
+
+    const newCode = code !== undefined ? code.trim() : bin.code;
+    let nextStatus = bin.status;
+    let quantityLabel = bin.quantityLabel;
+
+    if (quantity !== undefined) {
+      nextStatus = deriveBinStatusFromQuantity(quantity);
+      quantityLabel = `${quantity} পিস`;
+    }
+
+    const updated = await (prisma as any).inventoryBin.update({
+      where: { id },
+      data: {
+        code: newCode,
+        status: nextStatus,
+        quantityLabel,
+        daysLabel: quantity !== undefined && quantity > 0 ? "মেয়াদ সেট" : "খালি",
+      }
+    });
+
+    return response.json({
+      message: "Bin updated successfully.",
+      bin: mapBin(updated)
+    });
+  } catch (error) {
+    console.error("Failed to update bin:", error);
+    return response.status(500).json({ message: "Failed to update bin." });
+  }
+});
+
+// DELETE /bins/:id
+router.delete("/bins/:id", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+    if (isAuthError(context)) return sendAuthError(response, context);
+    if ("status" in context) return response.status(context.status).json(context.body);
+
+    const { id } = request.params;
+
+    const bin = await (prisma as any).inventoryBin.findFirst({
+      where: { id, shopId: context.shop.id }
+    });
+
+    if (!bin) {
+      return response.status(404).json({ message: "Bin not found." });
+    }
+
+    await (prisma as any).inventoryBin.delete({
+      where: { id }
+    });
+
+    return response.json({ message: "Bin deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete bin:", error);
+    return response.status(500).json({ message: "Failed to delete bin." });
   }
 });
 

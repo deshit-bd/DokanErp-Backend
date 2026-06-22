@@ -180,6 +180,30 @@ async function resolveSupplierIdentifier(supplierIdentifier?: string | null) {
   });
 }
 
+async function resolveRequestedSupplierShopIdentifier(
+  request: Parameters<typeof getAuthenticatedUser>[0],
+) {
+  const explicitShopIdentifier =
+    (typeof request.query.shopId === "string" ? request.query.shopId.trim() : "") ||
+    ((request.body as { shopId?: string } | undefined)?.shopId?.trim() ?? "");
+
+  if (explicitShopIdentifier) {
+    return explicitShopIdentifier;
+  }
+
+  const auth = await getAuthenticatedUser(request);
+
+  if (isAuthError(auth)) {
+    return null;
+  }
+
+  if (auth.payload.appType === "MOBILE" && auth.payload.shopId) {
+    return auth.payload.shopId;
+  }
+
+  return null;
+}
+
 async function requirePlatformUser(request: Parameters<typeof getAuthenticatedUser>[0]) {
   const auth = await getAuthenticatedUser(request);
 
@@ -281,7 +305,7 @@ async function buildSupplierFinanceSummary(supplierId: string, shopId: string) {
 
 router.get("/", async (request, response) => {
   try {
-    const requestedShopIdentifier = typeof request.query.shopId === "string" ? request.query.shopId.trim() : "";
+    const requestedShopIdentifier = await resolveRequestedSupplierShopIdentifier(request);
 
     if (requestedShopIdentifier) {
       const context = await resolveFinanceShop(request);
@@ -504,7 +528,7 @@ router.post("/", async (request, response) => {
       status?: SupplierStatusValue;
     };
 
-    const requestedShopIdentifier = body.shopId?.trim() ?? "";
+    const requestedShopIdentifier = await resolveRequestedSupplierShopIdentifier(request);
     const supplierCode = body.supplierCode?.trim();
     const name = body.name?.trim() || body.companyOrPersonName?.trim();
     const mobile = body.mobile?.trim() || null;
@@ -794,7 +818,7 @@ router.post("/", async (request, response) => {
 
 router.get("/:id", async (request, response) => {
   try {
-    const requestedShopIdentifier = typeof request.query.shopId === "string" ? request.query.shopId.trim() : "";
+    const requestedShopIdentifier = await resolveRequestedSupplierShopIdentifier(request);
 
     if (requestedShopIdentifier) {
       const context = await resolveFinanceShop(request);

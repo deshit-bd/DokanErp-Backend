@@ -210,12 +210,32 @@ router.get("/me", async (request, response) => {
     const access = await evaluateShopSubscriptionAccess(context.shop.id);
     const invoice = access.billingDate ? await ensureDailyInvoice(context.shop.id) : null;
 
+    const [recentInvoices, recentPayments] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { shopId: context.shop.id },
+        orderBy: [{ billingDate: "desc" }, { createdAt: "desc" }],
+        take: 6,
+      }),
+      prisma.payment.findMany({
+        where: { shopId: context.shop.id },
+        include: {
+          invoice: {
+            select: {
+              billingDate: true,
+            },
+          },
+        },
+        orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+        take: 6,
+      }),
+    ]);
+
     return response.json({
       shop: context.shop,
       subscription: access,
-      invoice: invoice
-        ? mapInvoice(invoice)
-        : null,
+      invoice: invoice ? mapInvoice(invoice) : null,
+      recentInvoices: recentInvoices.map(mapInvoice),
+      recentPayments: recentPayments.map(mapPayment),
     });
   } catch (error) {
     console.error("Failed to load subscription status.", error);

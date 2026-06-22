@@ -26,6 +26,25 @@ type NormalizedPurchaseItem = {
   expiryDate: Date | null;
 };
 
+type ReceivePurchaseItemInput = {
+  masterProductId: string;
+  quantity: number;
+  salePrice: number | null;
+};
+
+type PurchaseInventoryPlacementInput = {
+  masterProductId: string;
+  quantity: number;
+  salePrice: number | null;
+  zoneId?: string | null;
+  rackId?: string | null;
+  shelfId?: string | null;
+  binId?: string | null;
+  batchNo?: string | null;
+  expiryDate?: Date | null;
+  productName?: string | null;
+};
+
 type PurchaseReturnItemInput = {
   purchaseItemId: string;
   quantity: number;
@@ -51,6 +70,25 @@ async function resolveShopIdentifier(shopIdentifier?: string | null) {
       id: true,
       shopCode: true,
       shopName: true,
+    },
+  });
+}
+
+async function resolveSupplierLinkedToShop(supplierId: string, shopId: string) {
+  return (prisma as any).supplier.findFirst({
+    where: {
+      id: supplierId,
+      deletedAt: null,
+      OR: [
+        { purchases: { some: { shopId } } },
+        { supplierPayments: { some: { shopId } } },
+        { supplierLedgers: { some: { shopId } } },
+      ],
+    },
+    select: {
+      id: true,
+      supplierCode: true,
+      name: true,
     },
   });
 }
@@ -140,6 +178,125 @@ async function resolveDefaultBankAccount(tx: any, shopId: string) {
       currentBalance: true,
     },
   });
+}
+
+async function ensureGeneralInventoryBin(tx: any, shopId: string, masterProductId: string, productName: string) {
+  const binCode = `BASIC-${masterProductId.slice(-8).toUpperCase()}`;
+
+  const existing = await tx.inventoryBin.findFirst({
+    where: {
+      shopId,
+      code: binCode,
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  let zone = await tx.inventoryZone.findFirst({
+    where: { shopId },
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  if (!zone) {
+    zone = await tx.inventoryZone.create({
+      data: {
+        shopId,
+        name: "Main Store",
+        subtitle: "Basic inventory stock area",
+        icon: "store",
+        sortOrder: 0,
+      },
+    });
+  }
+
+  let rack = await tx.inventoryRack.findFirst({
+    where: {
+      shopId,
+      zoneId: zone.id,
+    },
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  if (!rack) {
+    rack = await tx.inventoryRack.create({
+      data: {
+        shopId,
+        zoneId: zone.id,
+        name: "Main Rack",
+        note: "Auto-created for basic inventory stock",
+        shelfCount: 1,
+        totalBins: 1,
+        usedBins: 0,
+        sortOrder: 0,
+      },
+    });
+  }
+
+  let shelf = await tx.inventoryShelf.findFirst({
+    where: {
+      shopId,
+      rackId: rack.id,
+    },
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  if (!shelf) {
+    shelf = await tx.inventoryShelf.create({
+      data: {
+        shopId,
+        zoneId: zone.id,
+        rackId: rack.id,
+        name: "Main Shelf",
+        totalBins: 1,
+        usedBins: 0,
+        sortOrder: 0,
+      },
+    });
+  }
+
+  return tx.inventoryBin.create({
+    data: {
+      shopId,
+      zoneId: zone.id,
+      rackId: rack.id,
+      shelfId: shelf.id,
+      code: binCode,
+      productName: productName || "Stock",
+      status: "FULL",
+      quantityLabel: "১ পিস",
+      daysLabel: "নতুন স্টক",
+      sortOrder: 0,
+    },
+  });
+}
+
+async function resolvePurchasePlacementBin(
+  tx: any,
+  shopId: string,
+  item: NormalizedPurchaseItem & { masterProductName?: string; masterProductSku?: string },
+  placement?: PurchaseInventoryPlacementInput | null,
+) {
+  const placementBinId = placement?.binId?.trim();
+  if (placementBinId) {
+    const bin = await tx.inventoryBin.findFirst({
+      where: {
+        id: placementBinId,
+        shopId,
+      },
+    });
+    if (bin) {
+      return bin;
+    }
+  }
+
+  return ensureGeneralInventoryBin(
+    tx,
+    shopId,
+    item.masterProductId,
+    placement?.productName?.trim() || item.masterProductName || item.masterProductSku || "Stock",
+  );
 }
 
 function normalizePurchasePayment(
@@ -248,15 +405,28 @@ async function applyApprovedPurchaseEffects(params: {
   tx: any;
   shopId: string;
   purchase: any;
-  items: NormalizedPurchaseItem[];
+  items: Array<NormalizedPurchaseItem & { salePrice?: number | null }>;
+  placements?: Array<PurchaseInventoryPlacementInput>;
   paymentMethod: string | null;
   paymentMeta: Record<string, unknown> | null;
   moneyBoxId?: string | null;
   bankAccountId?: string | null;
 }) {
-  const { tx, shopId, purchase, items, paymentMethod, paymentMeta, moneyBoxId, bankAccountId } = params;
+  const { tx, shopId, purchase, items, placements, paymentMethod, paymentMeta, moneyBoxId, bankAccountId } = params;
+
+  const purchaseItems = Array.isArray(purchase.items) ? purchase.items : [];
+  const placementMap = new Map<string, PurchaseInventoryPlacementInput>();
+  for (const placement of placements ?? []) {
+    if (placement.masterProductId) {
+      placementMap.set(placement.masterProductId, placement);
+    }
+  }
 
   for (const item of items) {
+    const purchaseItem = purchaseItems.find((row: any) => row.masterProductId === item.masterProductId);
+    const placement = placementMap.get(item.masterProductId) ?? null;
+    const targetBin = await resolvePurchasePlacementBin(tx, shopId, item as any, placement);
+
     await tx.shopProduct.update({
       where: {
         shopId_masterProductId: {
@@ -268,6 +438,41 @@ async function applyApprovedPurchaseEffects(params: {
         openingStock: {
           increment: item.quantity,
         },
+        purchasePrice: item.purchasePrice,
+        ...(item.salePrice != null ? { salePrice: item.salePrice } : {}),
+      },
+    });
+
+    if (!purchaseItem) {
+      continue;
+    }
+
+    await tx.inventoryBinItem.create({
+      data: {
+        shopId,
+        binId: targetBin.id,
+        masterProductId: item.masterProductId,
+        purchaseItemId: purchaseItem.id,
+        quantity: item.quantity,
+        batchNo: placement?.batchNo ?? item.batchNo ?? null,
+        expiryDate: placement?.expiryDate ?? item.expiryDate ?? null,
+        notes: "Assigned from purchase approval/receive flow.",
+      },
+    });
+
+    const totalBinQty = await tx.inventoryBinItem.aggregate({
+      where: { shopId, binId: targetBin.id },
+      _sum: { quantity: true },
+    });
+    const quantityValue = Number(totalBinQty._sum.quantity ?? 0);
+
+    await tx.inventoryBin.update({
+      where: { id: targetBin.id },
+      data: {
+        productName: purchaseItem.masterProduct?.name ?? targetBin.productName,
+        status: quantityValue <= 0 ? "EMPTY" : quantityValue < 10 ? "LOW" : "FULL",
+        quantityLabel: quantityValue <= 0 ? "খালি" : `${quantityValue} পিস`,
+        daysLabel: placement?.expiryDate ?? item.expiryDate ? "মেয়াদ সেট" : "নতুন স্টক",
       },
     });
   }
@@ -413,18 +618,55 @@ function mapPurchaseResponse(purchase: any) {
   const returns = Array.isArray(purchase.returns) ? purchase.returns : [];
   const returnSummary = getPurchaseReturnSummary(purchase);
 
+  const mappedItems = purchase.items.map((item: any) => ({
+    id: item.masterProductId ?? item.id,
+    productId: item.masterProductId ?? item.id,
+    product_id: item.masterProductId ?? item.id,
+    masterProductId: item.masterProductId,
+    name: item.masterProduct?.name ?? "Unnamed product",
+    product_name: item.masterProduct?.name ?? "Unnamed product",
+    productName: item.masterProduct?.name ?? "Unnamed product",
+    sku: item.masterProduct?.sku ?? null,
+    batchNo: item.batchNo,
+    expiryDate: item.expiryDate,
+    quantity: Number(item.quantity),
+    orderedQuantity: Number(item.quantity),
+    ordered_quantity: Number(item.quantity),
+    purchasePrice: Number(item.purchasePrice),
+    unitCost: Number(item.purchasePrice),
+    unit_cost: Number(item.purchasePrice),
+    totalAmount: Number(item.totalAmount),
+  }));
+
+  const mappedStatus = purchase.status === "APPROVED"
+    ? "received"
+    : purchase.status === "REJECTED"
+      ? "cancelled"
+      : "submitted";
+
   return {
     id: purchase.id,
+    uuid: purchase.id,
     shopId: purchase.shopId,
     shopName: purchase.shop?.shopName,
     supplierId: purchase.supplierId,
+    supplier_id: purchase.supplierId,
+    supplierKey: purchase.supplierId,
+    supplier_key: purchase.supplierId,
     supplierName: purchase.supplier?.name ?? null,
+    supplier_name: purchase.supplier?.name ?? null,
     supplierCode: purchase.supplier?.supplierCode ?? null,
     createdByUserId: purchase.createdByUserId ?? null,
     approvedByUserId: purchase.approvedByUserId ?? null,
     invoiceNo: purchase.invoiceNo,
+    reference: purchase.invoiceNo ?? purchase.id,
     purchaseDate: purchase.purchaseDate,
-    status: purchase.status,
+    createdAt: purchase.createdAt ? purchase.createdAt.getTime() : Date.now(),
+    created_at: purchase.createdAt ? purchase.createdAt.getTime() : Date.now(),
+    updatedAt: purchase.updatedAt ? purchase.updatedAt.getTime() : Date.now(),
+    updated_at: purchase.updatedAt ? purchase.updatedAt.getTime() : Date.now(),
+    status: mappedStatus,
+    rawStatus: purchase.status,
     statusLabel: toPurchaseStatusLabel(purchase.status),
     subtotalAmount: Number(purchase.subtotalAmount),
     discountAmount: Number(purchase.discountAmount),
@@ -436,6 +678,7 @@ function mapPurchaseResponse(purchase: any) {
     paymentDetails: purchase.paymentMeta ?? null,
     invoiceFileName: purchase.invoiceFileName,
     notes: purchase.notes,
+    note: purchase.notes,
     approvedAt: purchase.approvedAt,
     rejectedAt: purchase.rejectedAt,
     rejectionReason: purchase.rejectionReason,
@@ -443,17 +686,8 @@ function mapPurchaseResponse(purchase: any) {
     effectivePayableAmount: returnSummary.effectivePayable,
     remainingDueAmount: returnSummary.remainingDue,
     refundableAmount: returnSummary.refundableAmount,
-    items: purchase.items.map((item: any) => ({
-      id: item.id,
-      masterProductId: item.masterProductId,
-      name: item.masterProduct.name,
-      sku: item.masterProduct.sku,
-      batchNo: item.batchNo,
-      expiryDate: item.expiryDate,
-      quantity: Number(item.quantity),
-      purchasePrice: Number(item.purchasePrice),
-      totalAmount: Number(item.totalAmount),
-    })),
+    items: mappedItems,
+    lines: mappedItems,
     returns: returns.map((entry: any) => ({
       id: entry.id,
       status: entry.status,
@@ -488,68 +722,56 @@ router.post("/", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
-    const body = request.body as {
-      supplierId?: string | null;
-      invoiceNo?: string | null;
-      subtotalAmount?: number | string | null;
-      discountAmount?: number | string | null;
-      extraChargeAmount?: number | string | null;
-      paidAmount?: number | string | null;
-      paymentMethod?: string | null;
-      paymentDetails?: PaymentMetaInput | null;
-      moneyBoxId?: string | null;
-      bankAccountId?: string | null;
-      invoiceFileName?: string | null;
-      notes?: string | null;
-      purchaseDate?: string | null;
-      items?: Array<{
-        productId?: string;
-        masterProductId?: string;
-        shopProductId?: string;
-        qty?: number | string;
-        quantity?: number | string;
-        purchasePrice?: number | string;
-        batchNo?: string | null;
-        expiryDate?: string | null;
-      }>;
-    };
+    const body = request.body;
+    const supplierId = body.supplierId ?? body.supplier_id ?? body.supplierKey ?? body.supplier_key;
+    const invoiceNo = body.invoiceNo ?? body.invoice_no ?? body.reference;
+    const notes = body.notes ?? body.note ?? null;
+    const discountAmount = body.discountAmount == null || body.discountAmount === ""
+      ? (body.discount_amount == null || body.discount_amount === "" ? 0 : Number(body.discount_amount))
+      : Number(body.discountAmount);
+    const extraChargeAmount = body.extraChargeAmount == null || body.extraChargeAmount === ""
+      ? (body.extra_charge_amount == null || body.extra_charge_amount === "" ? 0 : Number(body.extra_charge_amount))
+      : Number(body.extraChargeAmount);
+    const paidAmount = body.paidAmount == null || body.paidAmount === ""
+      ? (body.paid_amount == null || body.paid_amount === "" ? 0 : Number(body.paid_amount))
+      : Number(body.paidAmount);
+    const paymentMethod = body.paymentMethod ?? body.payment_method ?? "CASH";
+    const moneyBoxId = body.moneyBoxId ?? body.money_box_id;
+    const bankAccountId = body.bankAccountId ?? body.bank_account_id;
+    const invoiceFileNameRaw = body.invoiceFileName ?? body.invoice_file_name;
+    const purchaseDateRaw = body.purchaseDate ?? body.purchase_date ?? new Date().toISOString();
 
-    const items = body.items ?? [];
-
-    if (items.length === 0) {
+    const rawItems = body.items ?? body.lines ?? [];
+    if (rawItems.length === 0) {
       return response.status(400).json({ message: "At least one purchase item is required." });
     }
 
-    const normalizedItems = items.map((item) => {
-      const masterProductId = item.masterProductId || item.productId || item.shopProductId || "";
-      const quantity = Number(item.quantity ?? item.qty ?? 0);
-      const purchasePrice = Number(item.purchasePrice ?? 0);
+    const normalizedItems: NormalizedPurchaseItem[] = rawItems.map((item: any) => {
+      const masterProductId = item.masterProductId ?? item.productId ?? item.product_id ?? item.shopProductId ?? "";
+      const quantity = Number(item.quantity ?? item.qty ?? item.orderedQuantity ?? item.ordered_quantity ?? 0);
+      const purchasePrice = Number(item.purchasePrice ?? item.purchase_price ?? item.unitCost ?? item.unit_cost ?? 0);
 
       return {
         masterProductId,
         quantity,
         purchasePrice,
         totalAmount: Number((quantity * purchasePrice).toFixed(2)),
-        batchNo: normalizeText(item.batchNo) || null,
-        expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+        batchNo: item.batchNo ?? item.batch_no ?? null,
+        expiryDate: item.expiryDate ?? item.expiry_date ? new Date(item.expiryDate ?? item.expiry_date) : null,
       };
     });
 
-    if (normalizedItems.some((item) => !item.masterProductId || !Number.isFinite(item.quantity) || item.quantity <= 0 || !Number.isFinite(item.purchasePrice) || item.purchasePrice < 0)) {
+    if (normalizedItems.some((item: NormalizedPurchaseItem) => !item.masterProductId || !Number.isFinite(item.quantity) || item.quantity <= 0 || !Number.isFinite(item.purchasePrice) || item.purchasePrice < 0)) {
       return response.status(400).json({ message: "Each purchase item requires a valid product, quantity, and purchase price." });
     }
 
-    if (normalizedItems.some((item) => item.expiryDate && Number.isNaN(item.expiryDate.getTime()))) {
+    if (normalizedItems.some((item: NormalizedPurchaseItem) => item.expiryDate && Number.isNaN(item.expiryDate.getTime()))) {
       return response.status(400).json({ message: "Expiry date must be a valid date." });
     }
 
     const subtotalAmount = Number(
-      normalizedItems.reduce((sum, item) => sum + item.totalAmount, 0).toFixed(2),
+      normalizedItems.reduce((sum: number, item: NormalizedPurchaseItem) => sum + item.totalAmount, 0).toFixed(2),
     );
-    const discountAmount =
-      body.discountAmount == null || body.discountAmount === "" ? 0 : Number(body.discountAmount);
-    const extraChargeAmount =
-      body.extraChargeAmount == null || body.extraChargeAmount === "" ? 0 : Number(body.extraChargeAmount);
 
     if (!Number.isFinite(discountAmount) || discountAmount < 0) {
       return response.status(400).json({ message: "Discount amount must be a valid number." });
@@ -558,8 +780,6 @@ router.post("/", async (request, response) => {
     if (!Number.isFinite(extraChargeAmount) || extraChargeAmount < 0) {
       return response.status(400).json({ message: "Extra charge amount must be a valid number." });
     }
-
-    const paidAmount = body.paidAmount == null || body.paidAmount === "" ? 0 : Number(body.paidAmount);
 
     if (!Number.isFinite(paidAmount) || paidAmount < 0) {
       return response.status(400).json({ message: "Paid amount must be a valid number." });
@@ -581,7 +801,7 @@ router.post("/", async (request, response) => {
 
     const masterProducts = await (prisma as any).masterProduct.findMany({
       where: {
-        id: { in: normalizedItems.map((item) => item.masterProductId) },
+        id: { in: normalizedItems.map((item: NormalizedPurchaseItem) => item.masterProductId) },
       },
       select: { id: true, sku: true, name: true },
     });
@@ -592,7 +812,7 @@ router.post("/", async (request, response) => {
 
     const productAccess = await canAddProductsToShop(
       context.shopId,
-      normalizedItems.map((item) => item.masterProductId),
+      normalizedItems.map((item: NormalizedPurchaseItem) => item.masterProductId),
     );
 
     if (!productAccess.allowed) {
@@ -604,22 +824,27 @@ router.post("/", async (request, response) => {
       });
     }
 
-    if (body.supplierId) {
-      const supplier = await (prisma as any).supplier.findFirst({
-        where: { id: body.supplierId, deletedAt: null },
-        select: { id: true, supplierCode: true },
-      });
+    const normalizedSupplierId =
+      typeof supplierId === "string" ? supplierId.trim() : "";
+
+    if (normalizedSupplierId) {
+      const supplier = await resolveSupplierLinkedToShop(
+        normalizedSupplierId,
+        context.shopId,
+      );
 
       if (!supplier) {
-        return response.status(404).json({ message: "Supplier not found." });
+        return response.status(404).json({
+          message:
+            "Supplier is not linked to this shop. Add the supplier to this store first.",
+        });
       }
     }
 
     const dueAmount = Number(Math.max(totalAmount - paidAmount, 0).toFixed(2));
-    const purchaseDate = body.purchaseDate ? new Date(body.purchaseDate) : new Date();
-    const invoiceFileName = normalizeText(body.invoiceFileName) || null;
-    const purchaseStatus =
-      context.auth.payload.role === "SALESMAN" ? "PENDING_APPROVAL" : "APPROVED";
+    const purchaseDate = purchaseDateRaw ? new Date(purchaseDateRaw) : new Date();
+    const invoiceFileName = normalizeText(invoiceFileNameRaw) || null;
+    const purchaseStatus: PurchaseStatusValue = "PENDING_APPROVAL";
 
     const purchase = await (prisma as any).$transaction(async (tx: any) => {
       const selectedMoneyBox = await resolveShopMoneyBox(tx, context.shopId, body.moneyBoxId);
@@ -675,9 +900,9 @@ router.post("/", async (request, response) => {
       const createdPurchase = await tx.purchase.create({
         data: {
           shopId: context.shopId,
-          supplierId: body.supplierId?.trim() || null,
+          supplierId: normalizedSupplierId || null,
           createdByUserId: context.auth.user.id,
-          approvedByUserId: purchaseStatus === "APPROVED" ? context.auth.user.id : null,
+          approvedByUserId: null,
           invoiceNo: body.invoiceNo?.trim() || null,
           purchaseDate,
           status: purchaseStatus,
@@ -691,9 +916,9 @@ router.post("/", async (request, response) => {
           paymentMeta: paymentInfo.paymentMeta,
           invoiceFileName,
           notes: body.notes?.trim() || null,
-          approvedAt: purchaseStatus === "APPROVED" ? purchaseDate : null,
+          approvedAt: null,
           items: {
-            create: normalizedItems.map((item) => ({
+            create: normalizedItems.map((item: NormalizedPurchaseItem) => ({
               masterProductId: item.masterProductId,
               batchNo: item.batchNo,
               expiryDate: item.expiryDate,
@@ -708,19 +933,6 @@ router.post("/", async (request, response) => {
         },
       });
 
-      if (purchaseStatus === "APPROVED") {
-        await applyApprovedPurchaseEffects({
-          tx,
-          shopId: context.shopId,
-          purchase: createdPurchase,
-          items: normalizedItems,
-          paymentMethod: paymentInfo.paymentMethod,
-          paymentMeta: paymentInfo.paymentMeta,
-          moneyBoxId: effectiveMoneyBox?.id ?? null,
-          bankAccountId: effectiveBankAccount?.id ?? null,
-        });
-      }
-
       return createdPurchase;
     });
 
@@ -730,6 +942,7 @@ router.post("/", async (request, response) => {
           ? "Purchase submitted and is pending owner approval."
           : "Purchase created successfully.",
       purchase: mapPurchaseResponse(purchase),
+      data: mapPurchaseResponse(purchase),
     });
   } catch (error) {
     console.error("Failed to create purchase.", error);
@@ -775,10 +988,14 @@ router.get("/", async (request, response) => {
       orderBy: [{ purchaseDate: "desc" }, { createdAt: "desc" }],
     });
 
+    const mapped = purchases.map(mapPurchaseResponse);
+
     return response.json({
       shopId: context.shopId,
       shopCode: context.shop.shopCode,
-      purchases: purchases.map(mapPurchaseResponse),
+      purchases: mapped,
+      data: mapped,
+      items: mapped,
     });
   } catch (error) {
     console.error("Failed to load purchases.", error);
@@ -1372,6 +1589,306 @@ router.patch("/:id/reject", async (request, response) => {
   } catch (error) {
     console.error("Failed to reject purchase.", error);
     return response.status(503).json({ message: "Purchase could not be rejected right now." });
+  }
+});
+
+router.post("/:id/receive", async (request, response) => {
+  try {
+    const context = await requirePurchaseContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      lines?: Array<{
+        product_id?: string;
+        productId?: string;
+        masterProductId?: string;
+        quantity?: number | string;
+        physicalCount?: number | string;
+        physical_count?: number | string;
+        salePrice?: number | string | null;
+        sale_price?: number | string | null;
+      }>;
+      placements?: Array<{
+        productId?: string;
+        product_id?: string;
+        masterProductId?: string;
+        quantity?: number | string;
+        salePrice?: number | string | null;
+        sale_price?: number | string | null;
+        zoneId?: string | null;
+        rackId?: string | null;
+        shelfId?: string | null;
+        binId?: string | null;
+        batchNo?: string | null;
+        expiryDate?: string | null;
+        productName?: string | null;
+      }>;
+    };
+
+    const normalizedLines: ReceivePurchaseItemInput[] = Array.isArray(body.lines)
+      ? body.lines.map((item) => {
+          const masterProductId = normalizeText(item.masterProductId ?? item.productId ?? item.product_id);
+          const quantityRaw = item.quantity ?? item.physicalCount ?? item.physical_count ?? 0;
+          const quantity = Number(quantityRaw);
+          const salePriceRaw = item.salePrice ?? item.sale_price;
+          const salePrice =
+            salePriceRaw == null || salePriceRaw === ""
+              ? null
+              : Number(salePriceRaw);
+
+          return {
+            masterProductId,
+            quantity,
+            salePrice,
+          };
+        })
+      : [];
+
+    const normalizedPlacements: PurchaseInventoryPlacementInput[] = Array.isArray(body.placements)
+      ? body.placements.map((item) => ({
+          masterProductId: normalizeText(item.masterProductId ?? item.productId ?? item.product_id),
+          quantity: Number(item.quantity ?? 0),
+          salePrice:
+            item.salePrice == null || item.salePrice === ""
+              ? null
+              : Number(item.salePrice ?? item.sale_price),
+          zoneId: normalizeText(item.zoneId) || null,
+          rackId: normalizeText(item.rackId) || null,
+          shelfId: normalizeText(item.shelfId) || null,
+          binId: normalizeText(item.binId) || null,
+          batchNo: normalizeText(item.batchNo) || null,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+          productName: normalizeText(item.productName) || null,
+        }))
+      : [];
+
+    if (
+      normalizedLines.some(
+        (item) =>
+          !item.masterProductId ||
+          !Number.isFinite(item.quantity) ||
+          item.quantity <= 0 ||
+          (item.salePrice != null && (!Number.isFinite(item.salePrice) || item.salePrice < 0)),
+      )
+    ) {
+      return response.status(400).json({
+        message: "Each received product requires a valid product, physical count, and selling price.",
+      });
+    }
+
+    const purchase = await (prisma as any).$transaction(async (tx: any) => {
+      const existingPurchase = await tx.purchase.findFirst({
+        where: {
+          id: request.params.id,
+          shopId: context.shopId,
+        },
+        include: {
+          ...buildPurchaseInclude(),
+        },
+      });
+
+      if (!existingPurchase) {
+        return null;
+      }
+
+      if (existingPurchase.status === "REJECTED") {
+        throw new Error("Rejected purchases cannot be received.");
+      }
+
+      if (existingPurchase.status === "APPROVED") {
+        return existingPurchase;
+      }
+
+      const existingItems = Array.isArray(existingPurchase.items) ? existingPurchase.items : [];
+      const incomingByProductId = new Map(
+        normalizedLines.map((item) => [item.masterProductId, item] as const),
+      );
+      const placementByProductId = new Map(
+        normalizedPlacements.map((item) => [item.masterProductId, item] as const),
+      );
+
+      const updatedItems = existingItems.map((item: any) => {
+        const incoming = incomingByProductId.get(item.masterProductId);
+        const physicalCount = Number(incoming?.quantity ?? item.quantity ?? 0);
+        if (!Number.isFinite(physicalCount) || physicalCount <= 0) {
+          throw new Error(`Invalid physical count for ${item.masterProduct?.name ?? "a purchase item"}.`);
+        }
+
+        const purchasePrice = Number(item.purchasePrice ?? 0);
+        const totalAmount = Number((physicalCount * purchasePrice).toFixed(2));
+
+        return {
+          masterProductId: item.masterProductId,
+          quantity: physicalCount,
+          purchasePrice,
+          totalAmount,
+          batchNo: item.batchNo,
+          expiryDate: item.expiryDate,
+          salePrice: incoming?.salePrice ?? null,
+        };
+      });
+
+      if (normalizedLines.length > 0) {
+        const unknownLines = normalizedLines.filter(
+          (item) => !existingItems.some((purchaseItem: any) => purchaseItem.masterProductId === item.masterProductId),
+        );
+        if (unknownLines.length > 0) {
+          throw new Error("One or more received purchase products do not exist on this order.");
+        }
+      }
+
+      const subtotalAmount = Number(
+        updatedItems.reduce((sum: number, item: any) => {
+          return sum + Number((Number(item.quantity) * Number(item.purchasePrice ?? 0)).toFixed(2));
+        }, 0).toFixed(2),
+      );
+      const discountAmount = Number(existingPurchase.discountAmount ?? 0);
+      const extraChargeAmount = Number(existingPurchase.extraChargeAmount ?? 0);
+      const totalAmount = Number(Math.max(0, subtotalAmount - discountAmount + extraChargeAmount).toFixed(2));
+      const paymentMethod =
+        existingPurchase.paymentMethod && existingPurchase.paymentMethod !== "DUE"
+          ? existingPurchase.paymentMethod
+          : "CASH";
+
+      const updatedPurchase = await tx.purchase.update({
+        where: { id: existingPurchase.id },
+        data: {
+          status: "APPROVED",
+          approvedByUserId: context.auth.user.id,
+          approvedAt: new Date(),
+          rejectionReason: null,
+          rejectedAt: null,
+          subtotalAmount,
+          totalAmount,
+          paidAmount: totalAmount,
+          dueAmount: 0,
+          paymentMethod,
+          paymentMeta: existingPurchase.paymentMeta ?? null,
+          items: {
+            deleteMany: {},
+            create: updatedItems.map((item: any) => ({
+              masterProductId: item.masterProductId,
+              batchNo: item.batchNo,
+              expiryDate: item.expiryDate,
+              quantity: item.quantity,
+              purchasePrice: item.purchasePrice,
+              totalAmount: item.totalAmount,
+            })),
+          },
+        },
+        include: {
+          ...buildPurchaseInclude(),
+        },
+      });
+
+      await applyApprovedPurchaseEffects({
+        tx,
+        shopId: context.shopId,
+        purchase: updatedPurchase,
+        items: updatedItems,
+        placements: updatedItems.map((item: any) => {
+          const placement = placementByProductId.get(item.masterProductId);
+          return {
+            masterProductId: item.masterProductId,
+            quantity: Number(item.quantity),
+            salePrice: item.salePrice ?? null,
+            zoneId: placement?.zoneId ?? null,
+            rackId: placement?.rackId ?? null,
+            shelfId: placement?.shelfId ?? null,
+            binId: placement?.binId ?? null,
+            batchNo: placement?.batchNo ?? item.batchNo ?? null,
+            expiryDate: placement?.expiryDate ?? item.expiryDate ?? null,
+            productName: placement?.productName ?? item.masterProduct?.name ?? null,
+          };
+        }),
+        paymentMethod,
+        paymentMeta: existingPurchase.paymentMeta ?? null,
+      });
+
+      return updatedPurchase;
+    });
+
+    if (!purchase) {
+      return response.status(404).json({ message: "Purchase not found." });
+    }
+
+    const mapped = mapPurchaseResponse(purchase);
+    return response.json({
+      message: "Purchase received successfully.",
+      purchase: mapped,
+      data: mapped,
+    });
+  } catch (error: any) {
+    console.error("Failed to receive purchase.", error);
+    return response.status(503).json({ message: error.message || "Purchase could not be received right now." });
+  }
+});
+
+router.post("/:id/cancel", async (request, response) => {
+  try {
+    const context = await requirePurchaseContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const reason = (request.body as { reason?: string | null } | undefined)?.reason?.trim() || "Cancelled from mobile client";
+
+    const purchase = await (prisma as any).$transaction(async (tx: any) => {
+      const existingPurchase = await tx.purchase.findFirst({
+        where: {
+          id: request.params.id,
+          shopId: context.shopId,
+        },
+      });
+
+      if (!existingPurchase) {
+        return null;
+      }
+
+      if (existingPurchase.status === "APPROVED") {
+        throw new Error("Approved purchases cannot be cancelled.");
+      }
+
+      const updated = await tx.purchase.update({
+        where: { id: existingPurchase.id },
+        data: {
+          status: "REJECTED",
+          rejectedAt: new Date(),
+          rejectionReason: reason,
+        },
+        include: {
+          ...buildPurchaseInclude(),
+        },
+      });
+
+      return updated;
+    });
+
+    if (!purchase) {
+      return response.status(404).json({ message: "Purchase not found." });
+    }
+
+    const mapped = mapPurchaseResponse(purchase);
+    return response.json({
+      message: "Purchase cancelled successfully.",
+      purchase: mapped,
+      data: mapped,
+    });
+  } catch (error: any) {
+    console.error("Failed to cancel purchase.", error);
+    return response.status(503).json({ message: error.message || "Purchase could not be cancelled right now." });
   }
 });
 

@@ -6,7 +6,7 @@ import { prisma } from "../config/prisma";
 
 import { getDefaultRedirect, isAllowedForAppType } from "../auth/authorization";
 import { parseCookies } from "../auth/cookies";
-import { REFRESH_TOKEN_COOKIE, type AuthRole } from "../auth/constants";
+import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_COOKIE, type AuthRole } from "../auth/constants";
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { verifyPassword } from "../auth/password";
 import {
@@ -31,6 +31,7 @@ type LoginBody = {
   password?: string;
   appType?: AppType;
   shopId?: string;
+  rememberMe?: boolean;
 };
 
 type ScopedRequest = Parameters<typeof getAuthenticatedUser>[0] & {
@@ -85,6 +86,7 @@ type VerifyOtpBody = {
   registrationId?: string;
   mobile?: string;
   otp?: string;
+  rememberMe?: boolean;
 };
 
 type SetupPinBody = {
@@ -105,6 +107,7 @@ type VerifyLoginOtpBody = {
   loginRequestId?: string;
   mobile?: string;
   otp?: string;
+  rememberMe?: boolean;
 };
 
 type PreLoginBody = {
@@ -576,13 +579,15 @@ async function handleVerifyLoginOtpRequest(request: ScopedRequest, response: Res
       },
     });
 
+    const rememberMe = body.rememberMe === true || String(body.rememberMe) === 'true';
+
     await tx.refreshToken.create({
       data: {
         userId: user.id,
         tokenHash: hashRefreshToken(refreshToken),
         family: sessionFamily,
         appType: "MOBILE",
-        expiresAt: getRefreshTokenExpiryDate(),
+        expiresAt: getRefreshTokenExpiryDate(rememberMe),
       },
     });
 
@@ -603,8 +608,9 @@ async function handleVerifyLoginOtpRequest(request: ScopedRequest, response: Res
     shopId: authContext.shopId,
   });
 
+  const rememberMe = body.rememberMe === true || String(body.rememberMe) === 'true';
   setAccessCookie(response, accessToken);
-  setRefreshCookie(response, refreshToken);
+  setRefreshCookie(response, refreshToken, rememberMe);
 
   return response.json({
     message: "Login successful.",
@@ -612,6 +618,14 @@ async function handleVerifyLoginOtpRequest(request: ScopedRequest, response: Res
     redirectTo: getDefaultRedirect(authContext.role, AppType.MOBILE),
     role: authContext.role,
     appType: AppType.MOBILE,
+    tokens: {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: ACCESS_TOKEN_TTL_SECONDS,
+    },
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_in: ACCESS_TOKEN_TTL_SECONDS,
     user: {
       id: user.id,
       name: user.name,
@@ -1412,6 +1426,7 @@ router.post("/verify-otp", async (request, response) => {
         },
       },
       include: {
+        platformUser: true,
         ownedShops: true,
         shopUsers: {
           include: {
@@ -2043,6 +2058,10 @@ router.post("/login", async (request, response) => {
         });
     }
 
+    let blockedOwnerSubscriptionAccess:
+      | Awaited<ReturnType<typeof evaluateShopSubscriptionAccess>>
+      | null = null;
+
     if (appType === AppType.MOBILE && authContext.shopId) {
       const subscriptionAccess = await evaluateShopSubscriptionAccess(authContext.shopId);
 
@@ -2059,15 +2078,12 @@ router.post("/login", async (request, response) => {
             });
           }
         } else {
-          clearAuthCookies(response);
-          return response.status(402).json({
-            message: subscriptionAccess.message,
-            subscription: subscriptionAccess,
-          });
+          blockedOwnerSubscriptionAccess = subscriptionAccess;
         }
       }
     }
 
+    const rememberMe = body.rememberMe === true || String(body.rememberMe) === 'true';
     const refreshToken = createRefreshTokenValue();
     const sessionFamily = createSessionFamily();
     const refreshTokenRecord = await prisma.refreshToken.create({
@@ -2076,7 +2092,7 @@ router.post("/login", async (request, response) => {
         tokenHash: hashRefreshToken(refreshToken),
         family: sessionFamily,
         appType,
-        expiresAt: getRefreshTokenExpiryDate(),
+        expiresAt: getRefreshTokenExpiryDate(rememberMe),
       },
     });
 
@@ -2096,14 +2112,29 @@ router.post("/login", async (request, response) => {
     });
 
     setAccessCookie(response, accessToken);
-    setRefreshCookie(response, refreshToken);
+    setRefreshCookie(response, refreshToken, rememberMe);
 
-    return response.json({
-      message: "Login successful.",
+    const responseData: any = {
+      message: blockedOwnerSubscriptionAccess?.message ?? "Login successful.",
       redirectTo: getDefaultRedirect(authContext.role, appType),
       role: authContext.role,
       appType,
-    });
+      subscription: blockedOwnerSubscriptionAccess,
+      subscriptionLocked: blockedOwnerSubscriptionAccess?.allowed === false,
+    };
+
+    if (appType === AppType.MOBILE) {
+      responseData.tokens = {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: ACCESS_TOKEN_TTL_SECONDS,
+      };
+      responseData.access_token = accessToken;
+      responseData.refresh_token = refreshToken;
+      responseData.expires_in = ACCESS_TOKEN_TTL_SECONDS;
+    }
+
+    return response.json(responseData);
   } catch (error) {
     console.error("Login route error:", error);
 
@@ -2117,7 +2148,16 @@ router.post("/login", async (request, response) => {
 });
 
 router.post("/refresh", async (request, response) => {
-  const refreshToken = parseCookies(request)[REFRESH_TOKEN_COOKIE];
+  const refreshToken =
+    parseCookies(request)[REFRESH_TOKEN_COOKIE] ||
+    (typeof (request.body as { refresh_token?: string; refreshToken?: string } | undefined)?.refresh_token ===
+            "string"
+        ? (request.body as { refresh_token?: string }).refresh_token!.trim()
+        : "") ||
+    (typeof (request.body as { refresh_token?: string; refreshToken?: string } | undefined)?.refreshToken ===
+            "string"
+        ? (request.body as { refreshToken?: string }).refreshToken!.trim()
+        : "");
 
   if (!refreshToken) {
     return response.status(401).json({ message: "Refresh token missing." });
@@ -2173,6 +2213,10 @@ router.post("/refresh", async (request, response) => {
     return response.status(403).json({ message: "Login access is no longer allowed." });
   }
 
+  let blockedOwnerSubscriptionAccess:
+    | Awaited<ReturnType<typeof evaluateShopSubscriptionAccess>>
+    | null = null;
+
   if (tokenRecord.appType === AppType.MOBILE && "shopId" in authContext && authContext.shopId) {
     const subscriptionAccess = await evaluateShopSubscriptionAccess(authContext.shopId);
 
@@ -2190,12 +2234,7 @@ router.post("/refresh", async (request, response) => {
           });
         }
       } else {
-        await revokeRefreshFamily(tokenRecord.family);
-        clearAuthCookies(response);
-        return response.status(402).json({
-          message: subscriptionAccess.message,
-          subscription: subscriptionAccess,
-        });
+        blockedOwnerSubscriptionAccess = subscriptionAccess;
       }
     }
   }
@@ -2205,6 +2244,9 @@ router.post("/refresh", async (request, response) => {
     data: { revokedAt: new Date() },
   });
 
+  const durationMs = tokenRecord.expiresAt.getTime() - tokenRecord.createdAt.getTime();
+  const rememberMe = durationMs > 1.5 * 24 * 60 * 60 * 1000;
+
   const rotatedRefreshToken = createRefreshTokenValue();
   await prisma.refreshToken.create({
     data: {
@@ -2212,7 +2254,7 @@ router.post("/refresh", async (request, response) => {
       tokenHash: hashRefreshToken(rotatedRefreshToken),
       family: tokenRecord.family,
       appType: tokenRecord.appType,
-      expiresAt: getRefreshTokenExpiryDate(),
+      expiresAt: getRefreshTokenExpiryDate(rememberMe),
     },
   });
 
@@ -2225,14 +2267,29 @@ router.post("/refresh", async (request, response) => {
   });
 
   setAccessCookie(response, accessToken);
-  setRefreshCookie(response, rotatedRefreshToken);
+  setRefreshCookie(response, rotatedRefreshToken, rememberMe);
 
-  return response.json({
-    message: "Session refreshed.",
+  const responseData: any = {
+    message: blockedOwnerSubscriptionAccess?.message ?? "Session refreshed.",
     redirectTo: getDefaultRedirect(authContext.role, tokenRecord.appType),
     role: authContext.role,
     appType: tokenRecord.appType,
-  });
+    subscription: blockedOwnerSubscriptionAccess,
+    subscriptionLocked: blockedOwnerSubscriptionAccess?.allowed === false,
+  };
+
+  if (tokenRecord.appType === AppType.MOBILE) {
+    responseData.tokens = {
+      access_token: accessToken,
+      refresh_token: rotatedRefreshToken,
+      expires_in: ACCESS_TOKEN_TTL_SECONDS,
+    };
+    responseData.access_token = accessToken;
+    responseData.refresh_token = rotatedRefreshToken;
+    responseData.expires_in = ACCESS_TOKEN_TTL_SECONDS;
+  }
+
+  return response.json(responseData);
 });
 
 router.post("/logout", async (request, response) => {
