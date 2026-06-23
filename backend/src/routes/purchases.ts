@@ -3,6 +3,10 @@ import { Router } from "express";
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
 import { canAddProductsToShop } from "../subscription/access";
+import {
+  normalizeMoney as normalizeStockMoney,
+  recordStockMovement,
+} from "../utils/stock-movement";
 
 const router = Router();
 
@@ -427,6 +431,28 @@ async function applyApprovedPurchaseEffects(params: {
     const placement = placementMap.get(item.masterProductId) ?? null;
     const targetBin = await resolvePurchasePlacementBin(tx, shopId, item as any, placement);
 
+    const existingShopProduct = await tx.shopProduct.findUnique({
+      where: {
+        shopId_masterProductId: {
+          shopId,
+          masterProductId: item.masterProductId,
+        },
+      },
+      select: {
+        id: true,
+        masterProductId: true,
+        openingStock: true,
+        salePrice: true,
+      },
+    });
+
+    if (!existingShopProduct) {
+      continue;
+    }
+
+    const previousStock = Number(existingShopProduct.openingStock ?? 0);
+    const nextStock = previousStock + item.quantity;
+
     await tx.shopProduct.update({
       where: {
         shopId_masterProductId: {
@@ -443,6 +469,24 @@ async function applyApprovedPurchaseEffects(params: {
       },
     });
 
+    await recordStockMovement(tx, {
+      shopId,
+      shopProductId: existingShopProduct.id,
+      masterProductId: existingShopProduct.masterProductId,
+      movementType: "PURCHASE",
+      quantityDelta: item.quantity,
+      stockBefore: previousStock,
+      stockAfter: nextStock,
+      purchasePrice: item.purchasePrice,
+      salePrice: item.salePrice ?? normalizeStockMoney(existingShopProduct.salePrice),
+      unitPrice: item.purchasePrice,
+      referenceType: "PURCHASE",
+      referenceId: purchase.id,
+      referenceNo: purchase.invoiceNo ?? null,
+      note: "Stock received from purchase flow.",
+      createdByUserId: purchase.createdByUserId ?? null,
+    });
+
     if (!purchaseItem) {
       continue;
     }
@@ -454,6 +498,8 @@ async function applyApprovedPurchaseEffects(params: {
         masterProductId: item.masterProductId,
         purchaseItemId: purchaseItem.id,
         quantity: item.quantity,
+        purchasePrice: item.purchasePrice,
+        salePrice: item.salePrice,
         batchNo: placement?.batchNo ?? item.batchNo ?? null,
         expiryDate: placement?.expiryDate ?? item.expiryDate ?? null,
         notes: "Assigned from purchase approval/receive flow.",
@@ -1372,6 +1418,25 @@ router.post("/:id/returns", async (request, response) => {
       if (createdReturn.status === "APPROVED") {
         for (const item of normalizedItems) {
           const purchaseItem = purchaseItemsById.get(item.purchaseItemId) as any;
+          const shopProduct = await tx.shopProduct.findUnique({
+            where: {
+              shopId_masterProductId: {
+                shopId: context.shopId,
+                masterProductId: purchaseItem.masterProductId,
+              },
+            },
+            select: {
+              id: true,
+              masterProductId: true,
+              openingStock: true,
+              purchasePrice: true,
+              salePrice: true,
+            },
+          });
+
+          const previousStock = Number(shopProduct?.openingStock ?? 0);
+          const nextStock = previousStock - item.quantity;
+
           await tx.shopProduct.update({
             where: {
               shopId_masterProductId: {
@@ -1385,6 +1450,26 @@ router.post("/:id/returns", async (request, response) => {
               },
             },
           });
+
+          if (shopProduct) {
+            await recordStockMovement(tx, {
+              shopId: context.shopId,
+              shopProductId: shopProduct.id,
+              masterProductId: shopProduct.masterProductId,
+              movementType: "PURCHASE_RETURN",
+              quantityDelta: -item.quantity,
+              stockBefore: previousStock,
+              stockAfter: nextStock,
+              purchasePrice: normalizeStockMoney(shopProduct.purchasePrice),
+              salePrice: normalizeStockMoney(shopProduct.salePrice),
+              unitPrice: Number(purchaseItem.purchasePrice ?? 0),
+              referenceType: "PURCHASE_RETURN",
+              referenceId: createdReturn.id,
+              referenceNo: purchase.invoiceNo || null,
+              note: item.reason || notes || "Purchase return approved.",
+              createdByUserId: context.auth.user.id,
+            });
+          }
         }
 
         if (purchase.supplierId) {

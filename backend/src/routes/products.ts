@@ -6,6 +6,11 @@ import { type Request, Router } from "express";
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
 import { generateBarcodeSvg } from "../utils/barcode/barcode-generator";
+import {
+  normalizeMoney as normalizeMovementMoney,
+  recordStockMovement,
+  roundQuantity,
+} from "../utils/stock-movement";
 
 const router = Router();
 
@@ -108,6 +113,77 @@ function toBarcodeStatusFromProductStatus(status: MasterProductStatusValue) {
 
 function toCurrencyNumber(value: unknown) {
   return normalizeMoney(value);
+}
+
+function normalizeBatchOrder(value: string | null | undefined) {
+  return value === "LIFO" ? "LIFO" : "FIFO";
+}
+
+function buildBatchGroups(
+  inventoryBinItems: Array<{
+    id: string;
+    masterProductId: string;
+    purchaseItemId?: string | null;
+    quantity: unknown;
+    purchasePrice?: unknown;
+    salePrice?: unknown;
+    batchNo?: string | null;
+    expiryDate?: Date | null;
+    createdAt: Date;
+  }>,
+  stockMethod: string,
+) {
+  const grouped = new Map<string, {
+    id: string;
+    purchaseItemId: string | null;
+    batchNo: string | null;
+    expiryDate: Date | null;
+    quantity: number;
+    purchasePrice: number | null;
+    salePrice: number | null;
+    createdAt: Date;
+  }>();
+
+  for (const item of inventoryBinItems) {
+    const purchasePrice = normalizeMoney(item.purchasePrice);
+    const salePrice = normalizeMoney(item.salePrice);
+    const expiryDate = item.expiryDate ?? null;
+    const batchNo = item.batchNo ?? null;
+    const groupKey = [
+      item.masterProductId,
+      item.purchaseItemId ?? "",
+      batchNo ?? "",
+      expiryDate?.toISOString() ?? "",
+      purchasePrice ?? "",
+      salePrice ?? "",
+    ].join("|");
+    const current = grouped.get(groupKey);
+
+    if (current) {
+      current.quantity = Number((current.quantity + Number(item.quantity ?? 0)).toFixed(3));
+      if (item.createdAt < current.createdAt) {
+        current.createdAt = item.createdAt;
+        current.id = item.id;
+      }
+      continue;
+    }
+
+    grouped.set(groupKey, {
+      id: item.id,
+      purchaseItemId: item.purchaseItemId ?? null,
+      batchNo,
+      expiryDate,
+      quantity: Number(item.quantity ?? 0),
+      purchasePrice,
+      salePrice,
+      createdAt: item.createdAt,
+    });
+  }
+
+  return Array.from(grouped.values()).sort((left, right) => {
+    const delta = left.createdAt.getTime() - right.createdAt.getTime();
+    return stockMethod === "LIFO" ? -delta : delta;
+  });
 }
 
 async function syncProductBarcodeRecord(params: {
@@ -319,6 +395,11 @@ router.get("/", async (request, response) => {
       const perPage = Number(request.query.per_page || 500);
       const search = typeof request.query.search === "string" ? request.query.search.trim() : "";
       const category = typeof request.query.category === "string" ? request.query.category.trim() : "";
+      const inventorySetting = await (prisma as any).shopInventorySetting.findUnique({
+        where: { shopId: auth.payload.shopId },
+        select: { stockMethod: true },
+      });
+      const stockMethod = normalizeBatchOrder(inventorySetting?.stockMethod);
 
       const whereClause: any = { shopId: auth.payload.shopId };
 
@@ -374,17 +455,64 @@ router.get("/", async (request, response) => {
         take: perPage,
       });
 
+      const masterProductIds = shopProducts
+        .map((item: any) => item.masterProductId)
+        .filter((value: string | null | undefined): value is string => Boolean(value));
+
+      const inventoryBinItems = masterProductIds.length
+        ? await (prisma as any).inventoryBinItem.findMany({
+            where: {
+              shopId: auth.payload.shopId,
+              masterProductId: { in: masterProductIds },
+              quantity: { gt: 0 },
+            },
+            orderBy: [{ createdAt: stockMethod === "LIFO" ? "desc" : "asc" }, { id: "asc" }],
+            select: {
+              id: true,
+              masterProductId: true,
+              purchaseItemId: true,
+              quantity: true,
+              purchasePrice: true,
+              salePrice: true,
+              batchNo: true,
+              expiryDate: true,
+              createdAt: true,
+            },
+          })
+        : [];
+
+      const batchesByProduct = new Map<string, ReturnType<typeof buildBatchGroups>>();
+      for (const masterProductId of masterProductIds) {
+        batchesByProduct.set(
+          masterProductId,
+          buildBatchGroups(
+            inventoryBinItems.filter((item: any) => item.masterProductId === masterProductId),
+            stockMethod,
+          ),
+        );
+      }
+
       const mappedProducts = shopProducts.map((item: any) => {
         const primaryBarcode = item.masterProduct
           ? selectPrimaryBarcode(item.masterProduct.barcodes)
           : null;
 
         const barcodeVal = item.localBarcode ?? primaryBarcode?.barcode ?? item.masterProduct?.sku ?? item.id;
+        const productBatches = item.masterProductId ? (batchesByProduct.get(item.masterProductId) ?? []) : [];
+        const nextBatch = productBatches[0] ?? null;
+        const effectiveSalePrice =
+          nextBatch?.salePrice ??
+          normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0);
+        const effectivePurchasePrice =
+          nextBatch?.purchasePrice ??
+          normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0);
 
         return {
           id: barcodeVal,
           sku: barcodeVal,
           barcode: barcodeVal,
+          master_product_id: item.masterProductId ?? item.masterProduct?.id ?? null,
+          masterProductId: item.masterProductId ?? item.masterProduct?.id ?? null,
           name: item.masterProduct?.name ?? item.localName ?? "Unnamed product",
           category_name: item.masterProduct?.category?.name ?? item.localCategory ?? "Uncategorized",
           category: item.masterProduct?.category?.name ?? item.localCategory ?? "Uncategorized",
@@ -398,12 +526,12 @@ router.get("/", async (request, response) => {
           unit: item.masterProduct?.unit?.shortName?.toUpperCase() ?? item.masterProduct?.unit?.name ?? item.localUnit ?? "No Unit",
           image_url: item.masterProduct?.pictureUrl ?? item.localPictureUrl ?? null,
           imageLabel: item.masterProduct?.pictureUrl ?? item.localPictureUrl ?? null,
-          sale_price: normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0),
-          salePrice: normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0),
-          price: normalizeMoney(item.salePrice ?? item.masterProduct?.suggestedPrice ?? item.masterProduct?.price ?? 0),
-          purchase_price: normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0),
-          purchasePrice: normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0),
-          cost_price: normalizeMoney(item.purchasePrice ?? item.masterProduct?.price ?? 0),
+          sale_price: effectiveSalePrice,
+          salePrice: effectiveSalePrice,
+          price: effectiveSalePrice,
+          purchase_price: effectivePurchasePrice,
+          purchasePrice: effectivePurchasePrice,
+          cost_price: effectivePurchasePrice,
           stock: Number(item.openingStock ?? 0),
           quantity: Number(item.openingStock ?? 0),
           stock_quantity: Number(item.openingStock ?? 0),
@@ -414,6 +542,22 @@ router.get("/", async (request, response) => {
           salesCount: 0,
           pack_info: primaryBarcode?.packSize ?? item.masterProduct?.packageSize ?? item.localUnit ?? "",
           packInfo: primaryBarcode?.packSize ?? item.masterProduct?.packageSize ?? item.localUnit ?? "",
+          batches: productBatches.map((batch) => ({
+            id: batch.id,
+            purchase_item_id: batch.purchaseItemId,
+            purchaseItemId: batch.purchaseItemId,
+            batch_no: batch.batchNo,
+            batchNo: batch.batchNo,
+            expiry_date: batch.expiryDate?.toISOString() ?? null,
+            expiryDate: batch.expiryDate?.toISOString() ?? null,
+            quantity: batch.quantity,
+            purchase_price: batch.purchasePrice,
+            purchasePrice: batch.purchasePrice,
+            sale_price: batch.salePrice,
+            salePrice: batch.salePrice,
+            created_at: batch.createdAt.toISOString(),
+            createdAt: batch.createdAt.toISOString(),
+          })),
           source: item.source,
           approvalStatus: item.approvalRequest?.status ?? null,
         };
@@ -961,6 +1105,80 @@ const handleUpdate = async (request: any, response: any) => {
           },
         }
       });
+
+      const previousStock = Number(shopProduct.openingStock ?? 0);
+      const nextStock = Number(updated.openingStock ?? 0);
+      const previousPurchasePrice = normalizeMovementMoney(
+        shopProduct.purchasePrice ?? shopProduct.masterProduct?.price ?? null,
+      );
+      const previousSalePrice = normalizeMovementMoney(
+        shopProduct.salePrice ??
+          shopProduct.masterProduct?.suggestedPrice ??
+          shopProduct.masterProduct?.price ??
+          null,
+      );
+      const nextPurchasePrice = normalizeMovementMoney(
+        updated.purchasePrice ?? updated.masterProduct?.price ?? null,
+      );
+      const nextSalePrice = normalizeMovementMoney(
+        updated.salePrice ??
+          updated.masterProduct?.suggestedPrice ??
+          updated.masterProduct?.price ??
+          null,
+      );
+
+      if (nextStock < previousStock) {
+        return response.status(400).json({
+          message:
+            "Manual stock deduction has been disabled. Use sales, purchase returns, or damage workflows instead.",
+        });
+      }
+
+      if (previousStock != nextStock) {
+        const delta = roundQuantity(nextStock - previousStock);
+        await recordStockMovement(prisma, {
+          shopId: auth.payload.shopId,
+          shopProductId: updated.id,
+          masterProductId: updated.masterProductId,
+          movementType: delta >= 0 ? "MANUAL_ADD" : "MANUAL_REDUCE",
+          quantityDelta: delta,
+          stockBefore: previousStock,
+          stockAfter: nextStock,
+          purchasePrice: nextPurchasePrice,
+          salePrice: nextSalePrice,
+          referenceType: "PRODUCT_UPDATE",
+          referenceId: updated.id,
+          note: delta >= 0 ? "Manual stock increase." : "Manual stock reduction.",
+          createdByUserId: auth.user.id,
+        });
+      }
+
+      if (
+        previousPurchasePrice !== nextPurchasePrice ||
+        previousSalePrice !== nextSalePrice
+      ) {
+        await recordStockMovement(prisma, {
+          shopId: auth.payload.shopId,
+          shopProductId: updated.id,
+          masterProductId: updated.masterProductId,
+          movementType: "PRICE_CHANGE",
+          quantityDelta: 0,
+          stockBefore: nextStock,
+          stockAfter: nextStock,
+          purchasePrice: nextPurchasePrice,
+          salePrice: nextSalePrice,
+          referenceType: "PRODUCT_UPDATE",
+          referenceId: updated.id,
+          note: "Product price updated.",
+          metadata: {
+            previousPurchasePrice,
+            previousSalePrice,
+            nextPurchasePrice,
+            nextSalePrice,
+          },
+          createdByUserId: auth.user.id,
+        });
+      }
 
       const primaryBarcode = updated.masterProduct
         ? selectPrimaryBarcode(updated.masterProduct.barcodes)

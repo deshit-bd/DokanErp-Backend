@@ -829,6 +829,8 @@ model InventoryBinItem {
   masterProductId String        @map("master_product_id")
   purchaseItemId  String?       @map("purchase_item_id")
   quantity        Decimal       @db.Decimal(12, 3)
+  purchasePrice   Decimal?      @map("purchase_price") @db.Decimal(10, 2)
+  salePrice       Decimal?      @map("sale_price") @db.Decimal(10, 2)
   batchNo         String?       @map("batch_no") @db.VarChar(80)
   expiryDate      DateTime?     @map("expiry_date")
   notes           String?
@@ -1059,6 +1061,7 @@ model CustomerSaleItem {
   quantity        Decimal        @db.Decimal(12, 3)
   salePrice       Decimal        @map("sale_price") @db.Decimal(10, 2)
   totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
+  batchNo         String?        @map("batch_no") @db.VarChar(80)
 
   customerSale    CustomerSale   @relation(fields: [customerSaleId], references: [id], onDelete: Cascade)
   masterProduct   MasterProduct  @relation(fields: [masterProductId], references: [id], onDelete: Restrict)
@@ -1217,6 +1220,31 @@ model CustomerLedger {
   @@index([customerSaleId])
   @@index([customerPaymentId])
   @@map("customer_ledgers")
+}
+
+model StockMovement {
+  id              String    @id @default(cuid())
+  shopId          String    @map("shop_id")
+  shopProductId   String    @map("shop_product_id")
+  masterProductId String?   @map("master_product_id")
+  movementType    String    @map("movement_type") @db.VarChar(40)
+  quantityDelta   Decimal   @default(0) @map("quantity_delta") @db.Decimal(12, 3)
+  stockBefore     Decimal?  @map("stock_before") @db.Decimal(12, 3)
+  stockAfter      Decimal?  @map("stock_after") @db.Decimal(12, 3)
+  purchasePrice   Decimal?  @map("purchase_price") @db.Decimal(10, 2)
+  salePrice       Decimal?  @map("sale_price") @db.Decimal(10, 2)
+  unitPrice       Decimal?  @map("unit_price") @db.Decimal(10, 2)
+  referenceType   String?   @map("reference_type") @db.VarChar(40)
+  referenceId     String?   @map("reference_id")
+  referenceNo     String?   @map("reference_no") @db.VarChar(80)
+  note            String?
+  metadata        Json?
+  createdByUserId String?   @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([shopId, shopProductId, createdAt])
+  @@index([shopId, masterProductId, createdAt])
+  @@map("stock_movements")
 }
 
 model Expense {

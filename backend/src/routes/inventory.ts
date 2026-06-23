@@ -2,11 +2,19 @@ import { Router } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import {
+  mapStockMovement,
+  normalizeMoney,
+  recordStockMovement,
+  resolveShopProductByIdentifier,
+  roundQuantity,
+} from "../utils/stock-movement";
 
 const router = Router();
 
 type InventoryModeValue = "GENERAL" | "RACK";
 type InventoryBinStatusValue = "EMPTY" | "LOW" | "FULL" | "EXPIRED";
+type StockAdjustmentAction = "ADD" | "DAMAGE";
 
 function toLabel(value: string | null | undefined, fallback: string) {
   return value?.trim() || fallback;
@@ -26,6 +34,17 @@ function normalizeBinStatus(value: unknown): InventoryBinStatusValue {
   if (normalized === "FULL") return "FULL";
   if (normalized === "EXPIRED") return "EXPIRED";
   return "EMPTY";
+}
+
+function normalizeStockAdjustmentAction(value: unknown): StockAdjustmentAction | null {
+  const normalized = `${value}`.trim().toUpperCase();
+  if (["ADD", "IN", "PURCHASE"].includes(normalized)) {
+    return "ADD";
+  }
+  if (["DAMAGE", "LOSS", "WASTAGE", "EXPIRED"].includes(normalized)) {
+    return "DAMAGE";
+  }
+  return null;
 }
 
 async function requireOwnerInventoryContext(request: Parameters<typeof getAuthenticatedUser>[0]): Promise<any> {
@@ -366,6 +385,201 @@ router.get("/general-store", async (request, response) => {
   } catch (error) {
     console.error("Failed to load general inventory store.", error);
     return response.status(503).json({ message: "General inventory store could not be loaded right now." });
+  }
+});
+
+router.get("/stock-movements", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const productId = typeof request.query.product_id === "string" ? request.query.product_id.trim() : "";
+    const limit = Math.max(1, Math.min(Number(request.query.limit ?? 50) || 50, 200));
+
+    if (!productId) {
+      return response.status(400).json({ message: "product_id is required." });
+    }
+
+    const shopProduct = await resolveShopProductByIdentifier(
+      prisma,
+      context.shop.id,
+      productId,
+    );
+
+    if (!shopProduct) {
+      return response.status(404).json({ message: "Product not found in this shop." });
+    }
+
+    const movements = await (prisma as any).stockMovement.findMany({
+      where: {
+        shopId: context.shop.id,
+        shopProductId: shopProduct.id,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit,
+    });
+
+    return response.json({
+      shop: context.shop,
+      product: {
+        id: shopProduct.id,
+        masterProductId: shopProduct.masterProductId,
+        name: shopProduct.masterProduct?.name ?? shopProduct.localName ?? "Unnamed product",
+        sku: shopProduct.masterProduct?.sku ?? shopProduct.localBarcode ?? shopProduct.id,
+      },
+      history: movements.map(mapStockMovement),
+    });
+  } catch (error) {
+    console.error("Failed to load stock movement history.", error);
+    return response.status(503).json({ message: "Stock movement history could not be loaded right now." });
+  }
+});
+
+router.post("/stock-movements", async (request, response) => {
+  try {
+    const context = await requireOwnerInventoryContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const body = request.body as {
+      product_id?: string;
+      quantity?: number | string;
+      type?: string;
+      reference?: string;
+      note?: string;
+      purchase_price?: number | string | null;
+    };
+
+    const productId = body.product_id?.trim() ?? "";
+    const action = normalizeStockAdjustmentAction(body.type);
+    const quantity = Number(body.quantity ?? 0);
+    const purchasePrice =
+      body.purchase_price == null || body.purchase_price === ""
+        ? null
+        : normalizeMoney(body.purchase_price);
+
+    if (!productId) {
+      return response.status(400).json({ message: "product_id is required." });
+    }
+
+    if (!action) {
+      return response.status(400).json({
+        message: "type must be ADD or DAMAGE.",
+      });
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return response.status(400).json({ message: "quantity must be a positive number." });
+    }
+
+    const result = await (prisma as any).$transaction(async (tx: any) => {
+      const shopProduct = await resolveShopProductByIdentifier(
+        tx,
+        context.shop.id,
+        productId,
+      );
+
+      if (!shopProduct) {
+        throw new Error("PRODUCT_NOT_FOUND");
+      }
+
+      const stockBefore = Number(shopProduct.openingStock ?? 0);
+      if (action === "DAMAGE" && stockBefore < quantity) {
+        throw new Error("INSUFFICIENT_STOCK");
+      }
+
+      const nextStock = roundQuantity(
+        action === "ADD" ? stockBefore + quantity : stockBefore - quantity,
+      );
+
+      const updated = await tx.shopProduct.update({
+        where: { id: shopProduct.id },
+        data: {
+          openingStock: nextStock,
+          ...(action === "ADD" && purchasePrice != null
+            ? { purchasePrice }
+            : {}),
+        },
+        include: {
+          masterProduct: {
+            select: {
+              id: true,
+              sku: true,
+              name: true,
+              packageSize: true,
+              suggestedPrice: true,
+              price: true,
+            },
+          },
+        },
+      });
+
+      const movement = await recordStockMovement(tx, {
+        shopId: context.shop.id,
+        shopProductId: shopProduct.id,
+        masterProductId: shopProduct.masterProductId,
+        movementType: action === "ADD" ? "MANUAL_ADD" : "MANUAL_REDUCE",
+        quantityDelta: action === "ADD" ? quantity : -quantity,
+        stockBefore,
+        stockAfter: nextStock,
+        purchasePrice:
+          action === "ADD" && purchasePrice != null
+            ? purchasePrice
+            : normalizeMoney(updated.purchasePrice),
+        salePrice: normalizeMoney(updated.salePrice ?? updated.masterProduct?.suggestedPrice ?? updated.masterProduct?.price),
+        referenceType: action === "ADD" ? "MANUAL" : "DAMAGE",
+        referenceNo: body.reference?.trim() || null,
+        note:
+          body.note?.trim() ||
+          (action === "ADD" ? "Stock added manually." : "Damaged stock removed."),
+        createdByUserId: context.auth.user.id,
+      });
+
+      return { updated, movement };
+    });
+
+    return response.json({
+      message:
+        action === "ADD"
+          ? "Stock added successfully."
+          : "Damaged stock removed successfully.",
+      product: {
+        id: result.updated.source === "SHOP_LOCAL" ? result.updated.id : result.updated.masterProductId,
+        shopProductId: result.updated.id,
+        masterProductId: result.updated.masterProductId,
+        sku: result.updated.masterProduct?.sku ?? result.updated.localBarcode ?? result.updated.id,
+        name: result.updated.masterProduct?.name ?? result.updated.localName ?? "Unnamed product",
+        packageSize: result.updated.masterProduct?.packageSize ?? result.updated.localUnit ?? result.updated.id,
+        stock: Number(result.updated.openingStock ?? 0),
+        salePrice: Number(result.updated.salePrice ?? result.updated.masterProduct?.suggestedPrice ?? result.updated.masterProduct?.price ?? 0),
+        purchasePrice: Number(result.updated.purchasePrice ?? result.updated.masterProduct?.price ?? 0),
+      },
+      movement: mapStockMovement(result.movement),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+      return response.status(404).json({ message: "Product not found in this shop." });
+    }
+
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      return response.status(400).json({ message: "Cannot reduce more than available stock." });
+    }
+
+    console.error("Failed to save stock movement.", error);
+    return response.status(503).json({ message: "Stock movement could not be saved right now." });
   }
 });
 
@@ -866,6 +1080,7 @@ router.post("/placements", async (request, response) => {
         purchaseItemId?: string;
         masterProductId?: string;
         quantity?: number | string;
+        salePrice?: number | string | null;
         zoneId?: string;
         rackId?: string;
         shelfId?: string;
@@ -886,6 +1101,10 @@ router.post("/placements", async (request, response) => {
       purchaseItemId: item.purchaseItemId?.trim() || null,
       masterProductId: item.masterProductId?.trim() || "",
       quantity: Number(item.quantity ?? 0),
+      salePrice:
+        item.salePrice == null || item.salePrice === ""
+            ? null
+            : Number(item.salePrice),
       zoneId: item.zoneId?.trim() || "",
       rackId: item.rackId?.trim() || "",
       shelfId: item.shelfId?.trim() || "",
@@ -957,6 +1176,8 @@ router.post("/placements", async (request, response) => {
             masterProductId: item.masterProductId,
             purchaseItemId: item.purchaseItemId,
             quantity: item.quantity,
+            purchasePrice: purchaseItem ? purchaseItem.purchasePrice : null,
+            salePrice: item.salePrice,
             batchNo: item.batchNo,
             expiryDate: item.expiryDate,
             notes: "Assigned after purchase approval.",

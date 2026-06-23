@@ -2,6 +2,10 @@ import { Router } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import {
+  normalizeMoney as normalizeStockMoney,
+  recordStockMovement,
+} from "../utils/stock-movement";
 
 const router = Router();
 
@@ -21,6 +25,18 @@ function toDisplayStatus(status: CustomerStatusValue) {
 
 function toMoney(value: unknown) {
   return Number(value ?? 0);
+}
+
+function roundQuantity(value: number) {
+  return Number(value.toFixed(3));
+}
+
+function roundCurrency(value: number) {
+  return Number(value.toFixed(2));
+}
+
+function normalizeBatchOrder(value: string | null | undefined) {
+  return value === "LIFO" ? "LIFO" : "FIFO";
 }
 
 function normalizeText(value: unknown) {
@@ -985,6 +1001,25 @@ router.post("/sales/:saleId/cancel", async (request, response) => {
             : null;
 
       for (const item of sale.items) {
+        const shopProduct = await tx.shopProduct.findUnique({
+          where: {
+            shopId_masterProductId: {
+              shopId: context.shop.id,
+              masterProductId: item.masterProductId,
+            },
+          },
+          select: {
+            id: true,
+            masterProductId: true,
+            openingStock: true,
+            purchasePrice: true,
+            salePrice: true,
+          },
+        });
+
+        const previousStock = Number(shopProduct?.openingStock ?? 0);
+        const nextStock = previousStock + Number(item.quantity ?? 0);
+
         await tx.shopProduct.update({
           where: {
             shopId_masterProductId: {
@@ -998,6 +1033,26 @@ router.post("/sales/:saleId/cancel", async (request, response) => {
             },
           },
         });
+
+        if (shopProduct) {
+          await recordStockMovement(tx, {
+            shopId: context.shop.id,
+            shopProductId: shopProduct.id,
+            masterProductId: shopProduct.masterProductId,
+            movementType: "SALE_CANCEL",
+            quantityDelta: Number(item.quantity ?? 0),
+            stockBefore: previousStock,
+            stockAfter: nextStock,
+            purchasePrice: normalizeStockMoney(shopProduct.purchasePrice),
+            salePrice: normalizeStockMoney(shopProduct.salePrice),
+            unitPrice: Number(item.salePrice ?? 0),
+            referenceType: "SALE_CANCEL",
+            referenceId: sale.id,
+            referenceNo: sale.invoiceNo || null,
+            note: reason,
+            createdByUserId: context.auth.user.id,
+          });
+        }
       }
 
       const cancelledSale = await tx.customerSale.update({
@@ -1141,6 +1196,18 @@ router.post("/sales", async (request, response) => {
         salePrice?: number | string;
         unitPrice?: number | string;
         price?: number | string;
+        batchNo?: string | null;
+      }>;
+      lines?: Array<{
+        productId?: string;
+        masterProductId?: string;
+        shopProductId?: string;
+        qty?: number | string;
+        quantity?: number | string;
+        salePrice?: number | string;
+        unitPrice?: number | string;
+        price?: number | string;
+        batchNo?: string | null;
       }>;
     };
 
@@ -1155,7 +1222,7 @@ router.post("/sales", async (request, response) => {
       });
     }
 
-    const items = body.items ?? [];
+    const items = body.items ?? body.lines ?? [];
 
     if (items.length === 0) {
       return response.status(400).json({ message: "At least one sale item is required." });
@@ -1165,12 +1232,14 @@ router.post("/sales", async (request, response) => {
       const masterProductId = item.masterProductId || item.productId || item.shopProductId || "";
       const quantity = Number(item.quantity ?? item.qty ?? 0);
       const salePrice = Number(item.salePrice ?? item.unitPrice ?? item.price ?? 0);
+      const batchNo = normalizeText(item.batchNo) || null;
 
       return {
         masterProductId,
         quantity,
         salePrice,
         totalAmount: Number((quantity * salePrice).toFixed(2)),
+        batchNo,
       };
     });
 
@@ -1239,13 +1308,6 @@ router.post("/sales", async (request, response) => {
       return response.status(404).json({ message: "Money box not found for this shop." });
     }
 
-    const totalAmount = Number(normalizedItems.reduce((sum, item) => sum + item.totalAmount, 0).toFixed(2));
-    const grandTotal = Number((totalAmount - discountAmount + taxAmount + chargeAmount).toFixed(2));
-
-    if (paidAmount + requestedStoreCreditUsed > grandTotal) {
-      return response.status(400).json({ message: "Paid amount plus store credit cannot be greater than total sale amount." });
-    }
-
     const availableStoreCredit = toMoney(customer.storeCredit);
     const storeCreditUsed = Math.min(availableStoreCredit, requestedStoreCreditUsed);
 
@@ -1253,10 +1315,196 @@ router.post("/sales", async (request, response) => {
       return response.status(400).json({ message: "Requested store credit is greater than available customer credit." });
     }
 
-    const dueAmount = Number((grandTotal - paidAmount - storeCreditUsed).toFixed(2));
     const saleDate = body.saleDate ? new Date(body.saleDate) : new Date();
 
     const sale = await (prisma as any).$transaction(async (tx: any) => {
+      const inventorySetting = await tx.shopInventorySetting.findUnique({
+        where: { shopId: context.shop.id },
+      });
+      const reduceStock = inventorySetting ? inventorySetting.reduceStockOnSale : true;
+      const allowNegative = inventorySetting ? inventorySetting.allowNegativeStock : false;
+      const stockMethod = normalizeBatchOrder(inventorySetting?.stockMethod);
+      const saleItemRecords: Array<{
+        masterProductId: string;
+        quantity: number;
+        salePrice: number;
+        totalAmount: number;
+        batchNo: string | null;
+      }> = [];
+      const saleMovementRecords: Array<{
+        shopProductId: string;
+        masterProductId: string;
+        quantity: number;
+        stockBefore: number;
+        stockAfter: number;
+        salePrice: number;
+        purchasePrice: number | null;
+      }> = [];
+
+      for (const item of normalizedItems) {
+        const shopProduct = await tx.shopProduct.findUnique({
+          where: {
+            shopId_masterProductId: {
+              shopId: context.shop.id,
+              masterProductId: item.masterProductId,
+            },
+          },
+        });
+
+        if (!shopProduct) {
+          throw new Error(`Product not found in shop inventory: ${item.masterProductId}`);
+        }
+
+        const currentStock = Number(shopProduct.openingStock ?? 0);
+        if (reduceStock && !allowNegative && currentStock < item.quantity) {
+          throw new Error(`Insufficient stock for product. Available: ${currentStock}, Requested: ${item.quantity}`);
+        }
+
+        const binItems = await tx.inventoryBinItem.findMany({
+          where: {
+            shopId: context.shop.id,
+            masterProductId: item.masterProductId,
+            quantity: { gt: 0 },
+            ...(item.batchNo ? { batchNo: item.batchNo } : {}),
+          },
+          orderBy: [{ createdAt: stockMethod === "LIFO" ? "desc" : "asc" }, { id: "asc" }],
+        });
+
+        const touchedBinIds = new Set<string>();
+        let remainingToAllocate = item.quantity;
+
+        for (const binItem of binItems) {
+          if (remainingToAllocate <= 0) {
+            break;
+          }
+
+          const binQty = Number(binItem.quantity ?? 0);
+          if (binQty <= 0) {
+            continue;
+          }
+
+          const allocatedQty = Math.min(binQty, remainingToAllocate);
+          const batchSalePrice = roundCurrency(
+            Number(
+              binItem.salePrice ??
+              shopProduct.salePrice ??
+              item.salePrice,
+            ) || 0,
+          );
+
+          saleItemRecords.push({
+            masterProductId: item.masterProductId,
+            quantity: allocatedQty,
+            salePrice: batchSalePrice,
+            totalAmount: roundCurrency(allocatedQty * batchSalePrice),
+            batchNo: binItem.batchNo ?? item.batchNo ?? null,
+          });
+
+          remainingToAllocate = roundQuantity(remainingToAllocate - allocatedQty);
+
+          if (reduceStock) {
+            const newBinQty = roundQuantity(binQty - allocatedQty);
+            touchedBinIds.add(binItem.binId);
+
+            if (newBinQty <= 0) {
+              await tx.inventoryBinItem.delete({
+                where: { id: binItem.id },
+              });
+            } else {
+              await tx.inventoryBinItem.update({
+                where: { id: binItem.id },
+                data: { quantity: newBinQty },
+              });
+            }
+          }
+        }
+
+        if (remainingToAllocate > 0) {
+          if (reduceStock && !allowNegative) {
+            throw new Error(
+              `Insufficient batch stock for product. Requested: ${item.quantity}, Allocated: ${roundQuantity(item.quantity - remainingToAllocate)}`,
+            );
+          }
+
+          const fallbackSalePrice = roundCurrency(
+            Number(shopProduct.salePrice ?? item.salePrice) || 0,
+          );
+
+          saleItemRecords.push({
+            masterProductId: item.masterProductId,
+            quantity: remainingToAllocate,
+            salePrice: fallbackSalePrice,
+            totalAmount: roundCurrency(remainingToAllocate * fallbackSalePrice),
+            batchNo: item.batchNo,
+          });
+        }
+
+        if (reduceStock) {
+          const nextStock = roundQuantity(currentStock - item.quantity);
+          for (const binId of touchedBinIds) {
+            const [bin, totalBinQty] = await Promise.all([
+              tx.inventoryBin.findUnique({
+                where: { id: binId },
+              }),
+              tx.inventoryBinItem.aggregate({
+                where: { binId },
+                _sum: { quantity: true },
+              }),
+            ]);
+
+            if (!bin) {
+              continue;
+            }
+
+            const quantityValue = Number(totalBinQty._sum.quantity ?? 0);
+            await tx.inventoryBin.update({
+              where: { id: binId },
+              data: {
+                status: quantityValue <= 0 ? "EMPTY" : quantityValue < 10 ? "LOW" : "FULL",
+                quantityLabel: quantityValue <= 0 ? "খালি" : `${quantityValue} পিস`,
+                productName: quantityValue <= 0 ? "" : bin.productName,
+                daysLabel: quantityValue <= 0 ? "খালি" : bin.daysLabel,
+              },
+            });
+          }
+
+          await tx.shopProduct.update({
+            where: {
+              shopId_masterProductId: {
+                shopId: context.shop.id,
+                masterProductId: item.masterProductId,
+              },
+            },
+            data: {
+              openingStock: {
+                decrement: item.quantity,
+              },
+            },
+          });
+
+          saleMovementRecords.push({
+            shopProductId: shopProduct.id,
+            masterProductId: item.masterProductId,
+            quantity: item.quantity,
+            stockBefore: currentStock,
+            stockAfter: nextStock,
+            salePrice: roundCurrency(Number(shopProduct.salePrice ?? item.salePrice) || 0),
+            purchasePrice: normalizeStockMoney(shopProduct.purchasePrice),
+          });
+        }
+      }
+
+      const totalAmount = roundCurrency(
+        saleItemRecords.reduce((sum, item) => sum + item.totalAmount, 0),
+      );
+      const grandTotal = roundCurrency(totalAmount - discountAmount + taxAmount + chargeAmount);
+
+      if (paidAmount + requestedStoreCreditUsed > grandTotal) {
+        throw new Error("Paid amount plus store credit cannot be greater than total sale amount.");
+      }
+
+      const dueAmount = roundCurrency(grandTotal - paidAmount - storeCreditUsed);
+
       const createdSale = await tx.customerSale.create({
         data: {
           shopId: context.shop.id,
@@ -1273,11 +1521,12 @@ router.post("/sales", async (request, response) => {
           paymentMethod: paymentInfo.paymentMethod,
           notes: body.notes?.trim() || null,
           items: {
-            create: normalizedItems.map((item) => ({
+            create: saleItemRecords.map((item) => ({
               masterProductId: item.masterProductId,
               quantity: item.quantity,
               salePrice: item.salePrice,
               totalAmount: item.totalAmount,
+              batchNo: item.batchNo,
             })),
           },
         },
@@ -1292,109 +1541,24 @@ router.post("/sales", async (request, response) => {
         },
       });
 
-      // Stock deduction logic if reduceStockOnSale is enabled
-      const inventorySetting = await tx.shopInventorySetting.findUnique({
-        where: { shopId: context.shop.id },
-      });
-      const reduceStock = inventorySetting ? inventorySetting.reduceStockOnSale : true;
-
-      if (reduceStock) {
-        const allowNegative = inventorySetting ? inventorySetting.allowNegativeStock : false;
-        const stockMethod = inventorySetting ? inventorySetting.stockMethod : "FIFO";
-
-        for (const item of normalizedItems) {
-          const shopProduct = await tx.shopProduct.findUnique({
-            where: {
-              shopId_masterProductId: {
-                shopId: context.shop.id,
-                masterProductId: item.masterProductId,
-              },
-            },
-          });
-
-          if (!shopProduct) {
-            throw new Error(`Product not found in shop inventory: ${item.masterProductId}`);
-          }
-
-          const currentStock = Number(shopProduct.openingStock ?? 0);
-          if (!allowNegative && currentStock < item.quantity) {
-            throw new Error(`Insufficient stock for product. Available: ${currentStock}, Requested: ${item.quantity}`);
-          }
-
-          // Fetch bin items for this product
-          const binItems = await tx.inventoryBinItem.findMany({
-            where: {
-              shopId: context.shop.id,
-              masterProductId: item.masterProductId,
-              quantity: { gt: 0 },
-            },
-            orderBy: {
-              createdAt: stockMethod === "LIFO" ? "desc" : "asc",
-            },
-          });
-
-          let remainingToDeduct = item.quantity;
-          for (const binItem of binItems) {
-            if (remainingToDeduct <= 0) break;
-            const binQty = Number(binItem.quantity);
-            if (binQty <= 0) continue;
-
-            const deductFromBin = Math.min(binQty, remainingToDeduct);
-            const newBinQty = Number((binQty - deductFromBin).toFixed(3));
-            remainingToDeduct = Number((remainingToDeduct - deductFromBin).toFixed(3));
-
-            if (newBinQty <= 0) {
-              await tx.inventoryBinItem.delete({
-                where: { id: binItem.id },
-              });
-            } else {
-              await tx.inventoryBinItem.update({
-                where: { id: binItem.id },
-                data: { quantity: newBinQty },
-              });
-            }
-
-            // Update parent bin
-            const bin = await tx.inventoryBin.findUnique({
-              where: { id: binItem.binId },
-            });
-            if (bin) {
-              const remainingBinItems = await tx.inventoryBinItem.findMany({
-                where: { binId: bin.id },
-              });
-              const totalBinQty = remainingBinItems.reduce((sum: number, bi: any) => sum + Number(bi.quantity), 0);
-              const nextStatus = totalBinQty <= 0 ? "EMPTY" : (totalBinQty < 10 ? "LOW" : "FULL");
-              const quantityLabel = totalBinQty <= 0 ? "খালি" : `${totalBinQty} পিস`;
-              const daysLabel = totalBinQty <= 0 ? "খালি" : bin.daysLabel;
-              const productName = totalBinQty <= 0 ? "" : bin.productName;
-
-              await tx.inventoryBin.update({
-                where: { id: bin.id },
-                data: {
-                  status: nextStatus,
-                  quantityLabel,
-                  productName,
-                  daysLabel,
-                },
-              });
-            }
-          }
-
-          // Decrement product openingStock
-          await tx.shopProduct.update({
-            where: {
-              shopId_masterProductId: {
-                shopId: context.shop.id,
-                masterProductId: item.masterProductId,
-              },
-            },
-            data: {
-              openingStock: {
-                decrement: item.quantity,
-              },
-            },
-          });
-        }
+      for (const entry of saleMovementRecords) {
+        await recordStockMovement(tx, {
+          shopId: context.shop.id,
+          shopProductId: entry.shopProductId,
+          masterProductId: entry.masterProductId,
+          movementType: "SALE",
+          quantityDelta: -entry.quantity,
+          stockBefore: entry.stockBefore,
+          stockAfter: entry.stockAfter,
+          purchasePrice: entry.purchasePrice,
+          salePrice: entry.salePrice,
+          unitPrice: entry.salePrice,
+          referenceType: "SALE",
+          referenceId: createdSale.id,
+          referenceNo: createdSale.invoiceNo || null,
+          note: createdSale.notes || "Stock reduced from sale.",
+          createdByUserId: context.auth.user.id,
+        });
       }
 
       await tx.customerLedger.create({
@@ -1508,6 +1672,7 @@ router.post("/sales", async (request, response) => {
           quantity: toMoney(item.quantity),
           salePrice: toMoney(item.salePrice),
           totalAmount: toMoney(item.totalAmount),
+          batchNo: item.batchNo ?? null,
         })),
       },
       payment: sale.payment
@@ -1525,7 +1690,15 @@ router.post("/sales", async (request, response) => {
   } catch (error: any) {
     console.error("Failed to create customer sale.", error);
 
-    if (error instanceof Error && (error.message.startsWith("Insufficient stock") || error.message.startsWith("Product not found"))) {
+    if (
+      error instanceof Error &&
+      (
+        error.message.startsWith("Insufficient stock") ||
+        error.message.startsWith("Insufficient batch stock") ||
+        error.message.startsWith("Product not found") ||
+        error.message.startsWith("Paid amount plus store credit")
+      )
+    ) {
       return response.status(400).json({ message: error.message });
     }
 
