@@ -48,11 +48,7 @@ function getNextMidnight(source: Date) {
 
 function getTrialWindow(startAt = new Date()) {
   const trialStartedAt = new Date(startAt);
-  const targetDate = new Date(trialStartedAt);
-  if (TRIAL_DURATION_DAYS > 1) {
-    targetDate.setDate(targetDate.getDate() + (TRIAL_DURATION_DAYS - 1));
-  }
-  const trialEndsAt = getNextMidnight(targetDate);
+  const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
   return {
     trialStartedAt,

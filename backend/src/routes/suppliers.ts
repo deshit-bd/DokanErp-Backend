@@ -280,26 +280,28 @@ async function resolveFinanceShop(
 }
 
 async function buildSupplierFinanceSummary(supplierId: string, shopId: string) {
-  const [purchases, payments] = await Promise.all([
-    (prisma as any).purchase.findMany({
-      where: { supplierId, shopId },
-      select: { totalAmount: true, paidAmount: true, dueAmount: true },
-    }),
-    (prisma as any).supplierPayment.findMany({
-      where: { supplierId, shopId },
-      select: { amount: true },
-    }),
-  ]);
+  const ledgerEntries = await (prisma as any).supplierLedger.findMany({
+    where: { supplierId, shopId },
+    select: { debit: true, credit: true, entryType: true },
+  });
 
-  const totalPurchase = purchases.reduce((sum: number, row: { totalAmount: any }) => sum + Number(row.totalAmount ?? 0), 0);
-  const totalPaidFromPurchases = purchases.reduce((sum: number, row: { paidAmount: any }) => sum + Number(row.paidAmount ?? 0), 0);
-  const totalDue = purchases.reduce((sum: number, row: { dueAmount: any }) => sum + Number(row.dueAmount ?? 0), 0);
-  const totalPaid = payments.reduce((sum: number, row: { amount: any }) => sum + Number(row.amount ?? 0), totalPaidFromPurchases);
+  const totalDebit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
+  const totalCredit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
+
+  const totalPurchase = ledgerEntries
+    .filter((entry: any) => entry.entryType === "PURCHASE")
+    .reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
+
+  const totalPaid = ledgerEntries
+    .filter((entry: any) => entry.entryType === "PAYMENT")
+    .reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
+
+  const due = Math.max(0, totalDebit - totalCredit);
 
   return {
     totalPurchase,
     totalPaid,
-    due: totalDue,
+    due,
   };
 }
 
@@ -889,6 +891,16 @@ router.get("/:id", async (request, response) => {
             entryDate: true,
             purchaseId: true,
             supplierPaymentId: true,
+            purchase: {
+              select: {
+                paymentMethod: true,
+              },
+            },
+            supplierPayment: {
+              select: {
+                paymentMethod: true,
+              },
+            },
           },
         }),
       ]);
@@ -946,6 +958,7 @@ router.get("/:id", async (request, response) => {
             entryDate: entry.entryDate,
             purchaseId: entry.purchaseId,
             supplierPaymentId: entry.supplierPaymentId,
+            paymentMethod: entry.purchase?.paymentMethod ?? entry.supplierPayment?.paymentMethod ?? null,
           })),
           createdAt: supplier.createdAt,
           updatedAt: supplier.updatedAt,
@@ -1251,6 +1264,18 @@ router.get("/:id/ledger", async (request, response) => {
         supplierId: supplier.id,
         shopId: shop.id,
       },
+      include: {
+        purchase: {
+          select: {
+            paymentMethod: true,
+          },
+        },
+        supplierPayment: {
+          select: {
+            paymentMethod: true,
+          },
+        },
+      },
       orderBy: [{ entryDate: "asc" }, { createdAt: "asc" }],
     });
 
@@ -1263,6 +1288,7 @@ router.get("/:id/ledger", async (request, response) => {
       shopCode: shop.shopCode,
       ledger: ledgerEntries.map((entry: any) => {
         balance += Number(entry.debit ?? 0) - Number(entry.credit ?? 0);
+        const paymentMethod = entry.purchase?.paymentMethod ?? entry.supplierPayment?.paymentMethod ?? null;
 
         return {
           id: entry.id,
@@ -1275,6 +1301,7 @@ router.get("/:id/ledger", async (request, response) => {
           entryDate: entry.entryDate,
           purchaseId: entry.purchaseId,
           supplierPaymentId: entry.supplierPaymentId,
+          paymentMethod,
         };
       }),
     });

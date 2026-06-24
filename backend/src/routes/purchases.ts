@@ -184,7 +184,7 @@ async function resolveDefaultBankAccount(tx: any, shopId: string) {
   });
 }
 
-async function ensureGeneralInventoryBin(tx: any, shopId: string, masterProductId: string, productName: string) {
+export async function ensureGeneralInventoryBin(tx: any, shopId: string, masterProductId: string, productName: string) {
   const binCode = `BASIC-${masterProductId.slice(-8).toUpperCase()}`;
 
   const existing = await tx.inventoryBin.findFirst({
@@ -324,7 +324,7 @@ function normalizePurchasePayment(
 
   const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
 
-  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
+  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD" || paymentMethod === "ROCKET") {
     const senderNumber = normalizeText(paymentMeta.senderNumber);
     const transactionId = normalizeText(paymentMeta.transactionId);
 
@@ -663,26 +663,45 @@ function getPurchaseReturnSummary(purchase: any) {
 function mapPurchaseResponse(purchase: any) {
   const returns = Array.isArray(purchase.returns) ? purchase.returns : [];
   const returnSummary = getPurchaseReturnSummary(purchase);
+  const isReceived = purchase.status === "APPROVED";
 
-  const mappedItems = purchase.items.map((item: any) => ({
-    id: item.masterProductId ?? item.id,
-    productId: item.masterProductId ?? item.id,
-    product_id: item.masterProductId ?? item.id,
-    masterProductId: item.masterProductId,
-    name: item.masterProduct?.name ?? "Unnamed product",
-    product_name: item.masterProduct?.name ?? "Unnamed product",
-    productName: item.masterProduct?.name ?? "Unnamed product",
-    sku: item.masterProduct?.sku ?? null,
-    batchNo: item.batchNo,
-    expiryDate: item.expiryDate,
-    quantity: Number(item.quantity),
-    orderedQuantity: Number(item.quantity),
-    ordered_quantity: Number(item.quantity),
-    purchasePrice: Number(item.purchasePrice),
-    unitCost: Number(item.purchasePrice),
-    unit_cost: Number(item.purchasePrice),
-    totalAmount: Number(item.totalAmount),
-  }));
+  const mappedItems = purchase.items.map((item: any) => {
+    let returnedQty = 0;
+    for (const ret of returns) {
+      if (ret.status !== "REJECTED") {
+        for (const retItem of (ret.items || [])) {
+          if (retItem.purchaseItemId === item.id) {
+            returnedQty += Number(retItem.quantity);
+          }
+        }
+      }
+    }
+    return {
+      id: item.masterProductId ?? item.id,
+      productId: item.masterProductId ?? item.id,
+      product_id: item.masterProductId ?? item.id,
+      purchaseItemId: item.id,
+      purchase_item_id: item.id,
+      masterProductId: item.masterProductId,
+      name: item.masterProduct?.name ?? "Unnamed product",
+      product_name: item.masterProduct?.name ?? "Unnamed product",
+      productName: item.masterProduct?.name ?? "Unnamed product",
+      sku: item.masterProduct?.sku ?? null,
+      batchNo: item.batchNo,
+      expiryDate: item.expiryDate,
+      quantity: Number(item.quantity),
+      orderedQuantity: Number(item.quantity),
+      ordered_quantity: Number(item.quantity),
+      receivedQuantity: isReceived ? Number(item.quantity) : 0,
+      received_quantity: isReceived ? Number(item.quantity) : 0,
+      returnedQuantity: returnedQty,
+      returned_quantity: returnedQty,
+      purchasePrice: Number(item.purchasePrice),
+      unitCost: Number(item.purchasePrice),
+      unit_cost: Number(item.purchasePrice),
+      totalAmount: Number(item.totalAmount),
+    };
+  });
 
   const mappedStatus = purchase.status === "APPROVED"
     ? "received"
@@ -1366,10 +1385,16 @@ router.post("/:id/returns", async (request, response) => {
       let refundAmount = 0;
 
       for (const item of normalizedItems) {
-        const purchaseItem = purchaseItemsById.get(item.purchaseItemId) as any;
+        let purchaseItem = purchaseItemsById.get(item.purchaseItemId) as any;
+        if (!purchaseItem) {
+          purchaseItem = (purchase.items ?? []).find(
+            (pi: any) => pi.masterProductId === item.purchaseItemId || pi.id === item.purchaseItemId
+          );
+        }
         if (!purchaseItem) {
           throw new Error("One or more selected purchase items do not belong to this purchase.");
         }
+        item.purchaseItemId = purchaseItem.id;
 
         const purchasedQty = Number(purchaseItem.quantity ?? 0);
         const alreadyReturnedQty = Number(existingReturnedByItem.get(item.purchaseItemId) ?? 0);
@@ -1715,6 +1740,12 @@ router.post("/:id/receive", async (request, response) => {
         expiryDate?: string | null;
         productName?: string | null;
       }>;
+      paymentMethod?: string | null;
+      payment_method?: string | null;
+      paidAmount?: number | string | null;
+      paid_amount?: number | string | null;
+      paymentDetails?: any;
+      payment_details?: any;
     };
 
     const normalizedLines: ReceivePurchaseItemInput[] = Array.isArray(body.lines)
@@ -1837,10 +1868,69 @@ router.post("/:id/receive", async (request, response) => {
       const discountAmount = Number(existingPurchase.discountAmount ?? 0);
       const extraChargeAmount = Number(existingPurchase.extraChargeAmount ?? 0);
       const totalAmount = Number(Math.max(0, subtotalAmount - discountAmount + extraChargeAmount).toFixed(2));
-      const paymentMethod =
-        existingPurchase.paymentMethod && existingPurchase.paymentMethod !== "DUE"
-          ? existingPurchase.paymentMethod
-          : "CASH";
+
+      const bodyPaymentMethod = body.paymentMethod ?? body.payment_method;
+      const bodyPaidAmount = body.paidAmount ?? body.paid_amount;
+      const bodyPaymentDetails = body.paymentDetails ?? body.payment_details;
+
+      const paidAmountInput = bodyPaidAmount !== undefined && bodyPaidAmount !== null ? Number(bodyPaidAmount) : null;
+
+      let finalPaymentMethod = existingPurchase.paymentMethod ?? "CASH";
+      let finalPaymentMeta = existingPurchase.paymentMeta ?? null;
+      let finalPaidAmount = existingPurchase.paidAmount !== null && existingPurchase.paidAmount !== undefined ? Number(existingPurchase.paidAmount) : null;
+
+      if (bodyPaymentMethod) {
+        const paymentInfo = normalizePurchasePayment(bodyPaymentMethod, paidAmountInput ?? totalAmount, bodyPaymentDetails);
+        if (paymentInfo && "error" in paymentInfo) {
+          throw new Error(paymentInfo.error);
+        }
+        finalPaymentMethod = paymentInfo.paymentMethod;
+        finalPaymentMeta = paymentInfo.paymentMeta;
+        finalPaidAmount = paidAmountInput ?? (finalPaymentMethod === "DUE" ? 0 : totalAmount);
+      } else if (paidAmountInput !== null) {
+        finalPaidAmount = paidAmountInput;
+      } else if (finalPaidAmount === null) {
+        finalPaidAmount = finalPaymentMethod === "DUE" ? 0 : totalAmount;
+      }
+
+      if (finalPaymentMethod === "DUE") {
+        finalPaidAmount = 0;
+      }
+
+      const finalDueAmount = Math.max(0, totalAmount - finalPaidAmount);
+
+      const selectedMoneyBox = await resolveShopMoneyBox(tx, context.shopId, (body as any).moneyBoxId);
+      const defaultMoneyBox = !selectedMoneyBox
+        ? await resolveDefaultMoneyBoxByType(tx, context.shopId, finalPaymentMethod)
+        : null;
+      const effectiveMoneyBox = selectedMoneyBox ?? defaultMoneyBox;
+
+      const selectedBankAccount = await resolveShopBankAccount(tx, context.shopId, (body as any).bankAccountId);
+      const defaultBankAccount =
+        finalPaymentMethod === "BANK" && !selectedBankAccount
+          ? await resolveDefaultBankAccount(tx, context.shopId)
+          : null;
+      const effectiveBankAccount = selectedBankAccount ?? defaultBankAccount;
+
+      if ((body as any).moneyBoxId && !selectedMoneyBox) {
+        throw new Error("MONEY_BOX_NOT_FOUND");
+      }
+
+      if ((body as any).bankAccountId && !selectedBankAccount) {
+        throw new Error("BANK_ACCOUNT_NOT_FOUND");
+      }
+
+      if (finalPaidAmount > 0 && finalPaymentMethod === "BANK" && !effectiveBankAccount) {
+        throw new Error("BANK_ACCOUNT_NOT_FOUND");
+      }
+
+      if (
+        finalPaidAmount > 0 &&
+        ["CASH", "BKASH", "NAGAD", "ROCKET"].includes(finalPaymentMethod || "") &&
+        !effectiveMoneyBox
+      ) {
+        throw new Error("MONEY_BOX_NOT_FOUND");
+      }
 
       const updatedPurchase = await tx.purchase.update({
         where: { id: existingPurchase.id },
@@ -1852,10 +1942,10 @@ router.post("/:id/receive", async (request, response) => {
           rejectedAt: null,
           subtotalAmount,
           totalAmount,
-          paidAmount: totalAmount,
-          dueAmount: 0,
-          paymentMethod,
-          paymentMeta: existingPurchase.paymentMeta ?? null,
+          paidAmount: finalPaidAmount,
+          dueAmount: finalDueAmount,
+          paymentMethod: finalPaymentMethod,
+          paymentMeta: finalPaymentMeta as any,
           items: {
             deleteMany: {},
             create: updatedItems.map((item: any) => ({
@@ -1893,8 +1983,10 @@ router.post("/:id/receive", async (request, response) => {
             productName: placement?.productName ?? item.masterProduct?.name ?? null,
           };
         }),
-        paymentMethod,
-        paymentMeta: existingPurchase.paymentMeta ?? null,
+        paymentMethod: finalPaymentMethod,
+        paymentMeta: finalPaymentMeta,
+        moneyBoxId: effectiveMoneyBox?.id ?? null,
+        bankAccountId: effectiveBankAccount?.id ?? null,
       });
 
       return updatedPurchase;

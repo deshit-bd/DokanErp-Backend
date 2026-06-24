@@ -10,6 +10,8 @@ import {
   roundQuantity,
 } from "../utils/stock-movement";
 
+import { reconcileProductStockAndBins } from "../utils/reconciliation";
+
 const router = Router();
 
 type InventoryModeValue = "GENERAL" | "RACK";
@@ -417,6 +419,10 @@ router.get("/stock-movements", async (request, response) => {
       return response.status(404).json({ message: "Product not found in this shop." });
     }
 
+    await (prisma as any).$transaction(async (tx: any) => {
+      await reconcileProductStockAndBins(tx, context.shop.id, shopProduct.id);
+    });
+
     const movements = await (prisma as any).stockMovement.findMany({
       where: {
         shopId: context.shop.id,
@@ -547,6 +553,8 @@ router.post("/stock-movements", async (request, response) => {
           (action === "ADD" ? "Stock added manually." : "Damaged stock removed."),
         createdByUserId: context.auth.user.id,
       });
+
+      await reconcileProductStockAndBins(tx, context.shop.id, shopProduct.id);
 
       return { updated, movement };
     });

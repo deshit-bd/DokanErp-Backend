@@ -23,6 +23,7 @@ import unitRoutes from "./routes/units";
 import reportsRoutes from "./routes/reports";
 import staffRoutes from "./routes/staff";
 import notificationRoutes from "./routes/notifications";
+import settingsRoutes from "./routes/settings";
 import { evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "./subscription/access";
 
 const app = express();
@@ -91,6 +92,7 @@ function mountApiScope(prefix: string, appType: AppType) {
   scopedRouter.use("/units", unitRoutes);
   scopedRouter.use("/reports", reportsRoutes);
   scopedRouter.use("/notifications", notificationRoutes);
+  scopedRouter.use("/settings", settingsRoutes);
 
   app.use(prefix, scopedRouter);
 }

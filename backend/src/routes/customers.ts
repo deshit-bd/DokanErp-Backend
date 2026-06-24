@@ -64,7 +64,7 @@ function normalizeCustomerPayment(
 
   const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
 
-  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
+  if (paymentMethod === "BKASH" || paymentMethod === "NAGAD" || paymentMethod === "ROCKET") {
     const senderNumber = normalizeText(paymentMeta.senderNumber);
     const transactionId = normalizeText(paymentMeta.transactionId);
 
@@ -1211,14 +1211,85 @@ router.post("/sales", async (request, response) => {
       }>;
     };
 
-    const customer = body.customerId
-      ? await resolveCustomerLinkedToShop(body.customerId, context.shop.id)
-      : null;
+    let customerId = body.customerId;
+    const reqCustomer = (body as any).customer;
+
+    if (!customerId && reqCustomer) {
+      const customerName = reqCustomer.name?.trim() || "Guest Customer";
+      const customerPhone = reqCustomer.phone?.trim() || reqCustomer.mobile?.trim() || null;
+
+      // Find existing customer by mobile or name
+      let existingCustomer = null;
+      if (customerPhone) {
+        existingCustomer = await (prisma as any).customer.findFirst({
+          where: { mobile: customerPhone, deletedAt: null },
+        });
+      }
+      if (!existingCustomer) {
+        existingCustomer = await (prisma as any).customer.findFirst({
+          where: { name: customerName, deletedAt: null },
+        });
+      }
+
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+      } else {
+        // Create new customer
+        const generatedCustomerCode = await createUniqueCustomerCode(customerName);
+        const newCustomer = await (prisma as any).customer.create({
+          data: {
+            name: customerName,
+            mobile: customerPhone,
+            customerCode: generatedCustomerCode,
+            status: "ACTIVE",
+          },
+        });
+        customerId = newCustomer.id;
+      }
+    }
+
+    if (!customerId) {
+      // Try to find a default "Guest Customer" or fallback
+      let guestCustomer = await (prisma as any).customer.findFirst({
+        where: { name: "Guest Customer", deletedAt: null },
+      });
+      if (!guestCustomer) {
+        const generatedCustomerCode = await createUniqueCustomerCode("Guest Customer");
+        guestCustomer = await (prisma as any).customer.create({
+          data: {
+            name: "Guest Customer",
+            customerCode: generatedCustomerCode,
+            status: "ACTIVE",
+          },
+        });
+      }
+      customerId = guestCustomer.id;
+    }
+
+     // Now, verify if they are linked to this shop, if not link them.
+    let customer = await resolveCustomerLinkedToShop(customerId as string, context.shop.id);
+    if (!customer) {
+      // Not linked yet. Create an opening ledger entry of 0 to link them.
+      await (prisma as any).customerLedger.create({
+        data: {
+          shopId: context.shop.id,
+          customerId: customerId as string,
+          entryType: "OPENING_DUE",
+          amount: 0,
+          dueAmount: 0,
+          balanceBefore: 0,
+          balanceAfter: 0,
+          note: "Linked customer to shop during sale checkout",
+        },
+      });
+      customer = await (prisma as any).customer.findFirst({
+        where: { id: customerId as string, deletedAt: null },
+      });
+    }
 
     if (!customer) {
       return response.status(404).json({
-        message:
-          "Customer is not linked to this shop. Add the customer to this store first.",
+        message: "Customer could not be resolved or linked to this shop.",
       });
     }
 
