@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import { ensureGeneralInventoryBin } from "./purchases";
 import { canAddProductsToShop, countDistinctShopProducts, FREE_TIER_PRODUCT_LIMIT } from "../subscription/access";
 
 const router = Router();
@@ -17,6 +18,85 @@ function normalizeOptionalText(value: unknown) {
 
 function toDisplayLabel(value: string) {
   return value.replace(/_/g, " ");
+}
+
+async function syncQuickSetupBatch(
+  tx: any,
+  params: {
+    shopId: string;
+    masterProductId: string;
+    productName: string;
+    openingStock: number;
+    purchasePrice: number | null;
+    salePrice: number | null;
+  },
+) {
+  const { shopId, masterProductId, productName, openingStock, purchasePrice, salePrice } = params;
+  const targetBin = await ensureGeneralInventoryBin(
+    tx,
+    shopId,
+    masterProductId,
+    productName,
+  );
+
+  const existingBatch = await tx.inventoryBinItem.findFirst({
+    where: {
+      shopId,
+      masterProductId,
+      purchaseItemId: null,
+      batchNo: "1",
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+
+  if (openingStock <= 0) {
+    if (existingBatch) {
+      await tx.inventoryBinItem.delete({
+        where: { id: existingBatch.id },
+      });
+    }
+  } else if (existingBatch) {
+    await tx.inventoryBinItem.update({
+      where: { id: existingBatch.id },
+      data: {
+        binId: targetBin.id,
+        quantity: openingStock,
+        purchasePrice,
+        salePrice,
+        batchNo: "1",
+        notes: "Quick setup batch 1",
+      },
+    });
+  } else {
+    await tx.inventoryBinItem.create({
+      data: {
+        shopId,
+        binId: targetBin.id,
+        masterProductId,
+        quantity: openingStock,
+        purchasePrice,
+        salePrice,
+        batchNo: "1",
+        notes: "Quick setup batch 1",
+      },
+    });
+  }
+
+  const totalBinQtyAgg = await tx.inventoryBinItem.aggregate({
+    where: { binId: targetBin.id },
+    _sum: { quantity: true },
+  });
+  const quantityValue = Number(totalBinQtyAgg._sum.quantity ?? 0);
+
+  await tx.inventoryBin.update({
+    where: { id: targetBin.id },
+    data: {
+      productName,
+      status: quantityValue <= 0 ? "EMPTY" : quantityValue < 10 ? "LOW" : "FULL",
+      quantityLabel: quantityValue <= 0 ? "খালি" : `${quantityValue} পিস`,
+      daysLabel: quantityValue <= 0 ? "খালি" : "Batch 1",
+    },
+  });
 }
 
 function mapFinanceSourceMoneyBox(moneyBox: any) {
@@ -1145,13 +1225,13 @@ router.get("/quick-setup/catalog", async (request, response) => {
       return response.status(context.status).json(context.body);
     }
 
-    const [suggestedProducts, configuredProducts, configuredProductCount] = await Promise.all([
+    const [catalogProducts, configuredProducts, configuredProductCount] = await Promise.all([
       (prisma as any).masterProduct.findMany({
         where: {
           status: "ACTIVE",
         },
         orderBy: [{ name: "asc" }],
-        take: 8,
+        take: 100,
         select: {
           id: true,
           sku: true,
@@ -1159,6 +1239,11 @@ router.get("/quick-setup/catalog", async (request, response) => {
           price: true,
           suggestedPrice: true,
           packageSize: true,
+          category: {
+            select: {
+              name: true,
+            },
+          },
         },
       }),
       (prisma as any).shopProduct.findMany({
@@ -1190,10 +1275,21 @@ router.get("/quick-setup/catalog", async (request, response) => {
         freeTierProductLimit: FREE_TIER_PRODUCT_LIMIT,
         configuredProductCount,
       },
-      suggestedProducts: suggestedProducts.map((product: any) => ({
+      catalogProducts: catalogProducts.map((product: any) => ({
         id: product.id,
         sku: product.sku,
         name: product.name,
+        category: product.category?.name ?? "অন্যান্য",
+        packageSize: product.packageSize,
+        price: toMoney(product.price),
+        suggestedPrice: toMoney(product.suggestedPrice ?? product.price),
+        selected: selectedProductIds.has(product.id),
+      })),
+      suggestedProducts: catalogProducts.slice(0, 8).map((product: any) => ({
+        id: product.id,
+        sku: product.sku,
+        name: product.name,
+        category: product.category?.name ?? "অন্যান্য",
         packageSize: product.packageSize,
         price: toMoney(product.price),
         suggestedPrice: toMoney(product.suggestedPrice ?? product.price),
@@ -1205,7 +1301,10 @@ router.get("/quick-setup/catalog", async (request, response) => {
         sku: item.masterProduct.sku,
         packageSize: item.masterProduct.packageSize,
         openingStock: toMoney(item.openingStock),
+        purchasePrice: toMoney(item.purchasePrice ?? item.masterProduct.price),
         salePrice: toMoney(item.salePrice ?? item.masterProduct.suggestedPrice ?? item.masterProduct.price),
+        lowStockLimit: Number(item.lowStockLimit ?? 10),
+        lowStockThreshold: Number(item.lowStockLimit ?? 10),
       })),
     });
   } catch (error) {
@@ -1551,7 +1650,9 @@ router.post("/quick-setup/catalog/select", async (request, response) => {
             shopId: context.shop.id,
             masterProductId: product.id,
             openingStock: 0,
+            purchasePrice: product.price ?? 0,
             salePrice: product.suggestedPrice ?? product.price ?? 0,
+            lowStockLimit: 10,
           },
         });
       }
@@ -1584,7 +1685,10 @@ router.post("/quick-setup/catalog/select", async (request, response) => {
         sku: item.masterProduct.sku,
         packageSize: item.masterProduct.packageSize,
         openingStock: toMoney(item.openingStock),
+        purchasePrice: toMoney(item.purchasePrice ?? item.masterProduct.price),
         salePrice: toMoney(item.salePrice ?? item.masterProduct.suggestedPrice ?? item.masterProduct.price),
+        lowStockLimit: Number(item.lowStockLimit ?? 10),
+        lowStockThreshold: Number(item.lowStockLimit ?? 10),
       })),
     });
   } catch (error) {
@@ -1612,7 +1716,9 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
       items?: Array<{
         masterProductId?: string;
         openingStock?: number | string | null;
+        purchasePrice?: number | string | null;
         salePrice?: number | string | null;
+        lowStockLimit?: number | string | null;
       }>;
     };
 
@@ -1625,7 +1731,12 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
     const normalizedItems = items.map((item) => ({
       masterProductId: item.masterProductId?.trim() || "",
       openingStock: Number(item.openingStock ?? 0),
+      purchasePrice: Number(item.purchasePrice ?? 0),
       salePrice: Number(item.salePrice ?? 0),
+      lowStockLimit:
+        item.lowStockLimit == null || item.lowStockLimit === ""
+          ? 10
+          : Number(item.lowStockLimit),
     }));
 
     if (
@@ -1634,11 +1745,15 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
           !item.masterProductId ||
           !Number.isFinite(item.openingStock) ||
           item.openingStock < 0 ||
+          !Number.isFinite(item.purchasePrice) ||
+          item.purchasePrice < 0 ||
           !Number.isFinite(item.salePrice) ||
-          item.salePrice < 0,
+          item.salePrice < 0 ||
+          !Number.isFinite(item.lowStockLimit) ||
+          item.lowStockLimit < 0,
       )
     ) {
-      return response.status(400).json({ message: "Each setup item requires a valid product, stock, and sale price." });
+      return response.status(400).json({ message: "Each setup item requires a valid product, stock, buying price, sale price, and low stock limit." });
     }
 
     const configuredProducts = await (prisma as any).shopProduct.findMany({
@@ -1647,7 +1762,18 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
         masterProductId: { in: normalizedItems.map((item) => item.masterProductId) },
       },
       select: {
+        id: true,
         masterProductId: true,
+        masterProduct: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            packageSize: true,
+            price: true,
+            suggestedPrice: true,
+          },
+        },
       },
     });
 
@@ -1656,7 +1782,13 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
     }
 
     const updatedProducts = await (prisma as any).$transaction(async (tx: any) => {
+      const configuredById = new Map<string, any>(
+        configuredProducts.map((item: any) => [item.masterProductId, item] as const),
+      );
+
       for (const item of normalizedItems) {
+        const configured = configuredById.get(item.masterProductId) as any;
+        const productName = configured?.masterProduct?.name ?? "Stock";
         await tx.shopProduct.update({
           where: {
             shopId_masterProductId: {
@@ -1666,8 +1798,19 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
           },
           data: {
             openingStock: item.openingStock,
+            purchasePrice: item.purchasePrice,
             salePrice: item.salePrice,
+            lowStockLimit: item.lowStockLimit,
           },
+        });
+
+        await syncQuickSetupBatch(tx, {
+          shopId: context.shop.id,
+          masterProductId: item.masterProductId,
+          productName,
+          openingStock: item.openingStock,
+          purchasePrice: item.purchasePrice,
+          salePrice: item.salePrice,
         });
       }
 
@@ -1697,7 +1840,11 @@ router.patch("/quick-setup/catalog/pricing", async (request, response) => {
         sku: item.masterProduct.sku,
         packageSize: item.masterProduct.packageSize,
         openingStock: toMoney(item.openingStock),
+        purchasePrice: toMoney(item.purchasePrice ?? item.masterProduct.price),
         salePrice: toMoney(item.salePrice),
+        lowStockLimit: Number(item.lowStockLimit ?? 10),
+        lowStockThreshold: Number(item.lowStockLimit ?? 10),
+        batchNo: "1",
       })),
     });
   } catch (error) {

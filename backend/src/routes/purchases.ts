@@ -33,7 +33,9 @@ type NormalizedPurchaseItem = {
 type ReceivePurchaseItemInput = {
   masterProductId: string;
   quantity: number;
+  purchasePrice: number;
   salePrice: number | null;
+  batchNo: string | null;
 };
 
 type PurchaseInventoryPlacementInput = {
@@ -1722,8 +1724,11 @@ router.post("/:id/receive", async (request, response) => {
         quantity?: number | string;
         physicalCount?: number | string;
         physical_count?: number | string;
+        purchasePrice?: number | string | null;
+        purchase_price?: number | string | null;
         salePrice?: number | string | null;
         sale_price?: number | string | null;
+        batchNo?: string | null;
       }>;
       placements?: Array<{
         productId?: string;
@@ -1753,6 +1758,11 @@ router.post("/:id/receive", async (request, response) => {
           const masterProductId = normalizeText(item.masterProductId ?? item.productId ?? item.product_id);
           const quantityRaw = item.quantity ?? item.physicalCount ?? item.physical_count ?? 0;
           const quantity = Number(quantityRaw);
+          const purchasePriceRaw = item.purchasePrice ?? item.purchase_price;
+          const purchasePrice =
+            purchasePriceRaw == null || purchasePriceRaw === ""
+              ? 0
+              : Number(purchasePriceRaw);
           const salePriceRaw = item.salePrice ?? item.sale_price;
           const salePrice =
             salePriceRaw == null || salePriceRaw === ""
@@ -1762,7 +1772,9 @@ router.post("/:id/receive", async (request, response) => {
           return {
             masterProductId,
             quantity,
+            purchasePrice,
             salePrice,
+            batchNo: normalizeText(item.batchNo) || null,
           };
         })
       : [];
@@ -1791,11 +1803,13 @@ router.post("/:id/receive", async (request, response) => {
           !item.masterProductId ||
           !Number.isFinite(item.quantity) ||
           item.quantity <= 0 ||
+          !Number.isFinite(item.purchasePrice) ||
+          item.purchasePrice < 0 ||
           (item.salePrice != null && (!Number.isFinite(item.salePrice) || item.salePrice < 0)),
       )
     ) {
       return response.status(400).json({
-        message: "Each received product requires a valid product, physical count, and selling price.",
+        message: "Each received product requires a valid product, physical count, buying price, and selling price.",
       });
     }
 
@@ -1837,7 +1851,7 @@ router.post("/:id/receive", async (request, response) => {
           throw new Error(`Invalid physical count for ${item.masterProduct?.name ?? "a purchase item"}.`);
         }
 
-        const purchasePrice = Number(item.purchasePrice ?? 0);
+        const purchasePrice = Number(incoming?.purchasePrice ?? item.purchasePrice ?? 0);
         const totalAmount = Number((physicalCount * purchasePrice).toFixed(2));
 
         return {
@@ -1845,9 +1859,9 @@ router.post("/:id/receive", async (request, response) => {
           quantity: physicalCount,
           purchasePrice,
           totalAmount,
-          batchNo: item.batchNo,
           expiryDate: item.expiryDate,
           salePrice: incoming?.salePrice ?? null,
+          batchNo: incoming?.batchNo ?? item.batchNo ?? null,
         };
       });
 

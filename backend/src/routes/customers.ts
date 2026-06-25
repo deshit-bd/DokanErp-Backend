@@ -1275,11 +1275,10 @@ router.post("/sales", async (request, response) => {
           shopId: context.shop.id,
           customerId: customerId as string,
           entryType: "OPENING_DUE",
-          amount: 0,
-          dueAmount: 0,
-          balanceBefore: 0,
-          balanceAfter: 0,
-          note: "Linked customer to shop during sale checkout",
+          debit: 0,
+          credit: 0,
+          notes: "Linked customer to shop during sale checkout",
+          entryDate: new Date(),
         },
       });
       customer = await (prisma as any).customer.findFirst({
@@ -1410,6 +1409,7 @@ router.post("/sales", async (request, response) => {
         stockAfter: number;
         salePrice: number;
         purchasePrice: number | null;
+        batchNo: string | null;
       }> = [];
 
       for (const item of normalizedItems) {
@@ -1471,6 +1471,19 @@ router.post("/sales", async (request, response) => {
             batchNo: binItem.batchNo ?? item.batchNo ?? null,
           });
 
+          if (reduceStock) {
+            saleMovementRecords.push({
+              shopProductId: shopProduct.id,
+              masterProductId: item.masterProductId,
+              quantity: allocatedQty,
+              stockBefore: roundQuantity(currentStock - (item.quantity - remainingToAllocate)),
+              stockAfter: roundQuantity(currentStock - (item.quantity - remainingToAllocate) - allocatedQty),
+              salePrice: batchSalePrice,
+              purchasePrice: normalizeStockMoney(binItem.purchasePrice ?? shopProduct.purchasePrice),
+              batchNo: binItem.batchNo ?? item.batchNo ?? null,
+            });
+          }
+
           remainingToAllocate = roundQuantity(remainingToAllocate - allocatedQty);
 
           if (reduceStock) {
@@ -1508,6 +1521,19 @@ router.post("/sales", async (request, response) => {
             totalAmount: roundCurrency(remainingToAllocate * fallbackSalePrice),
             batchNo: item.batchNo,
           });
+
+          if (reduceStock) {
+            saleMovementRecords.push({
+              shopProductId: shopProduct.id,
+              masterProductId: item.masterProductId,
+              quantity: remainingToAllocate,
+              stockBefore: roundQuantity(currentStock - (item.quantity - remainingToAllocate)),
+              stockAfter: roundQuantity(currentStock - item.quantity),
+              salePrice: fallbackSalePrice,
+              purchasePrice: normalizeStockMoney(shopProduct.purchasePrice),
+              batchNo: item.batchNo,
+            });
+          }
         }
 
         if (reduceStock) {
@@ -1553,15 +1579,18 @@ router.post("/sales", async (request, response) => {
             },
           });
 
-          saleMovementRecords.push({
-            shopProductId: shopProduct.id,
-            masterProductId: item.masterProductId,
-            quantity: item.quantity,
-            stockBefore: currentStock,
-            stockAfter: nextStock,
-            salePrice: roundCurrency(Number(shopProduct.salePrice ?? item.salePrice) || 0),
-            purchasePrice: normalizeStockMoney(shopProduct.purchasePrice),
-          });
+          if (saleMovementRecords.every((entry) => entry.shopProductId != shopProduct.id || entry.masterProductId != item.masterProductId)) {
+            saleMovementRecords.push({
+              shopProductId: shopProduct.id,
+              masterProductId: item.masterProductId,
+              quantity: item.quantity,
+              stockBefore: currentStock,
+              stockAfter: nextStock,
+              salePrice: roundCurrency(Number(shopProduct.salePrice ?? item.salePrice) || 0),
+              purchasePrice: normalizeStockMoney(shopProduct.purchasePrice),
+              batchNo: item.batchNo,
+            });
+          }
         }
       }
 
@@ -1627,7 +1656,9 @@ router.post("/sales", async (request, response) => {
           referenceType: "SALE",
           referenceId: createdSale.id,
           referenceNo: createdSale.invoiceNo || null,
-          note: createdSale.notes || "Stock reduced from sale.",
+          note: entry.batchNo
+            ? `${createdSale.notes || "Stock reduced from sale."} | Batch ${entry.batchNo}`
+            : createdSale.notes || "Stock reduced from sale.",
           createdByUserId: context.auth.user.id,
         });
       }

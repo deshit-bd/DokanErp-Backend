@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import { persistStoreDocument, storeDocumentField, type StoreDocumentKind } from "../utils/store-document-upload";
 
 const router = Router();
 
@@ -19,19 +20,23 @@ async function requireShopContext(request: Parameters<typeof getAuthenticatedUse
     };
   }
 
-  const shop = await prisma.shop.findUnique({
-    where: { id: auth.payload.shopId },
-    select: {
-      id: true,
-      shopCode: true,
-      shopName: true,
-      ownerUserId: true,
-      phone: true,
-      address: true,
-      businessType: true,
-      status: true,
-    },
-  });
+    const shop = await prisma.shop.findUnique({
+      where: { id: auth.payload.shopId },
+      select: {
+        id: true,
+        shopCode: true,
+        shopName: true,
+        ownerUserId: true,
+        phone: true,
+        address: true,
+        area: true,
+        businessType: true,
+        tradeLicenseNo: true,
+        tinNo: true,
+        vatRegNo: true,
+        status: true,
+      },
+    });
 
   if (!shop) {
     return {
@@ -76,6 +81,12 @@ router.get("/store", async (request, response) => {
       mobile: shop.phone || "",
       address: shop.address || "",
       store_type: shop.businessType || "",
+      trade_license_no: shop.tradeLicenseNo || "",
+      tin_no: shop.tinNo || "",
+      bin_no: shop.vatRegNo || "",
+      live_location: shop.area || "",
+      latitude: null,
+      longitude: null,
     });
   } catch (error) {
     console.error("Failed to load store settings.", error);
@@ -104,6 +115,12 @@ router.put("/store", async (request, response) => {
       mobile?: string | null;
       address?: string | null;
       store_type?: string | null;
+      trade_license_no?: string | null;
+      tin_no?: string | null;
+      bin_no?: string | null;
+      live_location?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
     };
 
     const store_name = body.store_name?.trim();
@@ -111,6 +128,10 @@ router.put("/store", async (request, response) => {
     const mobile = body.mobile?.trim() || null;
     const address = body.address?.trim() || null;
     const store_type = body.store_type?.trim() || null;
+    const trade_license_no = body.trade_license_no?.trim() || null;
+    const tin_no = body.tin_no?.trim() || null;
+    const bin_no = body.bin_no?.trim() || null;
+    const live_location = body.live_location?.trim() || null;
 
     if (!store_name) {
       return response.status(400).json({ message: "Store name is required." });
@@ -125,7 +146,11 @@ router.put("/store", async (request, response) => {
         shopName: store_name,
         phone: mobile,
         address: address,
+        area: live_location,
         businessType: store_type,
+        tradeLicenseNo: trade_license_no,
+        tinNo: tin_no,
+        vatRegNo: bin_no,
       },
     });
 
@@ -143,11 +168,84 @@ router.put("/store", async (request, response) => {
       mobile: mobile || "",
       address: address || "",
       store_type: store_type || "",
+      trade_license_no: trade_license_no || "",
+      tin_no: tin_no || "",
+      bin_no: bin_no || "",
+      live_location: live_location || "",
+      latitude: body.latitude ?? null,
+      longitude: body.longitude ?? null,
     });
   } catch (error) {
     console.error("Failed to save store settings.", error);
     return response.status(503).json({
       message: "Store settings could not be saved right now.",
+    });
+  }
+});
+
+// POST /store/documents/:type
+router.post("/store/documents/:type", async (request, response) => {
+  try {
+    const context = await requireShopContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const type = request.params.type as StoreDocumentKind;
+    if (!["trade", "tin", "bin"].includes(type)) {
+      return response.status(400).json({ message: "Unsupported document type." });
+    }
+
+    const documentUrl = await persistStoreDocument(type, request.body ?? {}, request);
+    const field = storeDocumentField(type);
+
+    const shop = await prisma.shop.update({
+      where: { id: context.shop.id },
+      data: { [field]: documentUrl },
+      select: {
+        shopName: true,
+        phone: true,
+        address: true,
+        area: true,
+        businessType: true,
+        tradeLicenseNo: true,
+        tinNo: true,
+        vatRegNo: true,
+        ownerUserId: true,
+      },
+    });
+
+    let ownerName = "";
+    if (shop.ownerUserId) {
+      const owner = await prisma.user.findUnique({
+        where: { id: shop.ownerUserId },
+        select: { name: true },
+      });
+      ownerName = owner?.name ?? "";
+    }
+
+    return response.json({
+      store_name: shop.shopName,
+      owner_name: ownerName,
+      mobile: shop.phone || "",
+      address: shop.address || "",
+      store_type: shop.businessType || "",
+      trade_license_no: shop.tradeLicenseNo || "",
+      tin_no: shop.tinNo || "",
+      bin_no: shop.vatRegNo || "",
+      live_location: shop.area || "",
+      latitude: null,
+      longitude: null,
+    });
+  } catch (error) {
+    console.error("Failed to upload store document.", error);
+    return response.status(503).json({
+      message: error instanceof Error ? error.message : "Store document could not be uploaded right now.",
     });
   }
 });

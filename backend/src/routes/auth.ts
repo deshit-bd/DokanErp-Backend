@@ -20,6 +20,7 @@ import {
   setRefreshCookie,
 } from "../auth/session";
 import { canAddSalesmanInCurrentTier, ensureShopSubscription, evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "../subscription/access";
+import { persistStoreDocument, type StoreDocumentPayload } from "../utils/store-document-upload";
 
 const router = Router();
 const REGISTRATION_DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -40,6 +41,17 @@ type ScopedRequest = Parameters<typeof getAuthenticatedUser>[0] & {
 
 type RegisterOwnerBody = {
   shopName?: string;
+  shopAddress?: string;
+  shopCategory?: string;
+  shopLocation?: string | null;
+  tradeLicenseNo?: string | null;
+  tinNo?: string | null;
+  binNo?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  tradeLicenseFile?: StoreDocumentPayload | null;
+  tinFile?: StoreDocumentPayload | null;
+  binFile?: StoreDocumentPayload | null;
   name?: string;
   mobile?: string;
   email?: string | null;
@@ -843,6 +855,17 @@ router.post("/register-owner", async (request, response) => {
     const email = normalizeOptionalText(body.email);
     const password = body.password ?? "";
     const confirmPassword = body.confirmPassword ?? "";
+    const shopAddress = normalizeOptionalText(body.shopAddress);
+    const shopCategory = normalizeOptionalText(body.shopCategory);
+    const shopLocation = normalizeOptionalText(body.shopLocation);
+    const tradeLicenseNo = normalizeOptionalText(body.tradeLicenseNo);
+    const tinNo = normalizeOptionalText(body.tinNo);
+    const binNo = normalizeOptionalText(body.binNo);
+    normalizeNumberInput(body.latitude);
+    normalizeNumberInput(body.longitude);
+    const tradeLicenseFile = body.tradeLicenseFile ?? undefined;
+    const tinFile = body.tinFile ?? undefined;
+    const binFile = body.binFile ?? undefined;
 
     if (!shopName) {
       return response.status(400).json({ message: "Shop name is required." });
@@ -896,6 +919,15 @@ router.post("/register-owner", async (request, response) => {
     const result = await prisma.$transaction(async (transaction) => {
       const tx = transaction as any;
       const shopCode = await createUniqueShopCode(tx, shopName);
+      const tradeLicenseUrl = tradeLicenseFile
+        ? await persistStoreDocument("trade", tradeLicenseFile, request)
+        : tradeLicenseNo;
+      const tinUrl = tinFile
+        ? await persistStoreDocument("tin", tinFile, request)
+        : tinNo;
+      const binUrl = binFile
+        ? await persistStoreDocument("bin", binFile, request)
+        : binNo;
       const user = await transaction.user.create({
         data: {
           name,
@@ -913,6 +945,12 @@ router.post("/register-owner", async (request, response) => {
           ownerUserId: user.id,
           phone: mobile,
           email,
+          address: shopAddress,
+          area: shopLocation,
+          businessType: shopCategory,
+          tradeLicenseNo: tradeLicenseUrl,
+          tinNo: tinUrl,
+          vatRegNo: binUrl,
           status: "ACTIVE",
         },
       });
