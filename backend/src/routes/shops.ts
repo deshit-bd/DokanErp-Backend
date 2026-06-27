@@ -1,4 +1,7 @@
-import { Router } from "express";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { Router, type Request } from "express";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
@@ -14,6 +17,41 @@ function toMoney(value: unknown) {
 function normalizeOptionalText(value: unknown) {
   const text = `${value ?? ""}`.trim();
   return text || null;
+}
+
+const shopLogoMimeToExtension: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+};
+
+async function persistShopLogo(logoUrl: string, request: Request) {
+  const dataUrlMatch = logoUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+
+  if (!dataUrlMatch) {
+    return logoUrl;
+  }
+
+  const [, mimeType, base64Payload] = dataUrlMatch;
+  const extension = shopLogoMimeToExtension[mimeType];
+
+  if (!extension) {
+    throw new Error("Unsupported shop logo format.");
+  }
+
+  const uploadDir = path.resolve(process.cwd(), "uploads", "shopprofilelogo");
+  await mkdir(uploadDir, { recursive: true });
+
+  const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
+  const filePath = path.join(uploadDir, fileName);
+
+  await writeFile(filePath, Buffer.from(base64Payload, "base64"));
+
+  const protocol = request.protocol || "http";
+  const host = request.get("host") || "localhost:4000";
+
+  return `${protocol}://${host}/uploads/shopprofilelogo/${fileName}`;
 }
 
 function toDisplayLabel(value: string) {
@@ -1170,7 +1208,8 @@ router.patch("/me/logo", async (request, response) => {
     }
 
     const body = request.body as { logoUrl?: string | null };
-    const logoUrl = normalizeOptionalText(body.logoUrl);
+    const rawLogoUrl = normalizeOptionalText(body.logoUrl);
+    const logoUrl = rawLogoUrl ? await persistShopLogo(rawLogoUrl, request) : null;
 
     const shop = await prisma.shop.update({
       where: { id: context.shop.id },

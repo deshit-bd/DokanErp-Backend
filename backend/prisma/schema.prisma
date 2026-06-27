@@ -1060,6 +1060,7 @@ model CustomerSaleItem {
   masterProductId String         @map("master_product_id")
   quantity        Decimal        @db.Decimal(12, 3)
   salePrice       Decimal        @map("sale_price") @db.Decimal(10, 2)
+  purchasePrice   Decimal?       @map("purchase_price") @db.Decimal(10, 2)
   totalAmount     Decimal        @map("total_amount") @db.Decimal(10, 2)
   batchNo         String?        @map("batch_no") @db.VarChar(80)
 

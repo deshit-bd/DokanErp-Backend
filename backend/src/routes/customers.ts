@@ -43,6 +43,28 @@ function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeWhatsAppNumber(value: unknown) {
+  const digits = `${value ?? ""}`.replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  if (digits.length === 11 && digits.startsWith("01")) {
+    return `88${digits}`;
+  }
+
+  if (digits.length === 10 && digits.startsWith("1")) {
+    return `880${digits}`;
+  }
+
+  if (digits.length === 13 && digits.startsWith("880")) {
+    return digits;
+  }
+
+  return digits;
+}
+
 function normalizeCustomerPayment(
   paymentMethodRaw: unknown,
   amount: number,
@@ -367,6 +389,8 @@ function mapCustomerSaleRecord(sale: any) {
     shopId: sale.shopId,
     customerId: sale.customerId,
     createdByUserId: sale.createdByUserId,
+    salesmanPhone: sale.createdBy?.phone ?? null,
+    salesmanName: sale.createdBy?.name ?? null,
     customerName: sale.customer?.name ?? null,
     customerMobile: sale.customer?.mobile ?? null,
     invoiceNo: sale.invoiceNo,
@@ -394,6 +418,7 @@ function mapCustomerSaleRecord(sale: any) {
       sku: item.masterProduct?.sku ?? "",
       quantity: toMoney(item.quantity),
       salePrice: toMoney(item.salePrice),
+      purchasePrice: toMoney(item.purchasePrice || item.salePrice * 0.7),
       totalAmount: toMoney(item.totalAmount),
     })),
   };
@@ -420,6 +445,9 @@ router.get("/", async (request, response) => {
       const customers = await (prisma as any).customer.findMany({
         where: {
           deletedAt: null,
+          name: {
+            notIn: ["Guest Customer", "guest customer", "হাঁটা বিক্রয়", "অতিথি গ্রাহক"],
+          },
           ...(status ? { status } : {}),
           AND: [
             {
@@ -534,6 +562,9 @@ router.get("/", async (request, response) => {
     const customers = await (prisma as any).customer.findMany({
       where: {
         deletedAt: null,
+        name: {
+          notIn: ["Guest Customer", "guest customer", "হাঁটা বিক্রয়", "অতিথি গ্রাহক"],
+        },
         ...(status ? { status } : {}),
         ...(search
           ? {
@@ -738,6 +769,9 @@ router.get("/sales", async (request, response) => {
         customer: {
           select: { id: true, name: true, mobile: true },
         },
+        createdBy: {
+          select: { id: true, name: true, phone: true },
+        },
         items: {
           include: {
             masterProduct: {
@@ -798,6 +832,9 @@ router.get("/sales/closing-summary", async (request, response) => {
         status: "ACTIVE",
       },
       include: {
+        createdBy: {
+          select: { id: true, name: true, phone: true },
+        },
         items: {
           include: {
             masterProduct: {
@@ -890,6 +927,9 @@ router.get("/sales/:saleId", async (request, response) => {
         customer: {
           select: { id: true, name: true, mobile: true, address: true },
         },
+        createdBy: {
+          select: { id: true, name: true, phone: true },
+        },
         items: {
           include: {
             masterProduct: {
@@ -974,6 +1014,9 @@ router.post("/sales/:saleId/cancel", async (request, response) => {
         include: {
           items: true,
           customer: true,
+          createdBy: {
+            select: { id: true, name: true, phone: true },
+          },
         },
       });
 
@@ -1159,6 +1202,100 @@ router.post("/sales/:saleId/cancel", async (request, response) => {
   } catch (error) {
     console.error("Failed to cancel sale.", error);
     return response.status(503).json({ message: "Sale could not be cancelled right now." });
+  }
+});
+
+const dueOtps = new Map<string, { code: string; expiresAt: number }>();
+
+router.post("/send-due-otp", async (request, response) => {
+  try {
+    const { phone, customerName, dueAmount, products } = request.body as {
+      phone: string;
+      customerName: string;
+      dueAmount: number;
+      products: string[];
+    };
+
+    const normalizedPhone = normalizeText(phone);
+    const normalizedName = normalizeText(customerName) || "গ্রাহক";
+    const normalizedDueAmount = Number(dueAmount ?? 0);
+    const normalizedProducts = Array.isArray(products)
+      ? products.map((item) => normalizeText(item)).filter(Boolean)
+      : [];
+
+    if (!normalizedPhone) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    dueOtps.set(normalizedPhone, {
+      code,
+      expiresAt: Date.now() + 5 * 60 * 1000
+    });
+
+    const messageParts = [
+      `প্রিয় ${normalizedName},`,
+      `Dokan ERP-তে ${normalizedDueAmount} টাকা বাকি অনুমোদনের OTP: ${code}`,
+      normalizedProducts.length === 0 ? "" : `পণ্যসমূহ: ${normalizedProducts.join(", ")}`,
+      "এই কোড ৫ মিনিট পর্যন্ত কার্যকর থাকবে।",
+    ].filter(Boolean);
+    const whatsappMessage = messageParts.join("\n");
+    const whatsappNumber = normalizeWhatsAppNumber(normalizedPhone);
+    const whatsappUrl = whatsappNumber
+      ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`
+      : `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+    
+    console.log("=========================================");
+    console.log(`[DUE OTP READY FOR WHATSAPP ${normalizedPhone}]`);
+    console.log(whatsappMessage);
+    console.log("=========================================");
+
+    return response.json({
+      message: "OTP prepared successfully for WhatsApp.",
+      channel: "WHATSAPP",
+      whatsappUrl,
+      otp: code,
+    });
+  } catch (error) {
+    console.error("Failed to send due OTP.", error);
+    return response.status(500).json({ message: "Failed to send OTP." });
+  }
+});
+
+router.post("/verify-due-otp", async (request, response) => {
+  try {
+    const { phone, otp } = request.body as {
+      phone: string;
+      otp: string;
+    };
+
+    if (!phone || !otp) {
+      return response.status(400).json({ message: "Phone and OTP are required." });
+    }
+
+    const record = dueOtps.get(normalizeText(phone));
+    if (!record) {
+      return response.status(400).json({ message: "OTP not found or expired." });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      dueOtps.delete(normalizeText(phone));
+      return response.status(400).json({ message: "OTP has expired." });
+    }
+
+    if (record.code !== otp.trim()) {
+      return response.status(400).json({ message: "Invalid OTP code." });
+    }
+
+    dueOtps.delete(normalizeText(phone));
+
+    return response.json({
+      verified: true,
+      message: "OTP verified successfully."
+    });
+  } catch (error) {
+    console.error("Failed to verify OTP.", error);
+    return response.status(500).json({ message: "Failed to verify OTP." });
   }
 });
 
@@ -1398,6 +1535,7 @@ router.post("/sales", async (request, response) => {
         masterProductId: string;
         quantity: number;
         salePrice: number;
+        purchasePrice: number;
         totalAmount: number;
         batchNo: string | null;
       }> = [];
@@ -1467,6 +1605,7 @@ router.post("/sales", async (request, response) => {
             masterProductId: item.masterProductId,
             quantity: allocatedQty,
             salePrice: batchSalePrice,
+            purchasePrice: Number(binItem.purchasePrice ?? shopProduct.purchasePrice ?? 0),
             totalAmount: roundCurrency(allocatedQty * batchSalePrice),
             batchNo: binItem.batchNo ?? item.batchNo ?? null,
           });
@@ -1518,6 +1657,7 @@ router.post("/sales", async (request, response) => {
             masterProductId: item.masterProductId,
             quantity: remainingToAllocate,
             salePrice: fallbackSalePrice,
+            purchasePrice: Number(shopProduct.purchasePrice ?? 0),
             totalAmount: roundCurrency(remainingToAllocate * fallbackSalePrice),
             batchNo: item.batchNo,
           });
@@ -1625,12 +1765,16 @@ router.post("/sales", async (request, response) => {
               masterProductId: item.masterProductId,
               quantity: item.quantity,
               salePrice: item.salePrice,
+              purchasePrice: item.purchasePrice,
               totalAmount: item.totalAmount,
               batchNo: item.batchNo,
             })),
           },
         },
         include: {
+          createdBy: {
+            select: { id: true, name: true, phone: true },
+          },
           items: {
             include: {
               masterProduct: {
@@ -1766,6 +1910,8 @@ router.post("/sales", async (request, response) => {
         storeCreditUsed,
         paymentMethod: sale.createdSale.paymentMethod,
         notes: sale.createdSale.notes,
+        salesmanPhone: sale.createdSale.createdBy?.phone ?? null,
+        salesmanName: sale.createdSale.createdBy?.name ?? null,
         items: sale.createdSale.items.map((item: any) => ({
           id: item.id,
           masterProductId: item.masterProductId,
@@ -1835,6 +1981,9 @@ router.get("/:id/sales", async (request, response) => {
         customerId: customer.id,
       },
       include: {
+        createdBy: {
+          select: { id: true, name: true, phone: true },
+        },
         items: {
           include: {
             masterProduct: {
@@ -1862,6 +2011,8 @@ router.get("/:id/sales", async (request, response) => {
         dueAmount: toMoney(sale.dueAmount),
         paymentMethod: sale.paymentMethod,
         notes: sale.notes,
+        salesmanPhone: sale.createdBy?.phone ?? null,
+        salesmanName: sale.createdBy?.name ?? null,
         items: sale.items.map((item: any) => ({
           id: item.id,
           masterProductId: item.masterProductId,

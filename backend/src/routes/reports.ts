@@ -331,7 +331,7 @@ async function loadSalesDataset(shopId: string, start: Date, end: Date) {
       const quantity = Number(item.quantity);
       const salePrice = Number(item.salePrice);
       const lineTotal = Number(item.totalAmount);
-      const costPrice = purchasePriceMap.get(item.masterProductId) || salePrice;
+      const costPrice = Number(item.purchasePrice ?? purchasePriceMap.get(item.masterProductId) ?? salePrice);
 
       costOfGoodsSold += costPrice * quantity;
 
@@ -605,7 +605,7 @@ router.get("/sales/daily", async (request, response) => {
       const quantity = Number(item.quantity);
       const salePrice = Number(item.salePrice);
       const lineTotal = Number(item.totalAmount);
-      const costPrice = purchasePriceMap.get(item.masterProductId) || salePrice * 0.7;
+      const costPrice = Number(item.purchasePrice ?? purchasePriceMap.get(item.masterProductId) ?? salePrice * 0.7);
 
       profit += (salePrice - costPrice) * quantity;
 

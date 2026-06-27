@@ -29,12 +29,13 @@ async function requireShopContext(request: Parameters<typeof getAuthenticatedUse
         ownerUserId: true,
         phone: true,
         address: true,
-        area: true,
-        businessType: true,
-        tradeLicenseNo: true,
-        tinNo: true,
-        vatRegNo: true,
-        status: true,
+      area: true,
+      businessType: true,
+      tradeLicenseNo: true,
+      tinNo: true,
+      vatRegNo: true,
+      logoUrl: true,
+      status: true,
       },
     });
 
@@ -87,6 +88,7 @@ router.get("/store", async (request, response) => {
       live_location: shop.area || "",
       latitude: null,
       longitude: null,
+      logo_url: shop.logoUrl || "",
     });
   } catch (error) {
     console.error("Failed to load store settings.", error);
@@ -121,6 +123,7 @@ router.put("/store", async (request, response) => {
       live_location?: string | null;
       latitude?: number | null;
       longitude?: number | null;
+      logo_url?: string | null;
     };
 
     const store_name = body.store_name?.trim();
@@ -174,6 +177,7 @@ router.put("/store", async (request, response) => {
       live_location: live_location || "",
       latitude: body.latitude ?? null,
       longitude: body.longitude ?? null,
+      logo_url: context.shop.logoUrl || "",
     });
   } catch (error) {
     console.error("Failed to save store settings.", error);
