@@ -9,7 +9,7 @@ import authRoutes from "./routes/auth";
 import bankAccountRoutes from "./routes/bank-accounts";
 import brandRoutes from "./routes/brands";
 import categoryRoutes from "./routes/categories";
-import customerRoutes from "./routes/customers";
+import customerRoutes, { handleGetConfirmDue, handlePostConfirmDue } from "./routes/customers";
 import expenseRoutes from "./routes/expenses";
 import inventoryRoutes from "./routes/inventory";
 import moneyBoxRoutes from "./routes/money-boxes";
@@ -100,6 +100,9 @@ function mountApiScope(prefix: string, appType: AppType) {
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+
+app.get("/confirm-due/:token", handleGetConfirmDue);
+app.post("/confirm-due/:token", handlePostConfirmDue);
 
 app.get("/health", (_request, response) => {
   response.json({

@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
+import crypto from "crypto";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
@@ -87,12 +88,8 @@ function normalizeCustomerPayment(
   const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
 
   if (paymentMethod === "BKASH" || paymentMethod === "NAGAD" || paymentMethod === "ROCKET") {
-    const senderNumber = normalizeText(paymentMeta.senderNumber);
-    const transactionId = normalizeText(paymentMeta.transactionId);
-
-    if (!senderNumber || !transactionId) {
-      return { error: `${paymentMethod} payments require senderNumber and transactionId.` };
-    }
+    const senderNumber = normalizeText(paymentMeta.senderNumber) || "N/A";
+    const transactionId = normalizeText(paymentMeta.transactionId) || "N/A";
 
     return {
       paymentMethod,
@@ -104,18 +101,11 @@ function normalizeCustomerPayment(
   }
 
   if (paymentMethod === "CARD") {
-    const cardHolderName = normalizeText(paymentMeta.cardHolderName);
-    const cardLast4 = normalizeText(paymentMeta.cardLast4);
-    const cardType = normalizeText(paymentMeta.cardType);
-    const approvalCode = normalizeText(paymentMeta.approvalCode);
-    const transactionId = normalizeText(paymentMeta.transactionId);
-
-    if (!cardHolderName || !cardLast4 || !cardType || (!approvalCode && !transactionId)) {
-      return {
-        error:
-          "Card payments require cardHolderName, cardLast4, cardType, and approvalCode or transactionId.",
-      };
-    }
+    const cardHolderName = normalizeText(paymentMeta.cardHolderName) || "N/A";
+    const cardLast4 = normalizeText(paymentMeta.cardLast4) || "N/A";
+    const cardType = normalizeText(paymentMeta.cardType) || "N/A";
+    const approvalCode = normalizeText(paymentMeta.approvalCode) || "N/A";
+    const transactionId = normalizeText(paymentMeta.transactionId) || "N/A";
 
     return {
       paymentMethod,
@@ -131,6 +121,7 @@ function normalizeCustomerPayment(
 
   return { paymentMethod, paymentMeta: null as Record<string, string> | null };
 }
+
 
 function toBalanceType(due: number) {
   return due > 0 ? "DUE" : "CLEAR";
@@ -180,18 +171,31 @@ async function resolveCustomerIdentifier(customerIdentifier?: string | null) {
 }
 
 async function resolveCustomerLinkedToShop(customerId: string, shopId: string) {
+  let normalized = customerId.trim();
+  if (normalized.startsWith("num:")) {
+    normalized = normalized.substring(4).trim();
+  } else if (normalized.startsWith("name:")) {
+    normalized = normalized.substring(5).trim();
+  }
   return (prisma as any).customer.findFirst({
     where: {
-      id: customerId,
       deletedAt: null,
       OR: [
-        { sales: { some: { shopId } } },
-        { payments: { some: { shopId } } },
-        { ledgerEntries: { some: { shopId } } },
+        { id: normalized },
+        { mobile: normalized },
+        { name: normalized },
       ],
+      AND: {
+        OR: [
+          { sales: { some: { shopId } } },
+          { payments: { some: { shopId } } },
+          { ledgerEntries: { some: { shopId } } },
+        ],
+      },
     },
   });
 }
+
 
 async function resolveShopIdentifier(shopIdentifier?: string | null) {
   const normalized = shopIdentifier?.trim();
@@ -343,11 +347,11 @@ async function buildCustomerFinanceSummary(customerId: string, shopId: string) {
 
   const totalDebit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
   const totalCredit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
-  
+
   const totalSales = ledgerEntries
     .filter((entry: any) => entry.entryType === "SALE")
     .reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
-    
+
   const totalPaid = ledgerEntries
     .filter((entry: any) => entry.entryType === "PAYMENT")
     .reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
@@ -459,15 +463,15 @@ router.get("/", async (request, response) => {
             },
             ...(search
               ? [
-                  {
-                    OR: [
-                      { customerCode: { contains: search, mode: "insensitive" } },
-                      { name: { contains: search, mode: "insensitive" } },
-                      { mobile: { contains: search, mode: "insensitive" } },
-                      { email: { contains: search, mode: "insensitive" } },
-                    ],
-                  },
-                ]
+                {
+                  OR: [
+                    { customerCode: { contains: search, mode: "insensitive" } },
+                    { name: { contains: search, mode: "insensitive" } },
+                    { mobile: { contains: search, mode: "insensitive" } },
+                    { email: { contains: search, mode: "insensitive" } },
+                  ],
+                },
+              ]
               : []),
           ],
         },
@@ -509,14 +513,14 @@ router.get("/", async (request, response) => {
             lastActivityAt: lastLedgerEntry?.entryDate ?? null,
             lastActivity: lastLedgerEntry
               ? {
-                  id: lastLedgerEntry.id,
-                  entryType: lastLedgerEntry.entryType,
-                  referenceNo: lastLedgerEntry.referenceNo,
-                  debit: toMoney(lastLedgerEntry.debit),
-                  credit: toMoney(lastLedgerEntry.credit),
-                  notes: lastLedgerEntry.notes,
-                  entryDate: lastLedgerEntry.entryDate,
-                }
+                id: lastLedgerEntry.id,
+                entryType: lastLedgerEntry.entryType,
+                referenceNo: lastLedgerEntry.referenceNo,
+                debit: toMoney(lastLedgerEntry.debit),
+                credit: toMoney(lastLedgerEntry.credit),
+                notes: lastLedgerEntry.notes,
+                entryDate: lastLedgerEntry.entryDate,
+              }
               : null,
           };
         }),
@@ -568,13 +572,13 @@ router.get("/", async (request, response) => {
         ...(status ? { status } : {}),
         ...(search
           ? {
-              OR: [
-                { customerCode: { contains: search, mode: "insensitive" } },
-                { name: { contains: search, mode: "insensitive" } },
-                { mobile: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-              ],
-            }
+            OR: [
+              { customerCode: { contains: search, mode: "insensitive" } },
+              { name: { contains: search, mode: "insensitive" } },
+              { mobile: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          }
           : {}),
       },
       orderBy: [{ createdAt: "desc" }, { name: "asc" }],
@@ -964,11 +968,11 @@ router.get("/sales/:saleId", async (request, response) => {
         ...mapCustomerSaleRecord(sale),
         customer: sale.customer
           ? {
-              id: sale.customer.id,
-              name: sale.customer.name,
-              mobile: sale.customer.mobile,
-              address: sale.customer.address,
-            }
+            id: sale.customer.id,
+            name: sale.customer.name,
+            mobile: sale.customer.mobile,
+            address: sale.customer.address,
+          }
           : null,
         paymentDetails: payment?.paymentMeta ?? null,
       },
@@ -1033,14 +1037,14 @@ router.post("/sales/:saleId/cancel", async (request, response) => {
       const refundMoneyBox =
         refundMethod === "CASH_REFUND"
           ? await tx.moneyBox.findFirst({
-              where: { shopId: context.shop.id, type: "CASH", status: "ACTIVE" },
-              orderBy: [{ createdAt: "asc" }],
-            })
+            where: { shopId: context.shop.id, type: "CASH", status: "ACTIVE" },
+            orderBy: [{ createdAt: "asc" }],
+          })
           : refundMethod === "WALLET_REFUND"
             ? await tx.moneyBox.findFirst({
-                where: { shopId: context.shop.id, type: paymentType === "NAGAD" ? "NAGAD" : "BKASH", status: "ACTIVE" },
-                orderBy: [{ createdAt: "asc" }],
-              })
+              where: { shopId: context.shop.id, type: paymentType === "NAGAD" ? "NAGAD" : "BKASH", status: "ACTIVE" },
+              orderBy: [{ createdAt: "asc" }],
+            })
             : null;
 
       for (const item of sale.items) {
@@ -1205,7 +1209,303 @@ router.post("/sales/:saleId/cancel", async (request, response) => {
   }
 });
 
-const dueOtps = new Map<string, { code: string; expiresAt: number }>();
+const dueOtps = new Map<
+  string,
+  {
+    token: string;
+    code: string;
+    expiresAt: number;
+    status: "PENDING" | "CONFIRMED";
+    customerName: string;
+    dueAmount: number;
+    products: string[];
+  }
+>();
+
+function findRecordByToken(token: string) {
+  for (const [phone, record] of dueOtps.entries()) {
+    if (record.token === token) {
+      return { phone, record };
+    }
+  }
+  return null;
+}
+
+export async function handleGetConfirmDue(request: Request, response: Response) {
+  try {
+    const token = request.params.token;
+    if (typeof token !== "string") {
+      return response.status(400).send("Invalid token");
+    }
+    const found = findRecordByToken(token);
+
+    if (!found || Date.now() > found.record.expiresAt) {
+      return response.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>অনুমোদন ব্যর্থ - Dokan ERP</title>
+          <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+          <style>
+            body {
+              font-family: 'Hind Siliguri', sans-serif;
+              background-color: #f4f6f5;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              padding: 20px;
+            }
+            .card {
+              background-color: white;
+              border-radius: 16px;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+              padding: 30px;
+              max-width: 400px;
+              width: 100%;
+              text-align: center;
+            }
+            h2 { color: #d32f2f; margin-bottom: 10px; }
+            p { color: #555; font-size: 16px; line-height: 1.6; }
+            .icon { font-size: 48px; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="icon">❌</div>
+            <h2>লিংকটি মেয়াদোত্তীর্ণ বা অবৈধ</h2>
+            <p>দুঃখিত, বকেয়া অনুমোদনের এই লিংকটি অবৈধ অথবা এর ১০ মিনিটের মেয়াদ শেষ হয়ে গেছে। অনুগ্রহ করে আবার চেষ্টা করুন।</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    const { phone, record } = found;
+
+    if (record.status === "CONFIRMED") {
+      return response.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>বকেয়া নিশ্চিতকরণ - Dokan ERP</title>
+          <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+          <style>
+            body {
+              font-family: 'Hind Siliguri', sans-serif;
+              background-color: #f4f6f5;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              padding: 20px;
+            }
+            .card {
+              background-color: white;
+              border-radius: 16px;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+              padding: 30px;
+              max-width: 400px;
+              width: 100%;
+              text-align: center;
+            }
+            h2 { color: #2e7d32; margin-bottom: 10px; }
+            p { color: #555; font-size: 16px; line-height: 1.6; }
+            .icon { font-size: 48px; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="icon">✅</div>
+            <h2>বকেয়া নিশ্চিত করা হয়েছে!</h2>
+            <p>ধন্যবাদ, আপনার ৳${record.dueAmount} টাকার বকেয়া লেনদেনটি সফলভাবে নিশ্চিত করা হয়েছে। দোকানির চূড়ান্ত অনুমোদনের জন্য অপেক্ষা করা হচ্ছে।</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    const productListHtml = record.products.map(p => `<li>${p}</li>`).join("");
+
+    return response.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>বকেয়া অনুমোদন - Dokan ERP</title>
+        <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+          body {
+            font-family: 'Hind Siliguri', sans-serif;
+            background-color: #eaf2f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+          }
+          .card {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,107,83,0.06);
+            padding: 30px;
+            max-width: 450px;
+            width: 100%;
+            border: 1px solid #d7e5e0;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 25px;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #006b53;
+            margin-bottom: 5px;
+          }
+          .subtitle {
+            color: #666;
+            font-size: 14px;
+          }
+          .amount-section {
+            background-color: #f0f7f5;
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 1px solid #e1e9e7;
+          }
+          .amount-label {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 5px;
+          }
+          .amount-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #b3261e;
+          }
+          .detail-card {
+            margin-bottom: 25px;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #444;
+          }
+          .detail-label {
+            font-weight: 600;
+            color: #5f6a66;
+          }
+          .products-title {
+            font-weight: 700;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: #333;
+          }
+          ul {
+            padding-left: 20px;
+            margin: 0;
+            color: #555;
+            font-size: 14px;
+          }
+          li {
+            margin-bottom: 6px;
+          }
+          .btn-confirm {
+            display: block;
+            width: 100%;
+            background-color: #006b53;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 17px;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,107,83,0.15);
+          }
+          .btn-confirm:hover {
+            background-color: #00523f;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <div class="logo">Dokan ERP</div>
+            <div class="subtitle">বকেয়া লেনদেন অনুমোদন</div>
+          </div>
+          
+          <div class="amount-section">
+            <div class="amount-label">বাকির পরিমাণ (Due Amount)</div>
+            <div class="amount-value">৳${record.dueAmount}</div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-row">
+              <span class="detail-label">ক্রেতার নাম:</span>
+              <span>${record.customerName}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">মোবাইল নম্বর:</span>
+              <span>${phone}</span>
+            </div>
+            
+            ${record.products.length > 0 ? `
+              <div class="products-title">ক্রয়কৃত পণ্যসমূহ:</div>
+              <ul>${productListHtml}</ul>
+            ` : ""}
+          </div>
+
+          <form method="POST" action="/confirm-due/${token}">
+            <button type="submit" class="btn-confirm">আমি নিশ্চিত করছি</button>
+          </form>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error(err);
+    return response.status(500).send("Internal Server Error");
+  }
+}
+
+export async function handlePostConfirmDue(request: Request, response: Response) {
+  try {
+    const token = request.params.token;
+    if (typeof token !== "string") {
+      return response.status(400).send("Invalid token");
+    }
+    const found = findRecordByToken(token);
+
+    if (!found || Date.now() > found.record.expiresAt) {
+      return response.status(400).send("Invalid link or link has expired.");
+    }
+
+    found.record.status = "CONFIRMED";
+    dueOtps.set(found.phone, found.record);
+
+    return response.redirect(`/confirm-due/${token}`);
+  } catch (err) {
+    console.error(err);
+    return response.status(500).send("Internal Server Error");
+  }
+}
 
 router.post("/send-due-otp", async (request, response) => {
   try {
@@ -1228,37 +1528,57 @@ router.post("/send-due-otp", async (request, response) => {
     }
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const token = crypto.randomBytes(16).toString("hex");
     dueOtps.set(normalizedPhone, {
+      token,
       code,
-      expiresAt: Date.now() + 5 * 60 * 1000
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      status: "PENDING",
+      customerName: normalizedName,
+      dueAmount: normalizedDueAmount,
+      products: normalizedProducts,
     });
+
+    const envBaseUrl = process.env.BASE_URL;
+    let baseUrl = "";
+    if (envBaseUrl && envBaseUrl.trim() !== "") {
+      baseUrl = envBaseUrl.trim().replace(/\/$/, "");
+    } else {
+      const protocol = request.protocol;
+      const host = request.get("host");
+      baseUrl = `${protocol}://${host}`;
+    }
+    const confirmationUrl = `${baseUrl}/confirm-due/${token}`;
 
     const messageParts = [
       `প্রিয় ${normalizedName},`,
-      `Dokan ERP-তে ${normalizedDueAmount} টাকা বাকি অনুমোদনের OTP: ${code}`,
-      normalizedProducts.length === 0 ? "" : `পণ্যসমূহ: ${normalizedProducts.join(", ")}`,
-      "এই কোড ৫ মিনিট পর্যন্ত কার্যকর থাকবে।",
+      `Dokan ERP-তে আপনার ৳${normalizedDueAmount} বকেয়া (Due) অনুমোদনের জন্য নিচের লিংকে ক্লিক করুন:`,
+      confirmationUrl,
+      "",
+      normalizedProducts.length === 0 ? "" : `পণ্যসমূহ:\n${normalizedProducts.map(p => `• ${p}`).join("\n")}`,
+      "",
+      "এই লিংক ১০ মিনিট পর্যন্ত কার্যকর থাকবে।",
     ].filter(Boolean);
     const whatsappMessage = messageParts.join("\n");
     const whatsappNumber = normalizeWhatsAppNumber(normalizedPhone);
     const whatsappUrl = whatsappNumber
       ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`
       : `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
-    
+
     console.log("=========================================");
-    console.log(`[DUE OTP READY FOR WHATSAPP ${normalizedPhone}]`);
+    console.log(`[DUE CONFIRMATION READY FOR WHATSAPP ${normalizedPhone}]`);
     console.log(whatsappMessage);
     console.log("=========================================");
 
     return response.json({
-      message: "OTP prepared successfully for WhatsApp.",
+      message: "Confirmation prepared successfully for WhatsApp.",
       channel: "WHATSAPP",
       whatsappUrl,
       otp: code,
     });
   } catch (error) {
-    console.error("Failed to send due OTP.", error);
-    return response.status(500).json({ message: "Failed to send OTP." });
+    console.error("Failed to send due confirmation request.", error);
+    return response.status(500).json({ message: "Failed to send confirmation request." });
   }
 });
 
@@ -1266,36 +1586,43 @@ router.post("/verify-due-otp", async (request, response) => {
   try {
     const { phone, otp } = request.body as {
       phone: string;
-      otp: string;
+      otp?: string;
     };
 
-    if (!phone || !otp) {
-      return response.status(400).json({ message: "Phone and OTP are required." });
+    if (!phone) {
+      return response.status(400).json({ message: "Phone number is required." });
     }
 
-    const record = dueOtps.get(normalizeText(phone));
+    const normalizedPhone = normalizeText(phone);
+    const record = dueOtps.get(normalizedPhone);
     if (!record) {
-      return response.status(400).json({ message: "OTP not found or expired." });
+      return response.status(400).json({ message: "Request not found or expired." });
     }
 
     if (Date.now() > record.expiresAt) {
-      dueOtps.delete(normalizeText(phone));
-      return response.status(400).json({ message: "OTP has expired." });
+      dueOtps.delete(normalizedPhone);
+      return response.status(400).json({ message: "Request has expired." });
     }
 
-    if (record.code !== otp.trim()) {
-      return response.status(400).json({ message: "Invalid OTP code." });
+    const isWebConfirmed = record.status === "CONFIRMED";
+    const isOtpCorrect = otp && otp.trim() !== "" && record.code === otp.trim();
+
+    if (!isWebConfirmed && !isOtpCorrect) {
+      return response.json({
+        verified: false,
+        message: "গ্রাহক এখনও বকেয়া পেমেন্ট নিশ্চিত করেননি।"
+      });
     }
 
-    dueOtps.delete(normalizeText(phone));
+    dueOtps.delete(normalizedPhone);
 
     return response.json({
       verified: true,
-      message: "OTP verified successfully."
+      message: "Confirmed successfully."
     });
   } catch (error) {
-    console.error("Failed to verify OTP.", error);
-    return response.status(500).json({ message: "Failed to verify OTP." });
+    console.error("Failed to verify confirmation request.", error);
+    return response.status(500).json({ message: "Failed to verify confirmation request." });
   }
 });
 
@@ -1403,7 +1730,7 @@ router.post("/sales", async (request, response) => {
       customerId = guestCustomer.id;
     }
 
-     // Now, verify if they are linked to this shop, if not link them.
+    // Now, verify if they are linked to this shop, if not link them.
     let customer = await resolveCustomerLinkedToShop(customerId as string, context.shop.id);
     if (!customer) {
       // Not linked yet. Create an opening ledger entry of 0 to link them.
@@ -1925,14 +2252,14 @@ router.post("/sales", async (request, response) => {
       },
       payment: sale.payment
         ? {
-            id: sale.payment.id,
-            amount: toMoney(sale.payment.amount),
-            paymentMethod: sale.payment.paymentMethod,
-            paymentDetails: sale.payment.paymentMeta ?? null,
-            moneyBoxId: sale.payment.moneyBoxId,
-            referenceNo: sale.payment.referenceNo,
-            paidAt: sale.payment.paidAt,
-          }
+          id: sale.payment.id,
+          amount: toMoney(sale.payment.amount),
+          paymentMethod: sale.payment.paymentMethod,
+          paymentDetails: sale.payment.paymentMeta ?? null,
+          moneyBoxId: sale.payment.moneyBoxId,
+          referenceNo: sale.payment.referenceNo,
+          paidAt: sale.payment.paidAt,
+        }
         : null,
     });
   } catch (error: any) {
@@ -2110,6 +2437,34 @@ router.post("/:id/payments", async (request, response) => {
         },
       });
 
+      // Update customer sales from oldest to newest to reduce their individual due amounts
+      let remainingPayment = amount;
+      const unpaidSales = await tx.customerSale.findMany({
+        where: {
+          customerId: customer.id,
+          shopId: context.shop.id,
+          dueAmount: { gt: 0 },
+          status: "ACTIVE",
+        },
+        orderBy: { saleDate: "asc" },
+      });
+
+      for (const sale of unpaidSales) {
+        if (remainingPayment <= 0) break;
+        const due = Number(sale.dueAmount);
+        const allocation = Math.min(remainingPayment, due);
+
+        await tx.customerSale.update({
+          where: { id: sale.id },
+          data: {
+            paidAmount: { increment: allocation },
+            dueAmount: { decrement: allocation },
+          },
+        });
+
+        remainingPayment -= allocation;
+      }
+
       if (effectiveMoneyBox && ["CASH", "BKASH", "NAGAD"].includes(paymentInfo.paymentMethod || "")) {
         await tx.moneyBox.update({
           where: { id: effectiveMoneyBox.id },
@@ -2236,23 +2591,23 @@ router.get("/:id/ledger", async (request, response) => {
           entryDate: entry.entryDate,
           sale: entry.customerSale
             ? {
-                id: entry.customerSale.id,
-                invoiceNo: entry.customerSale.invoiceNo,
-                saleDate: entry.customerSale.saleDate,
-                totalAmount: toMoney(entry.customerSale.totalAmount),
-                paidAmount: toMoney(entry.customerSale.paidAmount),
-                dueAmount: toMoney(entry.customerSale.dueAmount),
-              }
+              id: entry.customerSale.id,
+              invoiceNo: entry.customerSale.invoiceNo,
+              saleDate: entry.customerSale.saleDate,
+              totalAmount: toMoney(entry.customerSale.totalAmount),
+              paidAmount: toMoney(entry.customerSale.paidAmount),
+              dueAmount: toMoney(entry.customerSale.dueAmount),
+            }
             : null,
           payment: entry.customerPayment
             ? {
-                id: entry.customerPayment.id,
-                amount: toMoney(entry.customerPayment.amount),
-                paymentMethod: entry.customerPayment.paymentMethod,
-                paymentDetails: entry.customerPayment.paymentMeta ?? null,
-                referenceNo: entry.customerPayment.referenceNo,
-                paidAt: entry.customerPayment.paidAt,
-              }
+              id: entry.customerPayment.id,
+              amount: toMoney(entry.customerPayment.amount),
+              paymentMethod: entry.customerPayment.paymentMethod,
+              paymentDetails: entry.customerPayment.paymentMeta ?? null,
+              referenceNo: entry.customerPayment.referenceNo,
+              paidAt: entry.customerPayment.paidAt,
+            }
             : null,
         };
       }),
@@ -2371,11 +2726,11 @@ router.get("/:id", async (request, response) => {
           recentPayments: payments.map((payment: any) => ({
             id: payment.id,
             amount: toMoney(payment.amount),
-          paymentMethod: payment.paymentMethod,
-          paymentDetails: payment.paymentMeta ?? null,
-          referenceNo: payment.referenceNo,
-          notes: payment.notes,
-          paidAt: payment.paidAt,
+            paymentMethod: payment.paymentMethod,
+            paymentDetails: payment.paymentMeta ?? null,
+            referenceNo: payment.referenceNo,
+            notes: payment.notes,
+            paidAt: payment.paidAt,
           })),
           recentTransactions: ledgerEntries.map((entry: any) => ({
             id: entry.id,
