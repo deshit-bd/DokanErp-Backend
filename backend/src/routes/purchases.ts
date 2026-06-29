@@ -1098,6 +1098,232 @@ router.get("/:id", async (request, response) => {
   }
 });
 
+router.patch("/:id", async (request, response) => {
+  try {
+    const context = await requirePurchaseContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const existingPurchase = await (prisma as any).purchase.findFirst({
+      where: {
+        id: request.params.id,
+        shopId: context.shopId,
+      },
+      include: {
+        ...buildPurchaseInclude(),
+      },
+    });
+
+    if (!existingPurchase) {
+      return response.status(404).json({ message: "Purchase not found." });
+    }
+
+    if (!["PENDING_APPROVAL", "REJECTED", "DRAFT"].includes(existingPurchase.status)) {
+      return response.status(409).json({
+        message: "Only pending or draft purchases can be updated.",
+      });
+    }
+
+    const body = request.body;
+    const supplierId = body.supplierId ?? body.supplier_id ?? body.supplierKey ?? body.supplier_key;
+    const notes = body.notes ?? body.note ?? null;
+    const discountAmount = body.discountAmount == null || body.discountAmount === ""
+      ? (body.discount_amount == null || body.discount_amount === "" ? Number(existingPurchase.discountAmount ?? 0) : Number(body.discount_amount))
+      : Number(body.discountAmount);
+    const extraChargeAmount = body.extraChargeAmount == null || body.extraChargeAmount === ""
+      ? (body.extra_charge_amount == null || body.extra_charge_amount === "" ? Number(existingPurchase.extraChargeAmount ?? 0) : Number(body.extra_charge_amount))
+      : Number(body.extraChargeAmount);
+    const paidAmount = body.paidAmount == null || body.paidAmount === ""
+      ? (body.paid_amount == null || body.paid_amount === "" ? Number(existingPurchase.paidAmount ?? 0) : Number(body.paid_amount))
+      : Number(body.paidAmount);
+    const paymentMethod = body.paymentMethod ?? body.payment_method ?? existingPurchase.paymentMethod ?? "CASH";
+    const purchaseDateRaw = body.purchaseDate ?? body.purchase_date ?? existingPurchase.purchaseDate;
+
+    const rawItems = body.items ?? body.lines ?? [];
+    if (rawItems.length === 0) {
+      return response.status(400).json({ message: "At least one purchase item is required." });
+    }
+
+    const normalizedItems: NormalizedPurchaseItem[] = rawItems.map((item: any) => {
+      const masterProductId = item.masterProductId ?? item.productId ?? item.product_id ?? item.shopProductId ?? item.id ?? "";
+      const quantity = Number(item.quantity ?? item.qty ?? item.orderedQuantity ?? item.ordered_quantity ?? 0);
+      const purchasePrice = Number(item.purchasePrice ?? item.purchase_price ?? item.unitCost ?? item.unit_cost ?? 0);
+
+      return {
+        masterProductId,
+        quantity,
+        purchasePrice,
+        totalAmount: Number((quantity * purchasePrice).toFixed(2)),
+        batchNo: item.batchNo ?? item.batch_no ?? null,
+        expiryDate: item.expiryDate ?? item.expiry_date ? new Date(item.expiryDate ?? item.expiry_date) : null,
+      };
+    });
+
+    if (
+      normalizedItems.some(
+        (item) =>
+          !item.masterProductId ||
+          !Number.isFinite(item.quantity) ||
+          item.quantity <= 0 ||
+          !Number.isFinite(item.purchasePrice) ||
+          item.purchasePrice < 0,
+      )
+    ) {
+      return response.status(400).json({ message: "Each purchase item requires a valid product, quantity, and purchase price." });
+    }
+
+    if (normalizedItems.some((item) => item.expiryDate && Number.isNaN(item.expiryDate.getTime()))) {
+      return response.status(400).json({ message: "Expiry date must be a valid date." });
+    }
+
+    const subtotalAmount = Number(
+      normalizedItems.reduce((sum, item) => sum + item.totalAmount, 0).toFixed(2),
+    );
+
+    if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+      return response.status(400).json({ message: "Discount amount must be a valid number." });
+    }
+
+    if (!Number.isFinite(extraChargeAmount) || extraChargeAmount < 0) {
+      return response.status(400).json({ message: "Extra charge amount must be a valid number." });
+    }
+
+    if (!Number.isFinite(paidAmount) || paidAmount < 0) {
+      return response.status(400).json({ message: "Paid amount must be a valid number." });
+    }
+
+    const totalAmount = Number(
+      Math.max(0, subtotalAmount - discountAmount + extraChargeAmount).toFixed(2),
+    );
+
+    if (paidAmount > totalAmount) {
+      return response.status(400).json({ message: "Paid amount cannot be greater than total amount." });
+    }
+
+    const paymentInfo = normalizePurchasePayment(paymentMethod, paidAmount, body.paymentDetails ?? body.payment_details);
+
+    if ("error" in paymentInfo) {
+      return response.status(400).json({ message: paymentInfo.error });
+    }
+
+    const masterProducts = await (prisma as any).masterProduct.findMany({
+      where: {
+        id: { in: normalizedItems.map((item) => item.masterProductId) },
+      },
+      select: { id: true, sku: true, name: true },
+    });
+
+    if (masterProducts.length !== normalizedItems.length) {
+      return response.status(400).json({ message: "One or more purchase products do not exist." });
+    }
+
+    const productAccess = await canAddProductsToShop(
+      context.shopId,
+      normalizedItems.map((item) => item.masterProductId),
+    );
+
+    if (!productAccess.allowed) {
+      return response.status(productAccess.access?.tier === "BLOCKED" ? 402 : 403).json({
+        message: productAccess.message,
+        subscription: productAccess.access,
+        currentProductCount: productAccess.currentProductCount,
+        nextProductCount: productAccess.nextProductCount,
+      });
+    }
+
+    const normalizedSupplierId = typeof supplierId === "string" ? supplierId.trim() : "";
+
+    if (normalizedSupplierId) {
+      const supplier = await resolveSupplierLinkedToShop(normalizedSupplierId, context.shopId);
+      if (!supplier) {
+        return response.status(404).json({
+          message: "Supplier is not linked to this shop. Add the supplier to this store first.",
+        });
+      }
+    }
+
+    const dueAmount = Number(Math.max(totalAmount - paidAmount, 0).toFixed(2));
+    const purchaseDate = purchaseDateRaw ? new Date(purchaseDateRaw) : existingPurchase.purchaseDate;
+
+    if (Number.isNaN(purchaseDate.getTime())) {
+      return response.status(400).json({ message: "Purchase date must be a valid date." });
+    }
+
+    const updatedPurchase = await (prisma as any).$transaction(async (tx: any) => {
+      for (const item of normalizedItems) {
+        await tx.shopProduct.upsert({
+          where: {
+            shopId_masterProductId: {
+              shopId: context.shopId,
+              masterProductId: item.masterProductId,
+            },
+          },
+          update: {},
+          create: {
+            shopId: context.shopId,
+            masterProductId: item.masterProductId,
+            openingStock: 0,
+          },
+        });
+      }
+
+      await tx.purchaseItem.deleteMany({
+        where: { purchaseId: existingPurchase.id },
+      });
+
+      await tx.purchase.update({
+        where: { id: existingPurchase.id },
+        data: {
+          supplierId: normalizedSupplierId || null,
+          invoiceNo: normalizeText(body.invoiceNo ?? body.invoice_no ?? body.reference) || null,
+          purchaseDate,
+          subtotalAmount,
+          discountAmount,
+          extraChargeAmount,
+          totalAmount,
+          paidAmount,
+          dueAmount,
+          paymentMethod: paymentInfo.paymentMethod,
+          paymentMeta: paymentInfo.paymentMeta,
+          notes: normalizeText(notes) || null,
+          items: {
+            create: normalizedItems.map((item) => ({
+              masterProductId: item.masterProductId,
+              batchNo: item.batchNo,
+              expiryDate: item.expiryDate,
+              quantity: item.quantity,
+              purchasePrice: item.purchasePrice,
+              totalAmount: item.totalAmount,
+            })),
+          },
+        },
+      });
+
+      return tx.purchase.findUnique({
+        where: { id: existingPurchase.id },
+        include: {
+          ...buildPurchaseInclude(),
+        },
+      });
+    });
+
+    return response.json({
+      message: "Purchase updated successfully.",
+      purchase: mapPurchaseResponse(updatedPurchase),
+      data: mapPurchaseResponse(updatedPurchase),
+    });
+  } catch (error) {
+    console.error("Failed to update purchase.", error);
+    return response.status(503).json({ message: "Purchase could not be updated right now." });
+  }
+});
+
 router.post("/:id/payments", async (request, response) => {
   try {
     const context = await requirePurchaseContext(request);

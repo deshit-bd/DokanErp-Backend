@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
+import crypto from "crypto";
 
 import {
   getAuthenticatedUser,
@@ -10,6 +11,20 @@ import {
 import { prisma } from "../config/prisma";
 
 const router = Router();
+
+type SupplierDueVerificationRecord = {
+  token: string;
+  code: string;
+  expiresAt: number;
+  status: "PENDING" | "CONFIRMED";
+  supplierName: string;
+  dueAmount: number;
+  paymentAmount: number;
+  paymentMethod: string;
+  notes: string[];
+};
+
+const supplierDueOtps = new Map<string, SupplierDueVerificationRecord>();
 
 type SupplierStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
 type PaymentMetaInput = {
@@ -31,6 +46,242 @@ function toMoney(value: unknown) {
 
 function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeWhatsAppNumber(value: unknown) {
+  const digits = `${value ?? ""}`.replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  if (digits.length === 11 && digits.startsWith("01")) {
+    return `88${digits}`;
+  }
+
+  if (digits.length === 10 && digits.startsWith("1")) {
+    return `880${digits}`;
+  }
+
+  if (digits.length === 13 && digits.startsWith("880")) {
+    return digits;
+  }
+
+  return digits;
+}
+
+function findSupplierRecordByToken(token: string) {
+  for (const [phone, record] of supplierDueOtps.entries()) {
+    if (record.token === token) {
+      return { phone, record };
+    }
+  }
+
+  return null;
+}
+
+export async function handleGetConfirmSupplierDue(request: Request, response: Response) {
+  try {
+    const token = request.params.token;
+    if (typeof token !== "string") {
+      return response.status(400).send("Invalid token");
+    }
+
+    const found = findSupplierRecordByToken(token);
+    if (!found || Date.now() > found.record.expiresAt) {
+      return response.status(400).send("Invalid link or link has expired.");
+    }
+
+    const { phone, record } = found;
+    const notesHtml =
+      record.notes.length > 0
+        ? `
+          <div class="details-title">পেমেন্ট বিবরণ:</div>
+          <ul>${record.notes.map((item) => `<li>${item}</li>`).join("")}</ul>
+        `
+        : "";
+    const statusHtml =
+      record.status === "CONFIRMED"
+        ? `<div class="success-banner">আপনি এই পেমেন্ট নিশ্চিত করেছেন।</div>`
+        : "";
+
+    return response.send(`
+      <!doctype html>
+      <html lang="bn">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Supplier Due Confirmation</title>
+        <style>
+          body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(180deg, #eefbf8 0%, #f7faf9 100%);
+            color: #163732;
+          }
+          .card {
+            max-width: 520px;
+            margin: 32px auto;
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 16px 40px rgba(12, 140, 103, 0.08);
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 24px;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0c8c67;
+          }
+          .subtitle {
+            color: #5f6a66;
+            font-size: 15px;
+            margin-top: 8px;
+          }
+          .amount-section {
+            background: #f7faf9;
+            border: 1px solid #d9e5e1;
+            border-radius: 18px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 18px;
+          }
+          .amount-label {
+            color: #5f6a66;
+            font-size: 14px;
+            margin-bottom: 8px;
+          }
+          .amount-value {
+            color: #b3261e;
+            font-size: 32px;
+            font-weight: 800;
+          }
+          .detail-card {
+            border: 1px solid #d9e5e1;
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 18px;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+            font-size: 15px;
+          }
+          .detail-label {
+            color: #5f6a66;
+            font-weight: 700;
+          }
+          .details-title {
+            color: #163732;
+            font-size: 15px;
+            font-weight: 800;
+            margin: 18px 0 10px;
+          }
+          ul {
+            margin: 0;
+            padding-left: 20px;
+          }
+          li {
+            margin-bottom: 8px;
+          }
+          .btn-confirm {
+            display: block;
+            width: 100%;
+            background-color: #0c8c67;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 17px;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(12,140,103,0.15);
+          }
+          .success-banner {
+            background: #e7f5ef;
+            color: #0c8c67;
+            border: 1px solid #b6dfd1;
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-weight: 700;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <div class="logo">Dokan ERP</div>
+            <div class="subtitle">সরবরাহকারী বকেয়া পেমেন্ট অনুমোদন</div>
+          </div>
+
+          ${statusHtml}
+
+          <div class="amount-section">
+            <div class="amount-label">পরিশোধের পরিমাণ</div>
+            <div class="amount-value">৳${record.paymentAmount}</div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-row">
+              <span class="detail-label">সরবরাহকারীর নাম:</span>
+              <span>${record.supplierName}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">মোবাইল নম্বর:</span>
+              <span>${phone}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">বর্তমান বকেয়া:</span>
+              <span>৳${record.dueAmount}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">পেমেন্ট পদ্ধতি:</span>
+              <span>${record.paymentMethod}</span>
+            </div>
+            ${notesHtml}
+          </div>
+
+          <form method="POST" action="/confirm-supplier-due/${token}">
+            <button type="submit" class="btn-confirm">আমি এই পেমেন্ট নিশ্চিত করছি</button>
+          </form>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error(error);
+    return response.status(500).send("Internal Server Error");
+  }
+}
+
+export async function handlePostConfirmSupplierDue(request: Request, response: Response) {
+  try {
+    const token = request.params.token;
+    if (typeof token !== "string") {
+      return response.status(400).send("Invalid token");
+    }
+
+    const found = findSupplierRecordByToken(token);
+    if (!found || Date.now() > found.record.expiresAt) {
+      return response.status(400).send("Invalid link or link has expired.");
+    }
+
+    found.record.status = "CONFIRMED";
+    supplierDueOtps.set(found.phone, found.record);
+
+    return response.redirect(`/confirm-supplier-due/${token}`);
+  } catch (error) {
+    console.error(error);
+    return response.status(500).send("Internal Server Error");
+  }
 }
 
 function normalizeSupplierPayment(
@@ -304,6 +555,132 @@ async function buildSupplierFinanceSummary(supplierId: string, shopId: string) {
     due,
   };
 }
+
+router.post("/send-due-otp", async (request, response) => {
+  try {
+    const { phone, supplierName, dueAmount, paymentAmount, paymentMethod, notes } = request.body as {
+      phone: string;
+      supplierName: string;
+      dueAmount: number;
+      paymentAmount: number;
+      paymentMethod?: string;
+      notes?: string[];
+    };
+
+    const normalizedPhone = normalizeText(phone);
+    const normalizedName = normalizeText(supplierName) || "সরবরাহকারী";
+    const normalizedDueAmount = Number(dueAmount ?? 0);
+    const normalizedPaymentAmount = Number(paymentAmount ?? 0);
+    const normalizedPaymentMethod = normalizeText(paymentMethod) || "CASH";
+    const normalizedNotes = Array.isArray(notes)
+      ? notes.map((item) => normalizeText(item)).filter(Boolean)
+      : [];
+
+    if (!normalizedPhone) {
+      return response.status(400).json({ message: "Mobile number is required." });
+    }
+
+    if (!Number.isFinite(normalizedPaymentAmount) || normalizedPaymentAmount <= 0) {
+      return response.status(400).json({ message: "Payment amount must be greater than 0." });
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const token = crypto.randomBytes(16).toString("hex");
+    supplierDueOtps.set(normalizedPhone, {
+      token,
+      code,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      status: "PENDING",
+      supplierName: normalizedName,
+      dueAmount: normalizedDueAmount,
+      paymentAmount: normalizedPaymentAmount,
+      paymentMethod: normalizedPaymentMethod,
+      notes: normalizedNotes,
+    });
+
+    const envBaseUrl = process.env.BASE_URL;
+    let baseUrl = "";
+    if (envBaseUrl && envBaseUrl.trim() !== "") {
+      baseUrl = envBaseUrl.trim().replace(/\/$/, "");
+    } else {
+      const protocol = request.protocol;
+      const host = request.get("host");
+      baseUrl = `${protocol}://${host}`;
+    }
+    const confirmationUrl = `${baseUrl}/confirm-supplier-due/${token}`;
+
+    const messageParts = [
+      `প্রিয় ${normalizedName},`,
+      `Dokan ERP থেকে আপনার বকেয়া পরিশোধের জন্য ৳${normalizedPaymentAmount} টাকা পাঠানো হচ্ছে। নিশ্চিত করতে নিচের লিংকে ক্লিক করুন:`,
+      confirmationUrl,
+      "",
+      `বর্তমান বকেয়া: ৳${normalizedDueAmount}`,
+      `পেমেন্ট পদ্ধতি: ${normalizedPaymentMethod}`,
+      normalizedNotes.length === 0 ? "" : `বিবরণ:\n${normalizedNotes.map((item) => `• ${item}`).join("\n")}`,
+      "",
+      "এই লিংক ১০ মিনিট পর্যন্ত কার্যকর থাকবে।",
+    ].filter(Boolean);
+    const whatsappMessage = messageParts.join("\n");
+    const whatsappNumber = normalizeWhatsAppNumber(normalizedPhone);
+    const whatsappUrl = whatsappNumber
+      ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`
+      : `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+
+    return response.json({
+      message: "Supplier confirmation prepared successfully for WhatsApp.",
+      channel: "WHATSAPP",
+      whatsappUrl,
+      otp: code,
+    });
+  } catch (error) {
+    console.error("Failed to send supplier due confirmation request.", error);
+    return response.status(500).json({ message: "Failed to send supplier confirmation request." });
+  }
+});
+
+router.post("/verify-due-otp", async (request, response) => {
+  try {
+    const { phone, otp } = request.body as {
+      phone: string;
+      otp?: string;
+    };
+
+    if (!phone) {
+      return response.status(400).json({ message: "Phone number is required." });
+    }
+
+    const normalizedPhone = normalizeText(phone);
+    const record = supplierDueOtps.get(normalizedPhone);
+    if (!record) {
+      return response.status(400).json({ message: "Request not found or expired." });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      supplierDueOtps.delete(normalizedPhone);
+      return response.status(400).json({ message: "Request has expired." });
+    }
+
+    const isWebConfirmed = record.status === "CONFIRMED";
+    const isOtpCorrect = otp && otp.trim() !== "" && record.code === otp.trim();
+
+    if (!isWebConfirmed && !isOtpCorrect) {
+      return response.json({
+        verified: false,
+        message: "সরবরাহকারী এখনও পেমেন্ট নিশ্চিত করেননি।",
+      });
+    }
+
+    supplierDueOtps.delete(normalizedPhone);
+
+    return response.json({
+      verified: true,
+      message: "Confirmed successfully.",
+    });
+  } catch (error) {
+    console.error("Failed to verify supplier confirmation request.", error);
+    return response.status(500).json({ message: "Failed to verify supplier confirmation request." });
+  }
+});
 
 router.get("/", async (request, response) => {
   try {

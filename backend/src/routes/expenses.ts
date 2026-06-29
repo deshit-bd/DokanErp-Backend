@@ -165,7 +165,9 @@ router.post("/", async (request, response) => {
       category?: string;
       amount?: number | string;
       expenseDate?: string | null;
+      date?: string | null;
       description?: string | null;
+      note?: string | null;
       paymentMethod?: string | null;
       moneyBoxId?: string | null;
       bankAccountId?: string | null;
@@ -174,8 +176,9 @@ router.post("/", async (request, response) => {
     const category = normalizeText(body.category);
     const amount = Number(body.amount ?? 0);
     const paymentMethod = normalizeText(body.paymentMethod).toUpperCase() || "CASH";
-    const description = normalizeText(body.description) || null;
-    const expenseDate = body.expenseDate ? new Date(body.expenseDate) : new Date();
+    const description = normalizeText(body.description ?? body.note) || null;
+    const expenseDateRaw = body.expenseDate ?? body.date;
+    const expenseDate = expenseDateRaw ? new Date(expenseDateRaw) : new Date();
 
     if (!category) {
       return response.status(400).json({ message: "Expense category is required." });
@@ -185,8 +188,8 @@ router.post("/", async (request, response) => {
       return response.status(400).json({ message: "Expense amount must be a valid positive number." });
     }
 
-    if (!["CASH", "BKASH", "BANK"].includes(paymentMethod)) {
-      return response.status(400).json({ message: "Payment method must be CASH, BKASH, or BANK." });
+    if (!["CASH", "BKASH", "NAGAD", "BANK"].includes(paymentMethod)) {
+      return response.status(400).json({ message: "Payment method must be CASH, BKASH, NAGAD, or BANK." });
     }
 
     const createdExpense = await prisma.$transaction(async (tx) => {
@@ -194,7 +197,7 @@ router.post("/", async (request, response) => {
       let moneyBoxId: string | null = null;
       let bankAccountId: string | null = null;
 
-      if (paymentMethod === "CASH" || paymentMethod === "BKASH") {
+      if (paymentMethod === "CASH" || paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
         const moneyBox = body.moneyBoxId
           ? await typedTx.moneyBox.findFirst({
               where: {
@@ -292,11 +295,226 @@ router.post("/", async (request, response) => {
       return response.status(400).json({ message: "No active bKash money box found for this shop." });
     }
 
+    if (error instanceof Error && error.message === "NAGAD_BOX_NOT_FOUND") {
+      return response.status(400).json({ message: "No active Nagad money box found for this shop." });
+    }
+
     if (error instanceof Error && error.message === "BANK_ACCOUNT_NOT_FOUND") {
       return response.status(400).json({ message: "No active bank account found for this shop." });
     }
 
     return response.status(503).json({ message: "Expense could not be recorded right now." });
+  }
+});
+
+router.patch("/:id", async (request, response) => {
+  try {
+    const context = await requireExpenseContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const existingExpense = await (prisma as any).expense.findFirst({
+      where: {
+        id: request.params.id,
+        shopId: context.shop.id,
+      },
+    });
+
+    if (!existingExpense) {
+      return response.status(404).json({ message: "Expense not found." });
+    }
+
+    const body = request.body as {
+      title?: string | null;
+      category?: string;
+      amount?: number | string;
+      expenseDate?: string | null;
+      date?: string | null;
+      description?: string | null;
+      note?: string | null;
+      paymentMethod?: string | null;
+      moneyBoxId?: string | null;
+      bankAccountId?: string | null;
+      status?: string | null;
+    };
+
+    const category = normalizeText(body.category) || existingExpense.category;
+    const amount = body.amount == null ? Number(existingExpense.amount) : Number(body.amount);
+    const paymentMethod = normalizeText(body.paymentMethod || existingExpense.paymentMethod).toUpperCase() || "CASH";
+    const description = normalizeText(body.description ?? body.note) || existingExpense.description || null;
+    const expenseDateRaw = body.expenseDate ?? body.date;
+    const expenseDate = expenseDateRaw ? new Date(expenseDateRaw) : existingExpense.expenseDate;
+    const status = normalizeText(body.status) || existingExpense.status;
+
+    if (!category) {
+      return response.status(400).json({ message: "Expense category is required." });
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return response.status(400).json({ message: "Expense amount must be a valid positive number." });
+    }
+
+    if (!["CASH", "BKASH", "NAGAD", "BANK"].includes(paymentMethod)) {
+      return response.status(400).json({ message: "Payment method must be CASH, BKASH, NAGAD, or BANK." });
+    }
+
+    if (Number.isNaN(expenseDate.getTime())) {
+      return response.status(400).json({ message: "Expense date must be a valid date." });
+    }
+
+    const updatedExpense = await prisma.$transaction(async (tx) => {
+      const typedTx = tx as any;
+
+      let moneyBoxId: string | null = null;
+      let bankAccountId: string | null = null;
+
+      if (paymentMethod === "CASH" || paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
+        const moneyBox = body.moneyBoxId
+          ? await typedTx.moneyBox.findFirst({
+              where: {
+                id: body.moneyBoxId,
+                shopId: context.shop.id,
+                type: paymentMethod,
+                status: "ACTIVE",
+              },
+            })
+          : existingExpense.moneyBoxId
+            ? await typedTx.moneyBox.findFirst({
+                where: {
+                  id: existingExpense.moneyBoxId,
+                  shopId: context.shop.id,
+                  type: paymentMethod,
+                  status: "ACTIVE",
+                },
+              })
+            : await typedTx.moneyBox.findFirst({
+                where: {
+                  shopId: context.shop.id,
+                  type: paymentMethod,
+                  status: "ACTIVE",
+                },
+                orderBy: [{ createdAt: "asc" }],
+              });
+
+        if (!moneyBox) {
+          throw new Error(`${paymentMethod}_BOX_NOT_FOUND`);
+        }
+
+        moneyBoxId = moneyBox.id;
+      }
+
+      if (paymentMethod === "BANK") {
+        const bankAccount = body.bankAccountId
+          ? await typedTx.bankAccount.findFirst({
+              where: {
+                id: body.bankAccountId,
+                shopId: context.shop.id,
+                status: "ACTIVE",
+              },
+            })
+          : existingExpense.bankAccountId
+            ? await typedTx.bankAccount.findFirst({
+                where: {
+                  id: existingExpense.bankAccountId,
+                  shopId: context.shop.id,
+                  status: "ACTIVE",
+                },
+              })
+            : await typedTx.bankAccount.findFirst({
+                where: {
+                  shopId: context.shop.id,
+                  status: "ACTIVE",
+                },
+                orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+              });
+
+        if (!bankAccount) {
+          throw new Error("BANK_ACCOUNT_NOT_FOUND");
+        }
+
+        bankAccountId = bankAccount.id;
+      }
+
+      return typedTx.expense.update({
+        where: { id: existingExpense.id },
+        data: {
+          category,
+          amount,
+          expenseDate,
+          description,
+          paymentMethod,
+          moneyBoxId,
+          bankAccountId,
+          status,
+        },
+      });
+    });
+
+    return response.json({
+      message: "Expense updated successfully.",
+      expense: mapExpense(updatedExpense),
+    });
+  } catch (error) {
+    console.error("Failed to update expense.", error);
+
+    if (error instanceof Error && error.message === "CASH_BOX_NOT_FOUND") {
+      return response.status(400).json({ message: "No active cash money box found for this shop." });
+    }
+
+    if (error instanceof Error && error.message === "BKASH_BOX_NOT_FOUND") {
+      return response.status(400).json({ message: "No active bKash money box found for this shop." });
+    }
+
+    if (error instanceof Error && error.message === "NAGAD_BOX_NOT_FOUND") {
+      return response.status(400).json({ message: "No active Nagad money box found for this shop." });
+    }
+
+    if (error instanceof Error && error.message === "BANK_ACCOUNT_NOT_FOUND") {
+      return response.status(400).json({ message: "No active bank account found for this shop." });
+    }
+
+    return response.status(503).json({ message: "Expense could not be updated right now." });
+  }
+});
+
+router.delete("/:id", async (request, response) => {
+  try {
+    const context = await requireExpenseContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const existingExpense = await (prisma as any).expense.findFirst({
+      where: {
+        id: request.params.id,
+        shopId: context.shop.id,
+      },
+      select: { id: true },
+    });
+
+    if (!existingExpense) {
+      return response.status(404).json({ message: "Expense not found." });
+    }
+
+    await (prisma as any).expense.delete({
+      where: { id: existingExpense.id },
+    });
+
+    return response.status(204).send();
+  } catch (error) {
+    console.error("Failed to delete expense.", error);
+    return response.status(503).json({ message: "Expense could not be deleted right now." });
   }
 });
 

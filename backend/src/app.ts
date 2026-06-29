@@ -18,7 +18,10 @@ import productTemplateRoutes from "./routes/product-templates";
 import purchaseRoutes from "./routes/purchases";
 import shopRoutes from "./routes/shops";
 import subscriptionRoutes from "./routes/subscriptions";
-import supplierRoutes from "./routes/suppliers";
+import supplierRoutes, {
+  handleGetConfirmSupplierDue,
+  handlePostConfirmSupplierDue,
+} from "./routes/suppliers";
 import unitRoutes from "./routes/units";
 import reportsRoutes from "./routes/reports";
 import staffRoutes from "./routes/staff";
@@ -103,6 +106,8 @@ app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
 app.get("/confirm-due/:token", handleGetConfirmDue);
 app.post("/confirm-due/:token", handlePostConfirmDue);
+app.get("/confirm-supplier-due/:token", handleGetConfirmSupplierDue);
+app.post("/confirm-supplier-due/:token", handlePostConfirmSupplierDue);
 
 app.get("/health", (_request, response) => {
   response.json({
