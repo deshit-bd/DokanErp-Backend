@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Dokan-ERP API Documentation</title>
+  <style>
+    :root {
+      --text: #1f2937;
+      --muted: #475569;
+      --border: #d7dde7;
+      --accent: #0f766e;
+      --paper: #ffffff;
+      --bg: #f5f7fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eff6ff 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "DejaVu Sans", Arial, sans-serif;
+      line-height: 1.45;
+    }
+    main {
+      width: 900px;
+      margin: 32px auto;
+      background: var(--paper);
+      padding: 40px 52px;
+      border: 1px solid var(--border);
+      box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+    }
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    h1 {
+      font-size: 28px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid var(--accent);
+    }
+    h2 {
+      font-size: 20px;
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 16px;
+      margin-top: 22px;
+      color: var(--accent);
+    }
+    p, li {
+      font-size: 12.5px;
+      color: var(--text);
+    }
+    p {
+      margin: 0 0 10px;
+    }
+    ul {
+      margin: 0 0 12px 18px;
+      padding: 0;
+    }
+    li {
+      margin: 0 0 6px;
+    }
+    code {
+      font-family: "DejaVu Sans Mono", "Courier New", monospace;
+      font-size: 11.5px;
+      background: #ecfeff;
+      color: #134e4a;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    @page {
+      size: A4;
+      margin: 18mm 14mm;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Dokan-ERP Project Analysis and API Documentation</h1>
+<p>Generated from the current repository source on 2026-06-29.</p>
+<h2>Project Analysis</h2>
+<ul>
+<li>Workspace layout: <code>backend/</code> Express + Prisma API, <code>frontend/</code> Next.js App Router web app, <code>mobile/</code> Flutter mobile app.</li>
+<li>Backend entrypoint: <code>backend/src/app.ts</code>, mounted under both <code>/web/api</code> and <code>/app/api</code> plus public <code>/health</code> and <code>/confirm-due/:token</code> endpoints.</li>
+<li>Frontend API layer: <code>frontend/src/app/api/**</code>, mostly thin proxies to backend <code>/web/api/*</code> through <code>frontend/src/lib/server/backend-proxy.ts</code>.</li>
+<li>Mobile API layer: callers are expected to use <code>/app/api/*</code>; mobile README requires <code>DOKAN_API_BASE_URL=http://YOUR_SERVER_IP:4000</code>.</li>
+<li>Current API surface found in code: 175 backend route handlers across 19 mounted route groups, plus 65 frontend API handlers.</li>
+</ul>
+<h2>API Topology</h2>
+<ul>
+<li>Web clients normally hit <code>http://localhost:4000/web/api/*</code> directly or <code>http://localhost:3000/api/*</code> through Next.js proxy routes.</li>
+<li>Mobile clients hit <code>http://localhost:4000/app/api/*</code>.</li>
+<li>Authentication is resolved from the access-token cookie or an <code>Authorization: Bearer &lt;token&gt;</code> header.</li>
+<li>The mobile <code>/app/api/*</code> scope has a subscription-access gate in <code>backend/src/app.ts</code>; <code>/auth</code> and <code>/subscriptions</code> are exempt from that global check.</li>
+</ul>
+<h2>Public Backend Endpoints</h2>
+<ul>
+<li><code>GET /health</code> - Service health check.</li>
+<li><code>GET /confirm-due/:token</code> - Public due confirmation page handler.</li>
+<li><code>POST /confirm-due/:token</code> - Public due confirmation submit handler.</li>
+</ul>
+<h2>Backend Route Groups</h2>
+<h3>Auth</h3>
+<p>Source file: <code>backend/src/routes/auth.ts</code></p>
+<p>Mounted as: <code>/auth</code></p>
+<ul>
+<li><code>POST /web/api/auth/check-mobile</code> and <code>POST /app/api/auth/check-mobile</code></li>
+<li><code>POST /web/api/auth/register-owner</code> and <code>POST /app/api/auth/register-owner</code></li>
+<li><code>POST /web/api/auth/register-salesman</code> and <code>POST /app/api/auth/register-salesman</code></li>
+<li><code>POST /web/api/auth/register-owner-draft</code> and <code>POST /app/api/auth/register-owner-draft</code></li>
+<li><code>POST /web/api/auth/send-otp</code> and <code>POST /app/api/auth/send-otp</code></li>
+<li><code>POST /web/api/auth/verify-otp</code> and <code>POST /app/api/auth/verify-otp</code></li>
+<li><code>POST /web/api/auth/setup-pin</code> and <code>POST /app/api/auth/setup-pin</code></li>
+<li><code>POST /web/api/auth/complete-registration</code> and <code>POST /app/api/auth/complete-registration</code></li>
+<li><code>POST /web/api/auth/pre-login</code> and <code>POST /app/api/auth/pre-login</code></li>
+<li><code>POST /web/api/auth/owners-login</code> and <code>POST /app/api/auth/owners-login</code></li>
+<li><code>POST /web/api/auth/salesmans-login</code> and <code>POST /app/api/auth/salesmans-login</code></li>
+<li><code>POST /web/api/auth/send-owner-login-otp</code> and <code>POST /app/api/auth/send-owner-login-otp</code></li>
+<li><code>POST /web/api/auth/owners-login-otp</code> and <code>POST /app/api/auth/owners-login-otp</code></li>
+<li><code>POST /web/api/auth/salesmans-login-otp</code> and <code>POST /app/api/auth/salesmans-login-otp</code></li>
+<li><code>POST /web/api/auth/send-login-otp</code> and <code>POST /app/api/auth/send-login-otp</code></li>
+<li><code>POST /web/api/auth/verify-login-otp</code> and <code>POST /app/api/auth/verify-login-otp</code></li>
+<li><code>POST /web/api/auth/owners-verify-otp</code> and <code>POST /app/api/auth/owners-verify-otp</code></li>
+<li><code>POST /web/api/auth/salesmans-verify-otp</code> and <code>POST /app/api/auth/salesmans-verify-otp</code></li>
+<li><code>POST /web/api/auth/login</code> and <code>POST /app/api/auth/login</code></li>
+<li><code>POST /web/api/auth/refresh</code> and <code>POST /app/api/auth/refresh</code></li>
+<li><code>POST /web/api/auth/logout</code> and <code>POST /app/api/auth/logout</code></li>
+<li><code>GET /web/api/auth/me</code> and <code>GET /app/api/auth/me</code></li>
+<li><code>PATCH /web/api/auth/me</code> and <code>PATCH /app/api/auth/me</code></li>
+<li><code>PATCH /web/api/auth/me/password</code> and <code>PATCH /app/api/auth/me/password</code></li>
+<li><code>PATCH /web/api/auth/me/avatar</code> and <code>PATCH /app/api/auth/me/avatar</code></li>
+</ul>
+<h3>Bank Accounts</h3>
+<p>Source file: <code>backend/src/routes/bank-accounts.ts</code></p>
+<p>Mounted as: <code>/bank-accounts</code></p>
+<ul>
+<li><code>GET /web/api/bank-accounts</code> and <code>GET /app/api/bank-accounts</code></li>
+<li><code>POST /web/api/bank-accounts</code> and <code>POST /app/api/bank-accounts</code></li>
+<li><code>PUT /web/api/bank-accounts/:id</code> and <code>PUT /app/api/bank-accounts/:id</code></li>
+</ul>
+<h3>Brands</h3>
+<p>Source file: <code>backend/src/routes/brands.ts</code></p>
+<p>Mounted as: <code>/brands</code></p>
+<ul>
+<li><code>GET /web/api/brands</code> and <code>GET /app/api/brands</code></li>
+<li><code>POST /web/api/brands</code> and <code>POST /app/api/brands</code></li>
+<li><code>PUT /web/api/brands/:id</code> and <code>PUT /app/api/brands/:id</code></li>
+<li><code>DELETE /web/api/brands</code> and <code>DELETE /app/api/brands</code></li>
+<li><code>DELETE /web/api/brands/:id</code> and <code>DELETE /app/api/brands/:id</code></li>
+</ul>
+<h3>Categories</h3>
+<p>Source file: <code>backend/src/routes/categories.ts</code></p>
+<p>Mounted as: <code>/categories</code></p>
+<ul>
+<li><code>GET /web/api/categories</code> and <code>GET /app/api/categories</code></li>
+<li><code>POST /web/api/categories</code> and <code>POST /app/api/categories</code></li>
+<li><code>POST /web/api/categories/import</code> and <code>POST /app/api/categories/import</code></li>
+<li><code>PATCH /web/api/categories/:id</code> and <code>PATCH /app/api/categories/:id</code></li>
+<li><code>DELETE /web/api/categories/:id</code> and <code>DELETE /app/api/categories/:id</code></li>
+<li><code>POST /web/api/categories/:id/approve</code> and <code>POST /app/api/categories/:id/approve</code></li>
+</ul>
+<h3>Customers</h3>
+<p>Source file: <code>backend/src/routes/customers.ts</code></p>
+<p>Mounted as: <code>/customers</code></p>
+<ul>
+<li><code>GET /web/api/customers</code> and <code>GET /app/api/customers</code></li>
+<li><code>POST /web/api/customers</code> and <code>POST /app/api/customers</code></li>
+<li><code>GET /web/api/customers/sales</code> and <code>GET /app/api/customers/sales</code></li>
+<li><code>GET /web/api/customers/sales/closing-summary</code> and <code>GET /app/api/customers/sales/closing-summary</code></li>
+<li><code>GET /web/api/customers/sales/:saleId</code> and <code>GET /app/api/customers/sales/:saleId</code></li>
+<li><code>POST /web/api/customers/sales/:saleId/cancel</code> and <code>POST /app/api/customers/sales/:saleId/cancel</code></li>
+<li><code>POST /web/api/customers/send-due-otp</code> and <code>POST /app/api/customers/send-due-otp</code></li>
+<li><code>POST /web/api/customers/verify-due-otp</code> and <code>POST /app/api/customers/verify-due-otp</code></li>
+<li><code>POST /web/api/customers/sales</code> and <code>POST /app/api/customers/sales</code></li>
+<li><code>GET /web/api/customers/:id/sales</code> and <code>GET /app/api/customers/:id/sales</code></li>
+<li><code>POST /web/api/customers/:id/payments</code> and <code>POST /app/api/customers/:id/payments</code></li>
+<li><code>GET /web/api/customers/:id/ledger</code> and <code>GET /app/api/customers/:id/ledger</code></li>
+<li><code>GET /web/api/customers/:id</code> and <code>GET /app/api/customers/:id</code></li>
+</ul>
+<h3>Expenses</h3>
+<p>Source file: <code>backend/src/routes/expenses.ts</code></p>
+<p>Mounted as: <code>/expenses</code></p>
+<ul>
+<li><code>GET /web/api/expenses</code> and <code>GET /app/api/expenses</code></li>
+<li><code>POST /web/api/expenses</code> and <code>POST /app/api/expenses</code></li>
+</ul>
+<h3>Inventory</h3>
+<p>Source file: <code>backend/src/routes/inventory.ts</code></p>
+<p>Mounted as: <code>/inventory</code></p>
+<ul>
+<li><code>GET /web/api/inventory/mode</code> and <code>GET /app/api/inventory/mode</code></li>
+<li><code>POST /web/api/inventory/mode</code> and <code>POST /app/api/inventory/mode</code></li>
+<li><code>GET /web/api/inventory/dashboard</code> and <code>GET /app/api/inventory/dashboard</code></li>
+<li><code>GET /web/api/inventory/attention</code> and <code>GET /app/api/inventory/attention</code></li>
+<li><code>GET /web/api/inventory/general-store</code> and <code>GET /app/api/inventory/general-store</code></li>
+<li><code>GET /web/api/inventory/stock-movements</code> and <code>GET /app/api/inventory/stock-movements</code></li>
+<li><code>POST /web/api/inventory/stock-movements</code> and <code>POST /app/api/inventory/stock-movements</code></li>
+<li><code>GET /web/api/inventory/layout-tree</code> and <code>GET /app/api/inventory/layout-tree</code></li>
+<li><code>GET /web/api/inventory/zones</code> and <code>GET /app/api/inventory/zones</code></li>
+<li><code>POST /web/api/inventory/zones</code> and <code>POST /app/api/inventory/zones</code></li>
+<li><code>GET /web/api/inventory/racks</code> and <code>GET /app/api/inventory/racks</code></li>
+<li><code>POST /web/api/inventory/racks</code> and <code>POST /app/api/inventory/racks</code></li>
+<li><code>GET /web/api/inventory/shelves</code> and <code>GET /app/api/inventory/shelves</code></li>
+<li><code>GET /web/api/inventory/bins</code> and <code>GET /app/api/inventory/bins</code></li>
+<li><code>POST /web/api/inventory/bins</code> and <code>POST /app/api/inventory/bins</code></li>
+<li><code>POST /web/api/inventory/placements</code> and <code>POST /app/api/inventory/placements</code></li>
+<li><code>PATCH /web/api/inventory/zones/:id</code> and <code>PATCH /app/api/inventory/zones/:id</code></li>
+<li><code>DELETE /web/api/inventory/zones/:id</code> and <code>DELETE /app/api/inventory/zones/:id</code></li>
+<li><code>PATCH /web/api/inventory/racks/:id</code> and <code>PATCH /app/api/inventory/racks/:id</code></li>
+<li><code>DELETE /web/api/inventory/racks/:id</code> and <code>DELETE /app/api/inventory/racks/:id</code></li>
+<li><code>POST /web/api/inventory/shelves</code> and <code>POST /app/api/inventory/shelves</code></li>
+<li><code>PATCH /web/api/inventory/shelves/:id</code> and <code>PATCH /app/api/inventory/shelves/:id</code></li>
+<li><code>DELETE /web/api/inventory/shelves/:id</code> and <code>DELETE /app/api/inventory/shelves/:id</code></li>
+<li><code>PATCH /web/api/inventory/bins/:id</code> and <code>PATCH /app/api/inventory/bins/:id</code></li>
+<li><code>DELETE /web/api/inventory/bins/:id</code> and <code>DELETE /app/api/inventory/bins/:id</code></li>
+</ul>
+<h3>Money Boxes</h3>
+<p>Source file: <code>backend/src/routes/money-boxes.ts</code></p>
+<p>Mounted as: <code>/money-boxes</code></p>
+<ul>
+<li><code>GET /web/api/money-boxes</code> and <code>GET /app/api/money-boxes</code></li>
+<li><code>POST /web/api/money-boxes</code> and <code>POST /app/api/money-boxes</code></li>
+<li><code>PUT /web/api/money-boxes/:id</code> and <code>PUT /app/api/money-boxes/:id</code></li>
+</ul>
+<h3>Notifications</h3>
+<p>Source file: <code>backend/src/routes/notifications.ts</code></p>
+<p>Mounted as: <code>/notifications</code></p>
+<ul>
+<li><code>GET /web/api/notifications/settings</code> and <code>GET /app/api/notifications/settings</code></li>
+<li><code>PUT /web/api/notifications/settings</code> and <code>PUT /app/api/notifications/settings</code></li>
+<li><code>GET /web/api/notifications</code> and <code>GET /app/api/notifications</code></li>
+<li><code>POST /web/api/notifications</code> and <code>POST /app/api/notifications</code></li>
+<li><code>PUT /web/api/notifications/read</code> and <code>PUT /app/api/notifications/read</code></li>
+<li><code>DELETE /web/api/notifications</code> and <code>DELETE /app/api/notifications</code></li>
+</ul>
+<h3>Product Templates</h3>
+<p>Source file: <code>backend/src/routes/product-templates.ts</code></p>
+<p>Mounted as: <code>/product-templates</code></p>
+<ul>
+<li><code>GET /web/api/product-templates</code> and <code>GET /app/api/product-templates</code></li>
+<li><code>POST /web/api/product-templates</code> and <code>POST /app/api/product-templates</code></li>
+<li><code>PUT /web/api/product-templates/:id</code> and <code>PUT /app/api/product-templates/:id</code></li>
+<li><code>DELETE /web/api/product-templates/:id</code> and <code>DELETE /app/api/product-templates/:id</code></li>
+<li><code>PUT /web/api/product-templates/:id/products</code> and <code>PUT /app/api/product-templates/:id/products</code></li>
+<li><code>DELETE /web/api/product-templates/:id/products/:productId</code> and <code>DELETE /app/api/product-templates/:id/products/:productId</code></li>
+</ul>
+<h3>Products</h3>
+<p>Source file: <code>backend/src/routes/products.ts</code></p>
+<p>Mounted as: <code>/products</code></p>
+<ul>
+<li><code>GET /web/api/products</code> and <code>GET /app/api/products</code></li>
+<li><code>GET /web/api/products/:id/barcode.svg</code> and <code>GET /app/api/products/:id/barcode.svg</code></li>
+<li><code>POST /web/api/products</code> and <code>POST /app/api/products</code></li>
+<li><code>PUT /web/api/products/:id</code> and <code>PUT /app/api/products/:id</code></li>
+<li><code>PATCH /web/api/products/:id</code> and <code>PATCH /app/api/products/:id</code></li>
+<li><code>POST /web/api/products/:id/duplicate</code> and <code>POST /app/api/products/:id/duplicate</code></li>
+<li><code>GET /web/api/products/approval-requests</code> and <code>GET /app/api/products/approval-requests</code></li>
+<li><code>PATCH /web/api/products/approval-requests/:id/approve</code> and <code>PATCH /app/api/products/approval-requests/:id/approve</code></li>
+<li><code>PATCH /web/api/products/approval-requests/:id/reject</code> and <code>PATCH /app/api/products/approval-requests/:id/reject</code></li>
+<li><code>PATCH /web/api/products/:id/status</code> and <code>PATCH /app/api/products/:id/status</code></li>
+<li><code>DELETE /web/api/products/:id</code> and <code>DELETE /app/api/products/:id</code></li>
+</ul>
+<h3>Purchases</h3>
+<p>Source file: <code>backend/src/routes/purchases.ts</code></p>
+<p>Mounted as: <code>/purchases</code></p>
+<ul>
+<li><code>POST /web/api/purchases</code> and <code>POST /app/api/purchases</code></li>
+<li><code>GET /web/api/purchases</code> and <code>GET /app/api/purchases</code></li>
+<li><code>GET /web/api/purchases/:id</code> and <code>GET /app/api/purchases/:id</code></li>
+<li><code>POST /web/api/purchases/:id/payments</code> and <code>POST /app/api/purchases/:id/payments</code></li>
+<li><code>GET /web/api/purchases/:id/returns</code> and <code>GET /app/api/purchases/:id/returns</code></li>
+<li><code>POST /web/api/purchases/:id/returns</code> and <code>POST /app/api/purchases/:id/returns</code></li>
+<li><code>PATCH /web/api/purchases/:id/approve</code> and <code>PATCH /app/api/purchases/:id/approve</code></li>
+<li><code>PATCH /web/api/purchases/:id/reject</code> and <code>PATCH /app/api/purchases/:id/reject</code></li>
+<li><code>POST /web/api/purchases/:id/receive</code> and <code>POST /app/api/purchases/:id/receive</code></li>
+<li><code>POST /web/api/purchases/:id/cancel</code> and <code>POST /app/api/purchases/:id/cancel</code></li>
+</ul>
+<h3>Reports</h3>
+<p>Source file: <code>backend/src/routes/reports.ts</code></p>
+<p>Mounted as: <code>/reports</code></p>
+<ul>
+<li><code>GET /web/api/reports/dashboard</code> and <code>GET /app/api/reports/dashboard</code></li>
+<li><code>GET /web/api/reports/sales/daily</code> and <code>GET /app/api/reports/sales/daily</code></li>
+<li><code>GET /web/api/reports/purchases/summary</code> and <code>GET /app/api/reports/purchases/summary</code></li>
+<li><code>GET /web/api/reports/dues/summary</code> and <code>GET /app/api/reports/dues/summary</code></li>
+<li><code>GET /web/api/reports/expenses/summary</code> and <code>GET /app/api/reports/expenses/summary</code></li>
+<li><code>GET /web/api/reports/profit-loss</code> and <code>GET /app/api/reports/profit-loss</code></li>
+<li><code>GET /web/api/reports/stock-value</code> and <code>GET /app/api/reports/stock-value</code></li>
+</ul>
+<h3>Settings</h3>
+<p>Source file: <code>backend/src/routes/settings.ts</code></p>
+<p>Mounted as: <code>/settings</code></p>
+<ul>
+<li><code>GET /web/api/settings/store</code> and <code>GET /app/api/settings/store</code></li>
+<li><code>PUT /web/api/settings/store</code> and <code>PUT /app/api/settings/store</code></li>
+<li><code>POST /web/api/settings/store/documents/:type</code> and <code>POST /app/api/settings/store/documents/:type</code></li>
+<li><code>GET /web/api/settings/inventory</code> and <code>GET /app/api/settings/inventory</code></li>
+<li><code>PATCH /web/api/settings/inventory</code> and <code>PATCH /app/api/settings/inventory</code></li>
+</ul>
+<h3>Shops</h3>
+<p>Source file: <code>backend/src/routes/shops.ts</code></p>
+<p>Mounted as: <code>/shops</code></p>
+<ul>
+<li><code>GET /web/api/shops</code> and <code>GET /app/api/shops</code></li>
+<li><code>GET /web/api/shops/me/settings</code> and <code>GET /app/api/shops/me/settings</code></li>
+<li><code>GET /web/api/shops/me/finance-sources</code> and <code>GET /app/api/shops/me/finance-sources</code></li>
+<li><code>POST /web/api/shops/me/money-boxes</code> and <code>POST /app/api/shops/me/money-boxes</code></li>
+<li><code>PUT /web/api/shops/me/money-boxes/:id</code> and <code>PUT /app/api/shops/me/money-boxes/:id</code></li>
+<li><code>POST /web/api/shops/me/bank-accounts</code> and <code>POST /app/api/shops/me/bank-accounts</code></li>
+<li><code>PUT /web/api/shops/me/bank-accounts/:id</code> and <code>PUT /app/api/shops/me/bank-accounts/:id</code></li>
+<li><code>PATCH /web/api/shops/me/settings</code> and <code>PATCH /app/api/shops/me/settings</code></li>
+<li><code>GET /web/api/shops/me/inventory-settings</code> and <code>GET /app/api/shops/me/inventory-settings</code></li>
+<li><code>PATCH /web/api/shops/me/inventory-settings</code> and <code>PATCH /app/api/shops/me/inventory-settings</code></li>
+<li><code>PATCH /web/api/shops/me/logo</code> and <code>PATCH /app/api/shops/me/logo</code></li>
+<li><code>GET /web/api/shops/quick-setup/catalog</code> and <code>GET /app/api/shops/quick-setup/catalog</code></li>
+<li><code>GET /web/api/shops/products</code> and <code>GET /app/api/shops/products</code></li>
+<li><code>POST /web/api/shops/products/local</code> and <code>POST /app/api/shops/products/local</code></li>
+<li><code>POST /web/api/shops/quick-setup/catalog/select</code> and <code>POST /app/api/shops/quick-setup/catalog/select</code></li>
+<li><code>PATCH /web/api/shops/quick-setup/catalog/pricing</code> and <code>PATCH /app/api/shops/quick-setup/catalog/pricing</code></li>
+<li><code>PATCH /web/api/shops/products/:shopProductId</code> and <code>PATCH /app/api/shops/products/:shopProductId</code></li>
+<li><code>GET /web/api/shops/me/taxes-charges</code> and <code>GET /app/api/shops/me/taxes-charges</code></li>
+<li><code>POST /web/api/shops/me/taxes</code> and <code>POST /app/api/shops/me/taxes</code></li>
+<li><code>POST /web/api/shops/me/charges</code> and <code>POST /app/api/shops/me/charges</code></li>
+<li><code>PATCH /web/api/shops/me/taxes/:id</code> and <code>PATCH /app/api/shops/me/taxes/:id</code></li>
+<li><code>PATCH /web/api/shops/me/charges/:id</code> and <code>PATCH /app/api/shops/me/charges/:id</code></li>
+<li><code>DELETE /web/api/shops/me/taxes/:id</code> and <code>DELETE /app/api/shops/me/taxes/:id</code></li>
+<li><code>DELETE /web/api/shops/me/charges/:id</code> and <code>DELETE /app/api/shops/me/charges/:id</code></li>
+</ul>
+<h3>Staff</h3>
+<p>Source file: <code>backend/src/routes/staff.ts</code></p>
+<p>Mounted as: <code>/staff</code></p>
+<ul>
+<li><code>GET /web/api/staff/me/performance</code> and <code>GET /app/api/staff/me/performance</code></li>
+<li><code>GET /web/api/staff</code> and <code>GET /app/api/staff</code></li>
+<li><code>GET /web/api/staff/:staffUserId</code> and <code>GET /app/api/staff/:staffUserId</code></li>
+<li><code>PATCH /web/api/staff/:staffUserId/permissions</code> and <code>PATCH /app/api/staff/:staffUserId/permissions</code></li>
+<li><code>POST /web/api/staff/:staffUserId/pin-reset</code> and <code>POST /app/api/staff/:staffUserId/pin-reset</code></li>
+<li><code>PATCH /web/api/staff/:staffUserId/status</code> and <code>PATCH /app/api/staff/:staffUserId/status</code></li>
+</ul>
+<h3>Subscriptions</h3>
+<p>Source file: <code>backend/src/routes/subscriptions.ts</code></p>
+<p>Mounted as: <code>/subscriptions</code></p>
+<ul>
+<li><code>GET /web/api/subscriptions</code> and <code>GET /app/api/subscriptions</code></li>
+<li><code>GET /web/api/subscriptions/me</code> and <code>GET /app/api/subscriptions/me</code></li>
+<li><code>POST /web/api/subscriptions/payments</code> and <code>POST /app/api/subscriptions/payments</code></li>
+</ul>
+<h3>Suppliers</h3>
+<p>Source file: <code>backend/src/routes/suppliers.ts</code></p>
+<p>Mounted as: <code>/suppliers</code>, <code>/add-suppliers</code></p>
+<ul>
+<li><code>GET /web/api/suppliers</code> and <code>GET /app/api/suppliers</code>; <code>GET /web/api/add-suppliers</code> and <code>GET /app/api/add-suppliers</code></li>
+<li><code>POST /web/api/suppliers</code> and <code>POST /app/api/suppliers</code>; <code>POST /web/api/add-suppliers</code> and <code>POST /app/api/add-suppliers</code></li>
+<li><code>GET /web/api/suppliers/:id</code> and <code>GET /app/api/suppliers/:id</code>; <code>GET /web/api/add-suppliers/:id</code> and <code>GET /app/api/add-suppliers/:id</code></li>
+<li><code>PUT /web/api/suppliers/:id</code> and <code>PUT /app/api/suppliers/:id</code>; <code>PUT /web/api/add-suppliers/:id</code> and <code>PUT /app/api/add-suppliers/:id</code></li>
+<li><code>DELETE /web/api/suppliers/:id</code> and <code>DELETE /app/api/suppliers/:id</code>; <code>DELETE /web/api/add-suppliers/:id</code> and <code>DELETE /app/api/add-suppliers/:id</code></li>
+<li><code>PATCH /web/api/suppliers/:id/status</code> and <code>PATCH /app/api/suppliers/:id/status</code>; <code>PATCH /web/api/add-suppliers/:id/status</code> and <code>PATCH /app/api/add-suppliers/:id/status</code></li>
+<li><code>GET /web/api/suppliers/:id/dues</code> and <code>GET /app/api/suppliers/:id/dues</code>; <code>GET /web/api/add-suppliers/:id/dues</code> and <code>GET /app/api/add-suppliers/:id/dues</code></li>
+<li><code>GET /web/api/suppliers/:id/ledger</code> and <code>GET /app/api/suppliers/:id/ledger</code>; <code>GET /web/api/add-suppliers/:id/ledger</code> and <code>GET /app/api/add-suppliers/:id/ledger</code></li>
+<li><code>POST /web/api/suppliers/:id/payments</code> and <code>POST /app/api/suppliers/:id/payments</code>; <code>POST /web/api/add-suppliers/:id/payments</code> and <code>POST /app/api/add-suppliers/:id/payments</code></li>
+<li><code>GET /web/api/suppliers/:id/payments</code> and <code>GET /app/api/suppliers/:id/payments</code>; <code>GET /web/api/add-suppliers/:id/payments</code> and <code>GET /app/api/add-suppliers/:id/payments</code></li>
+<li><code>GET /web/api/suppliers/:id/purchases</code> and <code>GET /app/api/suppliers/:id/purchases</code>; <code>GET /web/api/add-suppliers/:id/purchases</code> and <code>GET /app/api/add-suppliers/:id/purchases</code></li>
+</ul>
+<h3>Units</h3>
+<p>Source file: <code>backend/src/routes/units.ts</code></p>
+<p>Mounted as: <code>/units</code></p>
+<ul>
+<li><code>GET /web/api/units</code> and <code>GET /app/api/units</code></li>
+<li><code>POST /web/api/units</code> and <code>POST /app/api/units</code></li>
+<li><code>DELETE /web/api/units/:id</code> and <code>DELETE /app/api/units/:id</code></li>
+<li><code>POST /web/api/units/:id/approve</code> and <code>POST /app/api/units/:id/approve</code></li>
+</ul>
+<h2>Frontend API Routes</h2>
+<p>These are the active Next.js routes under <code>frontend/src/app/api/**</code>. Most forward to backend <code>/web/api/*</code>; custom handlers are called out explicitly.</p>
+<ul>
+<li><code>POST /api/auth/login</code> - Thin proxy to backend /api/auth/login.</li>
+<li><code>POST /api/auth/logout</code> - Thin proxy to backend /api/auth/logout.</li>
+<li><code>POST /api/auth/me/avatar</code> - Uploads the image into the Next.js public folder, then patches the backend profile avatar.</li>
+<li><code>GET, PATCH /api/auth/me</code> - Thin proxy to backend /api/auth/me.</li>
+<li><code>POST /api/auth/refresh</code> - Thin proxy to backend /api/auth/refresh.</li>
+<li><code>PUT /api/bank-accounts/:id</code> - Thin proxy to backend /api/bank-accounts/${id}.</li>
+<li><code>GET, POST /api/bank-accounts</code> - Thin proxy to backend /api/bank-accounts.</li>
+<li><code>PUT, DELETE /api/brands/:id</code> - Thin proxy to backend /api/brands/${id}.</li>
+<li><code>GET, POST, DELETE /api/brands</code> - Thin proxy to backend /api/brands.</li>
+<li><code>GET, POST /api/bulk-upload</code> - Custom Next.js import/export helper with local log storage and multiple upstream backend calls.</li>
+<li><code>POST /api/categories/:id/approve</code> - Thin proxy to backend /api/categories/${id}/approve.</li>
+<li><code>PATCH, DELETE /api/categories/:id</code> - Thin proxy to backend /api/categories/${id}.</li>
+<li><code>POST /api/categories/import</code> - Custom Next.js route.</li>
+<li><code>GET, POST /api/categories</code> - Thin proxy to backend /api/categories.</li>
+<li><code>GET /api/customers/:id/ledger</code> - Thin proxy to backend /api/customers/${id}/ledger.</li>
+<li><code>POST /api/customers/:id/payments</code> - Thin proxy to backend /api/customers/${id}/payments.</li>
+<li><code>GET /api/customers/:id</code> - Thin proxy to backend /api/customers/${id}.</li>
+<li><code>GET /api/customers/:id/sales</code> - Thin proxy to backend /api/customers/${id}/sales.</li>
+<li><code>GET, POST /api/customers</code> - Thin proxy to backend /api/customers.</li>
+<li><code>POST /api/customers/sales</code> - Thin proxy to backend /api/customers/sales.</li>
+<li><code>PUT /api/money-boxes/:id</code> - Thin proxy to backend /api/money-boxes/${id}.</li>
+<li><code>GET, POST /api/money-boxes</code> - Thin proxy to backend /api/money-boxes.</li>
+<li><code>DELETE /api/product-templates/:id/products/:productId</code> - Thin proxy to backend /api/product-templates/${id}/products/${productId}.</li>
+<li><code>PUT /api/product-templates/:id/products</code> - Thin proxy to backend /api/product-templates/${id}/products.</li>
+<li><code>PUT, DELETE /api/product-templates/:id</code> - Thin proxy to backend /api/product-templates/${id}.</li>
+<li><code>GET, POST /api/product-templates</code> - Thin proxy to backend /api/product-templates.</li>
+<li><code>GET /api/products/:id/barcode</code> - Thin proxy to backend /api/products/${id}/barcode.svg${queryString}.</li>
+<li><code>POST /api/products/:id/duplicate</code> - Thin proxy to backend /api/products/${id}/duplicate.</li>
+<li><code>PUT, DELETE /api/products/:id</code> - Thin proxy to backend /api/products/${id}.</li>
+<li><code>PATCH /api/products/:id/status</code> - Thin proxy to backend /api/products/${id}/status.</li>
+<li><code>GET, POST /api/products</code> - Thin proxy to backend /api/products.</li>
+<li><code>PATCH /api/purchases/:id/approve</code> - Thin proxy to backend /api/purchases/${id}/approve.</li>
+<li><code>PATCH /api/purchases/:id/reject</code> - Thin proxy to backend /api/purchases/${id}/reject.</li>
+<li><code>GET /api/purchases/:id</code> - Thin proxy to backend /api/purchases/${id}.</li>
+<li><code>GET, POST /api/purchases</code> - Thin proxy to backend /api/purchases.</li>
+<li><code>GET /api/shops</code> - Thin proxy to backend /api/shops.</li>
+<li><code>GET /api/suppliers/:id/dues</code> - Thin proxy to backend /api/suppliers/${id}/dues.</li>
+<li><code>GET /api/suppliers/:id/ledger</code> - Thin proxy to backend /api/suppliers/${id}/ledger.</li>
+<li><code>GET, POST /api/suppliers/:id/payments</code> - Thin proxy to backend /api/suppliers/${id}/payments.</li>
+<li><code>GET /api/suppliers/:id/purchases</code> - Thin proxy to backend /api/suppliers/${id}/purchases.</li>
+<li><code>GET, PUT, DELETE /api/suppliers/:id</code> - Thin proxy to backend /api/suppliers/${id}.</li>
+<li><code>PATCH /api/suppliers/:id/status</code> - Thin proxy to backend /api/suppliers/${id}/status.</li>
+<li><code>GET, POST /api/suppliers</code> - Thin proxy to backend /api/suppliers.</li>
+<li><code>POST /api/units/:id/approve</code> - Thin proxy to backend /api/units/${id}/approve.</li>
+<li><code>GET, POST /api/units</code> - Thin proxy to backend /api/units.</li>
+</ul>
+<h2>Notes</h2>
+<ul>
+<li><code>frontend/src/app/api/bulk-upload/route.ts</code> is not a single-pass proxy; it parses spreadsheets, keeps local import/export logs, and calls multiple backend routes.</li>
+<li><code>frontend/src/app/api/auth/me/avatar/route.ts</code> stores the uploaded file in <code>frontend/public/uploads/profiles/</code> before updating the backend user profile.</li>
+<li>The older root file <code>dokan-erp-app api list.txt</code> exists, but this document is generated from the current codebase and should be treated as the fresher source of truth.</li>
+</ul>
+  </main>
+</body>
+</html>

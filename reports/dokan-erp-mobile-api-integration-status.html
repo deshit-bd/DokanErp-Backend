@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Dokan-ERP Mobile API Integration Status</title>
+  <style>
+    :root {
+      --text: #172033;
+      --muted: #4b5563;
+      --border: #d6dde8;
+      --accent: #0f766e;
+      --paper: #ffffff;
+      --bg: #f4f7fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eefbf8 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "DejaVu Sans", Arial, sans-serif;
+      line-height: 1.45;
+    }
+    main {
+      width: 920px;
+      margin: 28px auto;
+      background: var(--paper);
+      padding: 38px 48px;
+      border: 1px solid var(--border);
+      box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+    }
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+    }
+    h1 {
+      font-size: 28px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid var(--accent);
+    }
+    h2 {
+      font-size: 20px;
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 16px;
+      margin-top: 22px;
+      color: var(--accent);
+    }
+    p, li {
+      font-size: 12.5px;
+    }
+    p {
+      margin: 0 0 10px;
+    }
+    ul {
+      margin: 0 0 12px 18px;
+      padding: 0;
+    }
+    li {
+      margin: 0 0 6px;
+    }
+    code {
+      font-family: "DejaVu Sans Mono", "Courier New", monospace;
+      font-size: 11.5px;
+      background: #ecfeff;
+      color: #134e4a;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    @page {
+      size: A4;
+      margin: 18mm 14mm;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Dokan-ERP Mobile API Integration Status</h1>
+<p>Generated from the current repository source on 2026-06-29.</p>
+<h2>Scope</h2>
+<ul>
+<li>Backend source checked: <code>backend/src/app.ts</code> and <code>backend/src/routes/*.ts</code></li>
+<li>Mobile source checked: <code>mobile/lib/core/constants/api_endpoints.dart</code>, <code>mobile/lib/data/network/erp_remote_data_source.dart</code>, and all <code>mobile/lib/modules/**/data/datasources/*remote*.dart</code> files</li>
+<li>Base API scope for mobile: <code>'/app/api'</code></li>
+</ul>
+<h2>How To Read This</h2>
+<ul>
+<li><code>Integrated</code> means the mobile app has a real caller and the backend route exists with a matching path/method.</li>
+<li><code>Needs Fix</code> means mobile code calls an API, but the backend path or method does not match the current backend implementation.</li>
+<li><code>Need To Integrate</code> means the backend already exposes the route under <code>/app/api</code>, but the current mobile app has no direct caller for it.</li>
+</ul>
+<h2>Integrated APIs</h2>
+<h3>Auth</h3>
+<p>Mobile source: <code>mobile/lib/modules/auth/data/datasources/auth_remote_data_source.dart</code> and <code>mobile/lib/data/network/api_providers.dart</code></p>
+<ul>
+<li><code>POST /app/api/auth/login</code></li>
+<li><code>POST /app/api/auth/register-owner</code></li>
+<li><code>POST /app/api/auth/check-mobile</code></li>
+<li><code>POST /app/api/auth/send-otp</code></li>
+<li><code>POST /app/api/auth/verify-otp</code></li>
+<li><code>POST /app/api/auth/refresh</code></li>
+<li><code>POST /app/api/auth/logout</code></li>
+<li><code>GET /app/api/auth/me</code></li>
+</ul>
+<h3>Customers And Sales</h3>
+<p>Mobile source: <code>mobile/lib/modules/customers/data/datasources/customer_remote_data_source.dart</code>, <code>mobile/lib/modules/sales/data/datasources/sales_remote_data_source.dart</code>, and <code>mobile/lib/modules/sales/presentation/screens/parts/sales_screens_pos_checkout.dart</code></p>
+<ul>
+<li><code>GET /app/api/customers</code></li>
+<li><code>POST /app/api/customers</code></li>
+<li><code>GET /app/api/customers/:id</code></li>
+<li><code>POST /app/api/customers/:id/payments</code></li>
+<li><code>GET /app/api/customers/sales</code></li>
+<li><code>POST /app/api/customers/sales</code></li>
+<li><code>POST /app/api/customers/sales/:saleId/cancel</code></li>
+<li><code>POST /app/api/customers/send-due-otp</code></li>
+<li><code>POST /app/api/customers/verify-due-otp</code></li>
+</ul>
+<h3>Products, Categories, Shop Catalog, And Stock Movement</h3>
+<p>Mobile source: <code>mobile/lib/modules/products/data/datasources/product_remote_data_source.dart</code> and <code>mobile/lib/modules/products/data/datasources/quick_setup_catalog_remote_data_source.dart</code></p>
+<ul>
+<li><code>GET /app/api/products</code></li>
+<li><code>POST /app/api/products</code></li>
+<li><code>GET /app/api/products/:id</code></li>
+<li><code>PATCH /app/api/products/:id</code></li>
+<li><code>DELETE /app/api/products/:id</code></li>
+<li><code>GET /app/api/categories</code></li>
+<li><code>POST /app/api/categories</code></li>
+<li><code>DELETE /app/api/categories/:id</code></li>
+<li><code>GET /app/api/shops/products</code></li>
+<li><code>GET /app/api/inventory/stock-movements</code></li>
+<li><code>POST /app/api/inventory/stock-movements</code></li>
+<li><code>GET /app/api/shops/quick-setup/catalog</code></li>
+<li><code>POST /app/api/shops/quick-setup/catalog/select</code></li>
+<li><code>PATCH /app/api/shops/quick-setup/catalog/pricing</code></li>
+</ul>
+<h3>Purchases</h3>
+<p>Mobile source: <code>mobile/lib/modules/purchases/data/datasources/purchase_remote_data_source.dart</code></p>
+<ul>
+<li><code>GET /app/api/purchases</code></li>
+<li><code>POST /app/api/purchases</code></li>
+<li><code>GET /app/api/purchases/:id</code></li>
+<li><code>PATCH /app/api/purchases/:id</code></li>
+<li><code>POST /app/api/purchases/:id/receive</code></li>
+<li><code>POST /app/api/purchases/:id/cancel</code></li>
+<li><code>POST /app/api/purchases/:id/returns</code></li>
+</ul>
+<h3>Suppliers</h3>
+<p>Mobile source: <code>mobile/lib/modules/suppliers/data/datasources/supplier_remote_data_source.dart</code></p>
+<ul>
+<li><code>GET /app/api/suppliers</code></li>
+<li><code>POST /app/api/suppliers</code></li>
+<li><code>DELETE /app/api/suppliers/:id</code></li>
+<li><code>GET /app/api/suppliers/:id/ledger</code></li>
+<li><code>POST /app/api/suppliers/:id/payments</code></li>
+</ul>
+<h3>Expenses</h3>
+<p>Mobile source: <code>mobile/lib/modules/expenses/data/datasources/expense_remote_data_source.dart</code></p>
+<ul>
+<li><code>GET /app/api/expenses</code></li>
+<li><code>POST /app/api/expenses</code></li>
+<li><code>PATCH /app/api/expenses/:id</code></li>
+<li><code>DELETE /app/api/expenses/:id</code></li>
+</ul>
+<h3>Business Settings, Subscription, Inventory Layout, Dashboard, Reports, Staff, Notifications</h3>
+<p>Mobile source: <code>mobile/lib/modules/settings/data/datasources/*.dart</code> and <code>mobile/lib/data/network/erp_remote_data_source.dart</code></p>
+<ul>
+<li><code>GET /app/api/settings/inventory</code></li>
+<li><code>PATCH /app/api/settings/inventory</code></li>
+<li><code>GET /app/api/settings/store</code></li>
+<li><code>PUT /app/api/settings/store</code></li>
+<li><code>POST /app/api/settings/store/documents/:type</code></li>
+<li><code>PATCH /app/api/shops/me/logo</code></li>
+<li><code>GET /app/api/subscriptions/me</code></li>
+<li><code>POST /app/api/subscriptions/payments</code></li>
+<li><code>GET /app/api/inventory/mode</code></li>
+<li><code>POST /app/api/inventory/mode</code></li>
+<li><code>GET /app/api/inventory/layout-tree</code></li>
+<li><code>POST /app/api/inventory/zones</code></li>
+<li><code>PATCH /app/api/inventory/zones/:id</code></li>
+<li><code>DELETE /app/api/inventory/zones/:id</code></li>
+<li><code>POST /app/api/inventory/racks</code></li>
+<li><code>PATCH /app/api/inventory/racks/:id</code></li>
+<li><code>DELETE /app/api/inventory/racks/:id</code></li>
+<li><code>POST /app/api/inventory/shelves</code></li>
+<li><code>PATCH /app/api/inventory/shelves/:id</code></li>
+<li><code>DELETE /app/api/inventory/shelves/:id</code></li>
+<li><code>POST /app/api/inventory/bins</code></li>
+<li><code>PATCH /app/api/inventory/bins/:id</code></li>
+<li><code>DELETE /app/api/inventory/bins/:id</code></li>
+<li><code>GET /app/api/reports/dashboard</code></li>
+<li><code>GET /app/api/reports/sales/daily</code></li>
+<li><code>GET /app/api/reports/purchases/summary</code></li>
+<li><code>GET /app/api/reports/dues/summary</code></li>
+<li><code>GET /app/api/reports/expenses/summary</code></li>
+<li><code>GET /app/api/reports/profit-loss</code></li>
+<li><code>GET /app/api/reports/stock-value</code></li>
+<li><code>GET /app/api/staff</code></li>
+<li><code>GET /app/api/notifications</code></li>
+</ul>
+<h2>APIs That Need Fixing In Mobile</h2>
+<ul>
+<li>No known mobile/backend route mismatches were found in the currently documented set.</li>
+</ul>
+<h2>Backend APIs That Still Need Mobile Integration</h2>
+<h3>Bank Accounts</h3>
+<ul>
+<li><code>GET /app/api/bank-accounts</code></li>
+<li><code>POST /app/api/bank-accounts</code></li>
+<li><code>PUT /app/api/bank-accounts/:id</code></li>
+</ul>
+<h3>Brands</h3>
+<ul>
+<li><code>GET /app/api/brands</code></li>
+<li><code>POST /app/api/brands</code></li>
+<li><code>PUT /app/api/brands/:id</code></li>
+<li><code>DELETE /app/api/brands</code></li>
+<li><code>DELETE /app/api/brands/:id</code></li>
+</ul>
+<h3>Money Boxes</h3>
+<ul>
+<li><code>GET /app/api/money-boxes</code></li>
+<li><code>POST /app/api/money-boxes</code></li>
+<li><code>PUT /app/api/money-boxes/:id</code></li>
+</ul>
+<h3>Product Templates</h3>
+<ul>
+<li><code>GET /app/api/product-templates</code></li>
+<li><code>POST /app/api/product-templates</code></li>
+<li><code>PUT /app/api/product-templates/:id</code></li>
+<li><code>DELETE /app/api/product-templates/:id</code></li>
+<li><code>PUT /app/api/product-templates/:id/products</code></li>
+<li><code>DELETE /app/api/product-templates/:id/products/:productId</code></li>
+</ul>
+<h3>Units</h3>
+<ul>
+<li><code>GET /app/api/units</code></li>
+<li><code>POST /app/api/units</code></li>
+<li><code>DELETE /app/api/units/:id</code></li>
+<li><code>POST /app/api/units/:id/approve</code></li>
+</ul>
+<h3>Shop Management APIs Beyond Logo</h3>
+<ul>
+<li><code>GET /app/api/shops</code></li>
+<li><code>GET /app/api/shops/me/settings</code></li>
+<li><code>PATCH /app/api/shops/me/settings</code></li>
+<li><code>GET /app/api/shops/me/finance-sources</code></li>
+<li><code>POST /app/api/shops/me/money-boxes</code></li>
+<li><code>PUT /app/api/shops/me/money-boxes/:id</code></li>
+<li><code>POST /app/api/shops/me/bank-accounts</code></li>
+<li><code>PUT /app/api/shops/me/bank-accounts/:id</code></li>
+<li><code>GET /app/api/shops/me/inventory-settings</code></li>
+<li><code>PATCH /app/api/shops/me/inventory-settings</code></li>
+<li><code>GET /app/api/shops/me/taxes-charges</code></li>
+<li><code>POST /app/api/shops/me/taxes</code></li>
+<li><code>POST /app/api/shops/me/charges</code></li>
+<li><code>PATCH /app/api/shops/me/taxes/:id</code></li>
+<li><code>PATCH /app/api/shops/me/charges/:id</code></li>
+<li><code>DELETE /app/api/shops/me/taxes/:id</code></li>
+<li><code>DELETE /app/api/shops/me/charges/:id</code></li>
+</ul>
+<h3>Customer Read APIs Not Yet Used In Mobile</h3>
+<ul>
+<li><code>GET /app/api/customers/:id/sales</code></li>
+<li><code>GET /app/api/customers/:id/ledger</code></li>
+<li><code>GET /app/api/customers/sales/closing-summary</code></li>
+<li><code>GET /app/api/customers/sales/:saleId</code></li>
+</ul>
+<h3>Supplier Read And Admin APIs Not Yet Used In Mobile</h3>
+<ul>
+<li><code>GET /app/api/suppliers/:id</code></li>
+<li><code>PUT /app/api/suppliers/:id</code></li>
+<li><code>PATCH /app/api/suppliers/:id/status</code></li>
+<li><code>GET /app/api/suppliers/:id/dues</code></li>
+<li><code>GET /app/api/suppliers/:id/payments</code></li>
+<li><code>GET /app/api/suppliers/:id/purchases</code></li>
+<li><code>GET /app/api/add-suppliers/*</code> alias routes</li>
+</ul>
+<h3>Purchase Admin APIs Not Yet Used In Mobile</h3>
+<ul>
+<li><code>POST /app/api/purchases/:id/payments</code></li>
+<li><code>GET /app/api/purchases/:id/returns</code></li>
+<li><code>PATCH /app/api/purchases/:id/approve</code></li>
+<li><code>PATCH /app/api/purchases/:id/reject</code></li>
+</ul>
+<h3>Product APIs Not Yet Used In Mobile</h3>
+<ul>
+<li><code>GET /app/api/products/:id/barcode.svg</code></li>
+<li><code>POST /app/api/products/:id/duplicate</code></li>
+<li><code>GET /app/api/products/approval-requests</code></li>
+<li><code>PATCH /app/api/products/approval-requests/:id/approve</code></li>
+<li><code>PATCH /app/api/products/approval-requests/:id/reject</code></li>
+<li><code>PATCH /app/api/products/:id/status</code></li>
+</ul>
+<h3>Inventory APIs Not Yet Used In Mobile</h3>
+<ul>
+<li><code>GET /app/api/inventory/dashboard</code></li>
+<li><code>GET /app/api/inventory/attention</code></li>
+<li><code>GET /app/api/inventory/general-store</code></li>
+<li><code>GET /app/api/inventory/zones</code></li>
+<li><code>GET /app/api/inventory/racks</code></li>
+<li><code>GET /app/api/inventory/shelves</code></li>
+<li><code>GET /app/api/inventory/bins</code></li>
+<li><code>POST /app/api/inventory/placements</code></li>
+</ul>
+<h3>Notifications Write APIs</h3>
+<ul>
+<li><code>GET /app/api/notifications/settings</code></li>
+<li><code>PUT /app/api/notifications/settings</code></li>
+<li><code>POST /app/api/notifications</code></li>
+<li><code>PUT /app/api/notifications/read</code></li>
+<li><code>DELETE /app/api/notifications</code></li>
+</ul>
+<h3>Staff Detail/Admin APIs</h3>
+<ul>
+<li><code>GET /app/api/staff/me/performance</code></li>
+<li><code>GET /app/api/staff/:staffUserId</code></li>
+<li><code>PATCH /app/api/staff/:staffUserId/permissions</code></li>
+<li><code>POST /app/api/staff/:staffUserId/pin-reset</code></li>
+<li><code>PATCH /app/api/staff/:staffUserId/status</code></li>
+</ul>
+<h3>Auth Flows Not Yet Hooked In Mobile</h3>
+<ul>
+<li><code>POST /app/api/auth/register-salesman</code></li>
+<li><code>POST /app/api/auth/register-owner-draft</code></li>
+<li><code>POST /app/api/auth/setup-pin</code></li>
+<li><code>POST /app/api/auth/complete-registration</code></li>
+<li><code>POST /app/api/auth/pre-login</code></li>
+<li><code>POST /app/api/auth/owners-login</code></li>
+<li><code>POST /app/api/auth/salesmans-login</code></li>
+<li><code>POST /app/api/auth/send-owner-login-otp</code></li>
+<li><code>POST /app/api/auth/owners-login-otp</code></li>
+<li><code>POST /app/api/auth/salesmans-login-otp</code></li>
+<li><code>POST /app/api/auth/send-login-otp</code></li>
+<li><code>POST /app/api/auth/verify-login-otp</code></li>
+<li><code>POST /app/api/auth/owners-verify-otp</code></li>
+<li><code>POST /app/api/auth/salesmans-verify-otp</code></li>
+<li><code>PATCH /app/api/auth/me</code></li>
+<li><code>PATCH /app/api/auth/me/password</code></li>
+<li><code>PATCH /app/api/auth/me/avatar</code></li>
+</ul>
+<h2>Recommended Next Work</h2>
+<ul>
+<li>The mismatch bucket is now cleared in this report, so the next work is expanding mobile coverage into the remaining backend route groups.</li>
+<li>The highest-value missing integrations for daily mobile workflows are shop settings, supplier detail/dues/payment history, customer ledger/sales history, and purchase approval/payment history.</li>
+<li>If you want tighter mobile coverage for owner operations, the next route groups to wire are <code>bank-accounts</code>, <code>money-boxes</code>, <code>units</code>, <code>brands</code>, and <code>notifications</code> write actions.</li>
+</ul>
+  </main>
+</body>
+</html>

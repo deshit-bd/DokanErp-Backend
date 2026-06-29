@@ -1,0 +1,1053 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R] /Count 10 >>
+endobj
+3 0 obj
+<< /Length 2484 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(Dokan-ERP Project Analysis and API Documentation) Tj
+T*
+() Tj
+T*
+(Generated from the current repository source on 2026-06-29.) Tj
+T*
+() Tj
+T*
+(Project Analysis) Tj
+T*
+() Tj
+T*
+(- - Workspace layout: backend/ Express + Prisma API, frontend/ Next.js App Router web) Tj
+T*
+(- app, mobile/ Flutter mobile app.) Tj
+T*
+(- - Backend entrypoint: backend/src/app.ts, mounted under both /web/api and /app/api) Tj
+T*
+(- plus public /health and /confirm-due/:token endpoints.) Tj
+T*
+(- - Frontend API layer: frontend/src/app/api/**, mostly thin proxies to backend) Tj
+T*
+(- /web/api/* through frontend/src/lib/server/backend-proxy.ts.) Tj
+T*
+(- - Mobile API layer: callers are expected to use /app/api/*; mobile README requires) Tj
+T*
+(- DOKAN_API_BASE_URL=http://YOUR_SERVER_IP:4000.) Tj
+T*
+(- - Current API surface found in code: 175 backend route handlers across 19 mounted route) Tj
+T*
+(- groups, plus 65 frontend API handlers.) Tj
+T*
+() Tj
+T*
+(API Topology) Tj
+T*
+() Tj
+T*
+(- - Web clients normally hit http://localhost:4000/web/api/* directly or) Tj
+T*
+(- http://localhost:3000/api/* through Next.js proxy routes.) Tj
+T*
+(- - Mobile clients hit http://localhost:4000/app/api/*.) Tj
+T*
+(- - Authentication is resolved from the access-token cookie or an Authorization: Bearer) Tj
+T*
+(- <token> header.) Tj
+T*
+(- - The mobile /app/api/* scope has a subscription-access gate in backend/src/app.ts;) Tj
+T*
+(- /auth and /subscriptions are exempt from that global check.) Tj
+T*
+() Tj
+T*
+(Public Backend Endpoints) Tj
+T*
+() Tj
+T*
+(- - GET /health - Service health check.) Tj
+T*
+(- - GET /confirm-due/:token - Public due confirmation page handler.) Tj
+T*
+(- - POST /confirm-due/:token - Public due confirmation submit handler.) Tj
+T*
+() Tj
+T*
+(Backend Route Groups) Tj
+T*
+() Tj
+T*
+(Auth) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/auth.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /auth) Tj
+T*
+() Tj
+T*
+(- - POST /web/api/auth/check-mobile and POST /app/api/auth/check-mobile) Tj
+T*
+(- - POST /web/api/auth/register-owner and POST /app/api/auth/register-owner) Tj
+T*
+(- - POST /web/api/auth/register-salesman and POST /app/api/auth/register-salesman) Tj
+T*
+(- - POST /web/api/auth/register-owner-draft and POST /app/api/auth/register-owner-draft) Tj
+T*
+(- - POST /web/api/auth/send-otp and POST /app/api/auth/send-otp) Tj
+T*
+(- - POST /web/api/auth/verify-otp and POST /app/api/auth/verify-otp) Tj
+T*
+(- - POST /web/api/auth/setup-pin and POST /app/api/auth/setup-pin) Tj
+T*
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 2445 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - POST /web/api/auth/complete-registration and POST) Tj
+T*
+(- /app/api/auth/complete-registration) Tj
+T*
+(- - POST /web/api/auth/pre-login and POST /app/api/auth/pre-login) Tj
+T*
+(- - POST /web/api/auth/owners-login and POST /app/api/auth/owners-login) Tj
+T*
+(- - POST /web/api/auth/salesmans-login and POST /app/api/auth/salesmans-login) Tj
+T*
+(- - POST /web/api/auth/send-owner-login-otp and POST /app/api/auth/send-owner-login-otp) Tj
+T*
+(- - POST /web/api/auth/owners-login-otp and POST /app/api/auth/owners-login-otp) Tj
+T*
+(- - POST /web/api/auth/salesmans-login-otp and POST /app/api/auth/salesmans-login-otp) Tj
+T*
+(- - POST /web/api/auth/send-login-otp and POST /app/api/auth/send-login-otp) Tj
+T*
+(- - POST /web/api/auth/verify-login-otp and POST /app/api/auth/verify-login-otp) Tj
+T*
+(- - POST /web/api/auth/owners-verify-otp and POST /app/api/auth/owners-verify-otp) Tj
+T*
+(- - POST /web/api/auth/salesmans-verify-otp and POST /app/api/auth/salesmans-verify-otp) Tj
+T*
+(- - POST /web/api/auth/login and POST /app/api/auth/login) Tj
+T*
+(- - POST /web/api/auth/refresh and POST /app/api/auth/refresh) Tj
+T*
+(- - POST /web/api/auth/logout and POST /app/api/auth/logout) Tj
+T*
+(- - GET /web/api/auth/me and GET /app/api/auth/me) Tj
+T*
+(- - PATCH /web/api/auth/me and PATCH /app/api/auth/me) Tj
+T*
+(- - PATCH /web/api/auth/me/password and PATCH /app/api/auth/me/password) Tj
+T*
+(- - PATCH /web/api/auth/me/avatar and PATCH /app/api/auth/me/avatar) Tj
+T*
+() Tj
+T*
+(Bank Accounts) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/bank-accounts.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /bank-accounts) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/bank-accounts and GET /app/api/bank-accounts) Tj
+T*
+(- - POST /web/api/bank-accounts and POST /app/api/bank-accounts) Tj
+T*
+(- - PUT /web/api/bank-accounts/:id and PUT /app/api/bank-accounts/:id) Tj
+T*
+() Tj
+T*
+(Brands) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/brands.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /brands) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/brands and GET /app/api/brands) Tj
+T*
+(- - POST /web/api/brands and POST /app/api/brands) Tj
+T*
+(- - PUT /web/api/brands/:id and PUT /app/api/brands/:id) Tj
+T*
+(- - DELETE /web/api/brands and DELETE /app/api/brands) Tj
+T*
+(- - DELETE /web/api/brands/:id and DELETE /app/api/brands/:id) Tj
+T*
+() Tj
+T*
+(Categories) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/categories.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /categories) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 2436 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - GET /web/api/categories and GET /app/api/categories) Tj
+T*
+(- - POST /web/api/categories and POST /app/api/categories) Tj
+T*
+(- - POST /web/api/categories/import and POST /app/api/categories/import) Tj
+T*
+(- - PATCH /web/api/categories/:id and PATCH /app/api/categories/:id) Tj
+T*
+(- - DELETE /web/api/categories/:id and DELETE /app/api/categories/:id) Tj
+T*
+(- - POST /web/api/categories/:id/approve and POST /app/api/categories/:id/approve) Tj
+T*
+() Tj
+T*
+(Customers) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/customers.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /customers) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/customers and GET /app/api/customers) Tj
+T*
+(- - POST /web/api/customers and POST /app/api/customers) Tj
+T*
+(- - GET /web/api/customers/sales and GET /app/api/customers/sales) Tj
+T*
+(- - GET /web/api/customers/sales/closing-summary and GET) Tj
+T*
+(- /app/api/customers/sales/closing-summary) Tj
+T*
+(- - GET /web/api/customers/sales/:saleId and GET /app/api/customers/sales/:saleId) Tj
+T*
+(- - POST /web/api/customers/sales/:saleId/cancel and POST) Tj
+T*
+(- /app/api/customers/sales/:saleId/cancel) Tj
+T*
+(- - POST /web/api/customers/send-due-otp and POST /app/api/customers/send-due-otp) Tj
+T*
+(- - POST /web/api/customers/verify-due-otp and POST /app/api/customers/verify-due-otp) Tj
+T*
+(- - POST /web/api/customers/sales and POST /app/api/customers/sales) Tj
+T*
+(- - GET /web/api/customers/:id/sales and GET /app/api/customers/:id/sales) Tj
+T*
+(- - POST /web/api/customers/:id/payments and POST /app/api/customers/:id/payments) Tj
+T*
+(- - GET /web/api/customers/:id/ledger and GET /app/api/customers/:id/ledger) Tj
+T*
+(- - GET /web/api/customers/:id and GET /app/api/customers/:id) Tj
+T*
+() Tj
+T*
+(Expenses) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/expenses.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /expenses) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/expenses and GET /app/api/expenses) Tj
+T*
+(- - POST /web/api/expenses and POST /app/api/expenses) Tj
+T*
+() Tj
+T*
+(Inventory) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/inventory.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /inventory) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/inventory/mode and GET /app/api/inventory/mode) Tj
+T*
+(- - POST /web/api/inventory/mode and POST /app/api/inventory/mode) Tj
+T*
+(- - GET /web/api/inventory/dashboard and GET /app/api/inventory/dashboard) Tj
+T*
+(- - GET /web/api/inventory/attention and GET /app/api/inventory/attention) Tj
+T*
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 2868 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - GET /web/api/inventory/general-store and GET /app/api/inventory/general-store) Tj
+T*
+(- - GET /web/api/inventory/stock-movements and GET /app/api/inventory/stock-movements) Tj
+T*
+(- - POST /web/api/inventory/stock-movements and POST /app/api/inventory/stock-movements) Tj
+T*
+(- - GET /web/api/inventory/layout-tree and GET /app/api/inventory/layout-tree) Tj
+T*
+(- - GET /web/api/inventory/zones and GET /app/api/inventory/zones) Tj
+T*
+(- - POST /web/api/inventory/zones and POST /app/api/inventory/zones) Tj
+T*
+(- - GET /web/api/inventory/racks and GET /app/api/inventory/racks) Tj
+T*
+(- - POST /web/api/inventory/racks and POST /app/api/inventory/racks) Tj
+T*
+(- - GET /web/api/inventory/shelves and GET /app/api/inventory/shelves) Tj
+T*
+(- - GET /web/api/inventory/bins and GET /app/api/inventory/bins) Tj
+T*
+(- - POST /web/api/inventory/bins and POST /app/api/inventory/bins) Tj
+T*
+(- - POST /web/api/inventory/placements and POST /app/api/inventory/placements) Tj
+T*
+(- - PATCH /web/api/inventory/zones/:id and PATCH /app/api/inventory/zones/:id) Tj
+T*
+(- - DELETE /web/api/inventory/zones/:id and DELETE /app/api/inventory/zones/:id) Tj
+T*
+(- - PATCH /web/api/inventory/racks/:id and PATCH /app/api/inventory/racks/:id) Tj
+T*
+(- - DELETE /web/api/inventory/racks/:id and DELETE /app/api/inventory/racks/:id) Tj
+T*
+(- - POST /web/api/inventory/shelves and POST /app/api/inventory/shelves) Tj
+T*
+(- - PATCH /web/api/inventory/shelves/:id and PATCH /app/api/inventory/shelves/:id) Tj
+T*
+(- - DELETE /web/api/inventory/shelves/:id and DELETE /app/api/inventory/shelves/:id) Tj
+T*
+(- - PATCH /web/api/inventory/bins/:id and PATCH /app/api/inventory/bins/:id) Tj
+T*
+(- - DELETE /web/api/inventory/bins/:id and DELETE /app/api/inventory/bins/:id) Tj
+T*
+() Tj
+T*
+(Money Boxes) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/money-boxes.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /money-boxes) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/money-boxes and GET /app/api/money-boxes) Tj
+T*
+(- - POST /web/api/money-boxes and POST /app/api/money-boxes) Tj
+T*
+(- - PUT /web/api/money-boxes/:id and PUT /app/api/money-boxes/:id) Tj
+T*
+() Tj
+T*
+(Notifications) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/notifications.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /notifications) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/notifications/settings and GET /app/api/notifications/settings) Tj
+T*
+(- - PUT /web/api/notifications/settings and PUT /app/api/notifications/settings) Tj
+T*
+(- - GET /web/api/notifications and GET /app/api/notifications) Tj
+T*
+(- - POST /web/api/notifications and POST /app/api/notifications) Tj
+T*
+(- - PUT /web/api/notifications/read and PUT /app/api/notifications/read) Tj
+T*
+(- - DELETE /web/api/notifications and DELETE /app/api/notifications) Tj
+T*
+() Tj
+T*
+(Product Templates) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/product-templates.ts) Tj
+T*
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 2731 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+() Tj
+T*
+(Mounted as: /product-templates) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/product-templates and GET /app/api/product-templates) Tj
+T*
+(- - POST /web/api/product-templates and POST /app/api/product-templates) Tj
+T*
+(- - PUT /web/api/product-templates/:id and PUT /app/api/product-templates/:id) Tj
+T*
+(- - DELETE /web/api/product-templates/:id and DELETE /app/api/product-templates/:id) Tj
+T*
+(- - PUT /web/api/product-templates/:id/products and PUT) Tj
+T*
+(- /app/api/product-templates/:id/products) Tj
+T*
+(- - DELETE /web/api/product-templates/:id/products/:productId and DELETE) Tj
+T*
+(- /app/api/product-templates/:id/products/:productId) Tj
+T*
+() Tj
+T*
+(Products) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/products.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /products) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/products and GET /app/api/products) Tj
+T*
+(- - GET /web/api/products/:id/barcode.svg and GET /app/api/products/:id/barcode.svg) Tj
+T*
+(- - POST /web/api/products and POST /app/api/products) Tj
+T*
+(- - PUT /web/api/products/:id and PUT /app/api/products/:id) Tj
+T*
+(- - PATCH /web/api/products/:id and PATCH /app/api/products/:id) Tj
+T*
+(- - POST /web/api/products/:id/duplicate and POST /app/api/products/:id/duplicate) Tj
+T*
+(- - GET /web/api/products/approval-requests and GET /app/api/products/approval-requests) Tj
+T*
+(- - PATCH /web/api/products/approval-requests/:id/approve and PATCH) Tj
+T*
+(- /app/api/products/approval-requests/:id/approve) Tj
+T*
+(- - PATCH /web/api/products/approval-requests/:id/reject and PATCH) Tj
+T*
+(- /app/api/products/approval-requests/:id/reject) Tj
+T*
+(- - PATCH /web/api/products/:id/status and PATCH /app/api/products/:id/status) Tj
+T*
+(- - DELETE /web/api/products/:id and DELETE /app/api/products/:id) Tj
+T*
+() Tj
+T*
+(Purchases) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/purchases.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /purchases) Tj
+T*
+() Tj
+T*
+(- - POST /web/api/purchases and POST /app/api/purchases) Tj
+T*
+(- - GET /web/api/purchases and GET /app/api/purchases) Tj
+T*
+(- - GET /web/api/purchases/:id and GET /app/api/purchases/:id) Tj
+T*
+(- - POST /web/api/purchases/:id/payments and POST /app/api/purchases/:id/payments) Tj
+T*
+(- - GET /web/api/purchases/:id/returns and GET /app/api/purchases/:id/returns) Tj
+T*
+(- - POST /web/api/purchases/:id/returns and POST /app/api/purchases/:id/returns) Tj
+T*
+(- - PATCH /web/api/purchases/:id/approve and PATCH /app/api/purchases/:id/approve) Tj
+T*
+(- - PATCH /web/api/purchases/:id/reject and PATCH /app/api/purchases/:id/reject) Tj
+T*
+(- - POST /web/api/purchases/:id/receive and POST /app/api/purchases/:id/receive) Tj
+T*
+(- - POST /web/api/purchases/:id/cancel and POST /app/api/purchases/:id/cancel) Tj
+T*
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 2500 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+() Tj
+T*
+(Reports) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/reports.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /reports) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/reports/dashboard and GET /app/api/reports/dashboard) Tj
+T*
+(- - GET /web/api/reports/sales/daily and GET /app/api/reports/sales/daily) Tj
+T*
+(- - GET /web/api/reports/purchases/summary and GET /app/api/reports/purchases/summary) Tj
+T*
+(- - GET /web/api/reports/dues/summary and GET /app/api/reports/dues/summary) Tj
+T*
+(- - GET /web/api/reports/expenses/summary and GET /app/api/reports/expenses/summary) Tj
+T*
+(- - GET /web/api/reports/profit-loss and GET /app/api/reports/profit-loss) Tj
+T*
+(- - GET /web/api/reports/stock-value and GET /app/api/reports/stock-value) Tj
+T*
+() Tj
+T*
+(Settings) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/settings.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /settings) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/settings/store and GET /app/api/settings/store) Tj
+T*
+(- - PUT /web/api/settings/store and PUT /app/api/settings/store) Tj
+T*
+(- - POST /web/api/settings/store/documents/:type and POST) Tj
+T*
+(- /app/api/settings/store/documents/:type) Tj
+T*
+(- - GET /web/api/settings/inventory and GET /app/api/settings/inventory) Tj
+T*
+(- - PATCH /web/api/settings/inventory and PATCH /app/api/settings/inventory) Tj
+T*
+() Tj
+T*
+(Shops) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/shops.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /shops) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/shops and GET /app/api/shops) Tj
+T*
+(- - GET /web/api/shops/me/settings and GET /app/api/shops/me/settings) Tj
+T*
+(- - GET /web/api/shops/me/finance-sources and GET /app/api/shops/me/finance-sources) Tj
+T*
+(- - POST /web/api/shops/me/money-boxes and POST /app/api/shops/me/money-boxes) Tj
+T*
+(- - PUT /web/api/shops/me/money-boxes/:id and PUT /app/api/shops/me/money-boxes/:id) Tj
+T*
+(- - POST /web/api/shops/me/bank-accounts and POST /app/api/shops/me/bank-accounts) Tj
+T*
+(- - PUT /web/api/shops/me/bank-accounts/:id and PUT /app/api/shops/me/bank-accounts/:id) Tj
+T*
+(- - PATCH /web/api/shops/me/settings and PATCH /app/api/shops/me/settings) Tj
+T*
+(- - GET /web/api/shops/me/inventory-settings and GET) Tj
+T*
+(- /app/api/shops/me/inventory-settings) Tj
+T*
+(- - PATCH /web/api/shops/me/inventory-settings and PATCH) Tj
+T*
+(- /app/api/shops/me/inventory-settings) Tj
+T*
+(- - PATCH /web/api/shops/me/logo and PATCH /app/api/shops/me/logo) Tj
+T*
+(- - GET /web/api/shops/quick-setup/catalog and GET /app/api/shops/quick-setup/catalog) Tj
+T*
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 2359 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - GET /web/api/shops/products and GET /app/api/shops/products) Tj
+T*
+(- - POST /web/api/shops/products/local and POST /app/api/shops/products/local) Tj
+T*
+(- - POST /web/api/shops/quick-setup/catalog/select and POST) Tj
+T*
+(- /app/api/shops/quick-setup/catalog/select) Tj
+T*
+(- - PATCH /web/api/shops/quick-setup/catalog/pricing and PATCH) Tj
+T*
+(- /app/api/shops/quick-setup/catalog/pricing) Tj
+T*
+(- - PATCH /web/api/shops/products/:shopProductId and PATCH) Tj
+T*
+(- /app/api/shops/products/:shopProductId) Tj
+T*
+(- - GET /web/api/shops/me/taxes-charges and GET /app/api/shops/me/taxes-charges) Tj
+T*
+(- - POST /web/api/shops/me/taxes and POST /app/api/shops/me/taxes) Tj
+T*
+(- - POST /web/api/shops/me/charges and POST /app/api/shops/me/charges) Tj
+T*
+(- - PATCH /web/api/shops/me/taxes/:id and PATCH /app/api/shops/me/taxes/:id) Tj
+T*
+(- - PATCH /web/api/shops/me/charges/:id and PATCH /app/api/shops/me/charges/:id) Tj
+T*
+(- - DELETE /web/api/shops/me/taxes/:id and DELETE /app/api/shops/me/taxes/:id) Tj
+T*
+(- - DELETE /web/api/shops/me/charges/:id and DELETE /app/api/shops/me/charges/:id) Tj
+T*
+() Tj
+T*
+(Staff) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/staff.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /staff) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/staff/me/performance and GET /app/api/staff/me/performance) Tj
+T*
+(- - GET /web/api/staff and GET /app/api/staff) Tj
+T*
+(- - GET /web/api/staff/:staffUserId and GET /app/api/staff/:staffUserId) Tj
+T*
+(- - PATCH /web/api/staff/:staffUserId/permissions and PATCH) Tj
+T*
+(- /app/api/staff/:staffUserId/permissions) Tj
+T*
+(- - POST /web/api/staff/:staffUserId/pin-reset and POST) Tj
+T*
+(- /app/api/staff/:staffUserId/pin-reset) Tj
+T*
+(- - PATCH /web/api/staff/:staffUserId/status and PATCH) Tj
+T*
+(- /app/api/staff/:staffUserId/status) Tj
+T*
+() Tj
+T*
+(Subscriptions) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/subscriptions.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /subscriptions) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/subscriptions and GET /app/api/subscriptions) Tj
+T*
+(- - GET /web/api/subscriptions/me and GET /app/api/subscriptions/me) Tj
+T*
+(- - POST /web/api/subscriptions/payments and POST /app/api/subscriptions/payments) Tj
+T*
+() Tj
+T*
+(Suppliers) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/suppliers.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /suppliers, /add-suppliers) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 3132 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - GET /web/api/suppliers and GET /app/api/suppliers; GET /web/api/add-suppliers and) Tj
+T*
+(- GET /app/api/add-suppliers) Tj
+T*
+(- - POST /web/api/suppliers and POST /app/api/suppliers; POST /web/api/add-suppliers) Tj
+T*
+(- and POST /app/api/add-suppliers) Tj
+T*
+(- - GET /web/api/suppliers/:id and GET /app/api/suppliers/:id; GET) Tj
+T*
+(- /web/api/add-suppliers/:id and GET /app/api/add-suppliers/:id) Tj
+T*
+(- - PUT /web/api/suppliers/:id and PUT /app/api/suppliers/:id; PUT) Tj
+T*
+(- /web/api/add-suppliers/:id and PUT /app/api/add-suppliers/:id) Tj
+T*
+(- - DELETE /web/api/suppliers/:id and DELETE /app/api/suppliers/:id; DELETE) Tj
+T*
+(- /web/api/add-suppliers/:id and DELETE /app/api/add-suppliers/:id) Tj
+T*
+(- - PATCH /web/api/suppliers/:id/status and PATCH /app/api/suppliers/:id/status; PATCH) Tj
+T*
+(- /web/api/add-suppliers/:id/status and PATCH /app/api/add-suppliers/:id/status) Tj
+T*
+(- - GET /web/api/suppliers/:id/dues and GET /app/api/suppliers/:id/dues; GET) Tj
+T*
+(- /web/api/add-suppliers/:id/dues and GET /app/api/add-suppliers/:id/dues) Tj
+T*
+(- - GET /web/api/suppliers/:id/ledger and GET /app/api/suppliers/:id/ledger; GET) Tj
+T*
+(- /web/api/add-suppliers/:id/ledger and GET /app/api/add-suppliers/:id/ledger) Tj
+T*
+(- - POST /web/api/suppliers/:id/payments and POST /app/api/suppliers/:id/payments; POST) Tj
+T*
+(- /web/api/add-suppliers/:id/payments and POST /app/api/add-suppliers/:id/payments) Tj
+T*
+(- - GET /web/api/suppliers/:id/payments and GET /app/api/suppliers/:id/payments; GET) Tj
+T*
+(- /web/api/add-suppliers/:id/payments and GET /app/api/add-suppliers/:id/payments) Tj
+T*
+(- - GET /web/api/suppliers/:id/purchases and GET /app/api/suppliers/:id/purchases; GET) Tj
+T*
+(- /web/api/add-suppliers/:id/purchases and GET /app/api/add-suppliers/:id/purchases) Tj
+T*
+() Tj
+T*
+(Units) Tj
+T*
+() Tj
+T*
+(Source file: backend/src/routes/units.ts) Tj
+T*
+() Tj
+T*
+(Mounted as: /units) Tj
+T*
+() Tj
+T*
+(- - GET /web/api/units and GET /app/api/units) Tj
+T*
+(- - POST /web/api/units and POST /app/api/units) Tj
+T*
+(- - DELETE /web/api/units/:id and DELETE /app/api/units/:id) Tj
+T*
+(- - POST /web/api/units/:id/approve and POST /app/api/units/:id/approve) Tj
+T*
+() Tj
+T*
+(Frontend API Routes) Tj
+T*
+() Tj
+T*
+(These are the active Next.js routes under frontend/src/app/api/**. Most forward to backend) Tj
+T*
+(/web/api/*; custom handlers are called out explicitly.) Tj
+T*
+() Tj
+T*
+(- - POST /api/auth/login - Thin proxy to backend /api/auth/login.) Tj
+T*
+(- - POST /api/auth/logout - Thin proxy to backend /api/auth/logout.) Tj
+T*
+(- - POST /api/auth/me/avatar - Uploads the image into the Next.js public folder, then) Tj
+T*
+(- patches the backend profile avatar.) Tj
+T*
+(- - GET, PATCH /api/auth/me - Thin proxy to backend /api/auth/me.) Tj
+T*
+(- - POST /api/auth/refresh - Thin proxy to backend /api/auth/refresh.) Tj
+T*
+(- - PUT /api/bank-accounts/:id - Thin proxy to backend /api/bank-accounts/${id}.) Tj
+T*
+(- - GET, POST /api/bank-accounts - Thin proxy to backend /api/bank-accounts.) Tj
+T*
+(- - PUT, DELETE /api/brands/:id - Thin proxy to backend /api/brands/${id}.) Tj
+T*
+ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 3549 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - GET, POST, DELETE /api/brands - Thin proxy to backend /api/brands.) Tj
+T*
+(- - GET, POST /api/bulk-upload - Custom Next.js import/export helper with local log) Tj
+T*
+(- storage and multiple upstream backend calls.) Tj
+T*
+(- - POST /api/categories/:id/approve - Thin proxy to backend) Tj
+T*
+(- /api/categories/${id}/approve.) Tj
+T*
+(- - PATCH, DELETE /api/categories/:id - Thin proxy to backend /api/categories/${id}.) Tj
+T*
+(- - POST /api/categories/import - Custom Next.js route.) Tj
+T*
+(- - GET, POST /api/categories - Thin proxy to backend /api/categories.) Tj
+T*
+(- - GET /api/customers/:id/ledger - Thin proxy to backend /api/customers/${id}/ledger.) Tj
+T*
+(- - POST /api/customers/:id/payments - Thin proxy to backend) Tj
+T*
+(- /api/customers/${id}/payments.) Tj
+T*
+(- - GET /api/customers/:id - Thin proxy to backend /api/customers/${id}.) Tj
+T*
+(- - GET /api/customers/:id/sales - Thin proxy to backend /api/customers/${id}/sales.) Tj
+T*
+(- - GET, POST /api/customers - Thin proxy to backend /api/customers.) Tj
+T*
+(- - POST /api/customers/sales - Thin proxy to backend /api/customers/sales.) Tj
+T*
+(- - PUT /api/money-boxes/:id - Thin proxy to backend /api/money-boxes/${id}.) Tj
+T*
+(- - GET, POST /api/money-boxes - Thin proxy to backend /api/money-boxes.) Tj
+T*
+(- - DELETE /api/product-templates/:id/products/:productId - Thin proxy to backend) Tj
+T*
+(- /api/product-templates/${id}/products/${productId}.) Tj
+T*
+(- - PUT /api/product-templates/:id/products - Thin proxy to backend) Tj
+T*
+(- /api/product-templates/${id}/products.) Tj
+T*
+(- - PUT, DELETE /api/product-templates/:id - Thin proxy to backend) Tj
+T*
+(- /api/product-templates/${id}.) Tj
+T*
+(- - GET, POST /api/product-templates - Thin proxy to backend /api/product-templates.) Tj
+T*
+(- - GET /api/products/:id/barcode - Thin proxy to backend) Tj
+T*
+(- /api/products/${id}/barcode.svg${queryString}.) Tj
+T*
+(- - POST /api/products/:id/duplicate - Thin proxy to backend) Tj
+T*
+(- /api/products/${id}/duplicate.) Tj
+T*
+(- - PUT, DELETE /api/products/:id - Thin proxy to backend /api/products/${id}.) Tj
+T*
+(- - PATCH /api/products/:id/status - Thin proxy to backend /api/products/${id}/status.) Tj
+T*
+(- - GET, POST /api/products - Thin proxy to backend /api/products.) Tj
+T*
+(- - PATCH /api/purchases/:id/approve - Thin proxy to backend /api/purchases/${id}/approve.) Tj
+T*
+(- - PATCH /api/purchases/:id/reject - Thin proxy to backend /api/purchases/${id}/reject.) Tj
+T*
+(- - GET /api/purchases/:id - Thin proxy to backend /api/purchases/${id}.) Tj
+T*
+(- - GET, POST /api/purchases - Thin proxy to backend /api/purchases.) Tj
+T*
+(- - GET /api/shops - Thin proxy to backend /api/shops.) Tj
+T*
+(- - GET /api/suppliers/:id/dues - Thin proxy to backend /api/suppliers/${id}/dues.) Tj
+T*
+(- - GET /api/suppliers/:id/ledger - Thin proxy to backend /api/suppliers/${id}/ledger.) Tj
+T*
+(- - GET, POST /api/suppliers/:id/payments - Thin proxy to backend) Tj
+T*
+(- /api/suppliers/${id}/payments.) Tj
+T*
+(- - GET /api/suppliers/:id/purchases - Thin proxy to backend) Tj
+T*
+(- /api/suppliers/${id}/purchases.) Tj
+T*
+(- - GET, PUT, DELETE /api/suppliers/:id - Thin proxy to backend /api/suppliers/${id}.) Tj
+T*
+(- - PATCH /api/suppliers/:id/status - Thin proxy to backend /api/suppliers/${id}/status.) Tj
+T*
+(- - GET, POST /api/suppliers - Thin proxy to backend /api/suppliers.) Tj
+T*
+(- - POST /api/units/:id/approve - Thin proxy to backend /api/units/${id}/approve.) Tj
+T*
+(- - GET, POST /api/units - Thin proxy to backend /api/units.) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 19 0 R >>
+endobj
+21 0 obj
+<< /Length 605 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(Notes) Tj
+T*
+() Tj
+T*
+(- - frontend/src/app/api/bulk-upload/route.ts is not a single-pass proxy; it parses) Tj
+T*
+(- spreadsheets, keeps local import/export logs, and calls multiple backend routes.) Tj
+T*
+(- - frontend/src/app/api/auth/me/avatar/route.ts stores the uploaded file in) Tj
+T*
+(- frontend/public/uploads/profiles/ before updating the backend user profile.) Tj
+T*
+(- - The older root file dokan-erp-app api list.txt exists, but this document is generated) Tj
+T*
+(- from the current codebase and should be treated as the fresher source of truth.) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 21 0 R >>
+endobj
+23 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+xref
+0 24
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000198 00000 n 
+0000002734 00000 n 
+0000002860 00000 n 
+0000005357 00000 n 
+0000005483 00000 n 
+0000007971 00000 n 
+0000008097 00000 n 
+0000011017 00000 n 
+0000011144 00000 n 
+0000013928 00000 n 
+0000014056 00000 n 
+0000016609 00000 n 
+0000016737 00000 n 
+0000019149 00000 n 
+0000019277 00000 n 
+0000022462 00000 n 
+0000022590 00000 n 
+0000026192 00000 n 
+0000026320 00000 n 
+0000026977 00000 n 
+0000027105 00000 n 
+trailer
+<< /Size 24 /Root 23 0 R >>
+startxref
+27155
+%%EOF
