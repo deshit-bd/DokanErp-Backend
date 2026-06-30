@@ -129,13 +129,39 @@ async function resolveDefaultMoneyBoxByType(tx: any, shopId: string, type?: stri
     return null;
   }
 
-  return tx.moneyBox.findFirst({
+  const existing = await tx.moneyBox.findFirst({
     where: {
       shopId,
       type: normalizedType,
       status: "ACTIVE",
     },
     orderBy: [{ createdAt: "asc" }],
+    select: {
+      id: true,
+      boxName: true,
+      code: true,
+      type: true,
+      currentBalance: true,
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const boxName = normalizedType === "CASH" ? "Cash Box" : (normalizedType === "BKASH" ? "bKash Wallet" : "Nagad Wallet");
+  const code = `${normalizedType.toLowerCase()}-${shopId.substring(0, 8)}-${Date.now()}`;
+
+  return tx.moneyBox.create({
+    data: {
+      shopId,
+      boxName,
+      code,
+      type: normalizedType,
+      openingBalance: 0,
+      currentBalance: 0,
+      status: "ACTIVE",
+    },
     select: {
       id: true,
       boxName: true,

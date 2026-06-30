@@ -13,6 +13,70 @@ function toMoney(value: unknown) {
   return Number(value ?? 0);
 }
 
+async function resolveDefaultMoneyBoxByType(tx: any, shopId: string, type?: string | null) {
+  const normalizedType = typeof type === "string" ? type.trim().toUpperCase() : "";
+
+  if (!normalizedType || !["CASH", "BKASH", "NAGAD"].includes(normalizedType)) {
+    return null;
+  }
+
+  const existing = await tx.moneyBox.findFirst({
+    where: {
+      shopId,
+      type: normalizedType,
+      status: "ACTIVE",
+    },
+    orderBy: [{ createdAt: "asc" }],
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const boxName = normalizedType === "CASH" ? "Cash Box" : (normalizedType === "BKASH" ? "bKash Wallet" : "Nagad Wallet");
+  const code = `${normalizedType.toLowerCase()}-${shopId.substring(0, 8)}-${Date.now()}`;
+
+  return tx.moneyBox.create({
+    data: {
+      shopId,
+      boxName,
+      code,
+      type: normalizedType,
+      openingBalance: 0,
+      currentBalance: 0,
+      status: "ACTIVE",
+    },
+  });
+}
+
+async function resolveDefaultBankAccount(tx: any, shopId: string) {
+  const existing = await tx.bankAccount.findFirst({
+    where: {
+      shopId,
+      status: "ACTIVE",
+    },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return tx.bankAccount.create({
+    data: {
+      shopId,
+      accountName: "Main Business Account",
+      bankName: "Default Bank",
+      accountNumber: `default-${shopId.substring(0, 8)}-${Date.now()}`,
+      accountType: "CURRENT",
+      openingBalance: 0,
+      currentBalance: 0,
+      status: "ACTIVE",
+      isDefault: true,
+    },
+  });
+}
+
 async function requireExpenseContext(request: Parameters<typeof getAuthenticatedUser>[0]): Promise<any> {
   const auth = await getAuthenticatedUser(request);
 
@@ -198,7 +262,7 @@ router.post("/", async (request, response) => {
       let bankAccountId: string | null = null;
 
       if (paymentMethod === "CASH" || paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
-        const moneyBox = body.moneyBoxId
+        let moneyBox = body.moneyBoxId
           ? await typedTx.moneyBox.findFirst({
               where: {
                 id: body.moneyBoxId,
@@ -217,6 +281,10 @@ router.post("/", async (request, response) => {
             });
 
         if (!moneyBox) {
+          moneyBox = await resolveDefaultMoneyBoxByType(typedTx, context.shop.id, paymentMethod);
+        }
+
+        if (!moneyBox) {
           throw new Error(`${paymentMethod}_BOX_NOT_FOUND`);
         }
 
@@ -233,7 +301,7 @@ router.post("/", async (request, response) => {
       }
 
       if (paymentMethod === "BANK") {
-        const bankAccount = body.bankAccountId
+        let bankAccount = body.bankAccountId
           ? await typedTx.bankAccount.findFirst({
               where: {
                 id: body.bankAccountId,
@@ -248,6 +316,10 @@ router.post("/", async (request, response) => {
               },
               orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
             });
+
+        if (!bankAccount) {
+          bankAccount = await resolveDefaultBankAccount(typedTx, context.shop.id);
+        }
 
         if (!bankAccount) {
           throw new Error("BANK_ACCOUNT_NOT_FOUND");
@@ -375,7 +447,7 @@ router.patch("/:id", async (request, response) => {
       let bankAccountId: string | null = null;
 
       if (paymentMethod === "CASH" || paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
-        const moneyBox = body.moneyBoxId
+        let moneyBox = body.moneyBoxId
           ? await typedTx.moneyBox.findFirst({
               where: {
                 id: body.moneyBoxId,
@@ -403,6 +475,10 @@ router.patch("/:id", async (request, response) => {
               });
 
         if (!moneyBox) {
+          moneyBox = await resolveDefaultMoneyBoxByType(typedTx, context.shop.id, paymentMethod);
+        }
+
+        if (!moneyBox) {
           throw new Error(`${paymentMethod}_BOX_NOT_FOUND`);
         }
 
@@ -410,7 +486,7 @@ router.patch("/:id", async (request, response) => {
       }
 
       if (paymentMethod === "BANK") {
-        const bankAccount = body.bankAccountId
+        let bankAccount = body.bankAccountId
           ? await typedTx.bankAccount.findFirst({
               where: {
                 id: body.bankAccountId,
@@ -433,6 +509,10 @@ router.patch("/:id", async (request, response) => {
                 },
                 orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
               });
+
+        if (!bankAccount) {
+          bankAccount = await resolveDefaultBankAccount(typedTx, context.shop.id);
+        }
 
         if (!bankAccount) {
           throw new Error("BANK_ACCOUNT_NOT_FOUND");

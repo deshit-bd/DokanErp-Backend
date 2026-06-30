@@ -5,7 +5,7 @@ import { prisma } from "../config/prisma";
 
 const router = Router();
 
-type ReportRange = "today" | "week" | "month" | "year";
+type ReportRange = "today" | "week" | "month" | "year" | "all";
 
 function getRangeBounds(range: ReportRange, source = new Date()) {
   const now = new Date(source);
@@ -31,6 +31,13 @@ function getRangeBounds(range: ReportRange, source = new Date()) {
     end.setMonth(11, 31);
     end.setHours(23, 59, 59, 999);
     return { start, end };
+  }
+
+  if (range === "all") {
+    return {
+      start: new Date(0),
+      end: new Date(now.getFullYear() + 100, 11, 31, 23, 59, 59, 999),
+    };
   }
 
   start.setDate(1);
@@ -63,6 +70,9 @@ function mapHourToSlot(hour: number) {
 }
 
 function getPreviousRangeBounds(range: ReportRange, start: Date, end: Date) {
+  if (range === "all") {
+    return { start: new Date(0), end: new Date(0) };
+  }
   const rangeMs = end.getTime() - start.getTime() + 1;
   const prevEnd = new Date(start.getTime() - 1);
   const prevStart = new Date(prevEnd.getTime() - rangeMs + 1);
@@ -94,7 +104,7 @@ function getTrendBuckets(range: ReportRange, start: Date) {
     });
   }
 
-  if (range === "year") {
+  if (range === "year" || range === "all") {
     const monthNames = ["জানু", "ফেব", "মার্চ", "এপ্রি", "মে", "জুন", "জুল", "আগ", "সেপ", "অক্ট", "নভে", "ডিসে"];
     return Array.from({ length: 12 }, (_, index) => ({
       key: String(index),
@@ -125,7 +135,7 @@ function getTrendKey(range: ReportRange, date: Date) {
     return date.toISOString().slice(0, 10);
   }
 
-  if (range === "year") {
+  if (range === "year" || range === "all") {
     return String(date.getMonth());
   }
 
@@ -408,7 +418,15 @@ router.get("/dashboard", async (request, response) => {
     const { start, end } = getRangeBounds(range);
     const previousRange = getPreviousRangeBounds(range, start, end);
 
-    const [currentSalesData, previousSalesData, purchases, expenses] = await Promise.all([
+    const [
+      currentSalesData,
+      previousSalesData,
+      purchases,
+      expenses,
+      customerLedgerGroups,
+      supplierLedgerGroups,
+      shopProducts,
+    ] = await Promise.all([
       loadSalesDataset(shopId, start, end),
       loadSalesDataset(shopId, previousRange.start, previousRange.end),
       prisma.purchase.findMany({
@@ -433,6 +451,23 @@ router.get("/dashboard", async (request, response) => {
         },
         select: { amount: true },
       }),
+      prisma.customerLedger.groupBy({
+        by: ["customerId"],
+        where: { shopId },
+        _sum: { debit: true, credit: true },
+      }),
+      prisma.supplierLedger.groupBy({
+        by: ["supplierId"],
+        where: { shopId },
+        _sum: { debit: true, credit: true },
+      }),
+      prisma.shopProduct.findMany({
+        where: { shopId },
+        select: {
+          openingStock: true,
+          lowStockLimit: true,
+        },
+      }),
     ]);
 
     const sales = currentSalesData.sales;
@@ -448,6 +483,19 @@ router.get("/dashboard", async (request, response) => {
       + currentSalesData.paymentBuckets.card
       + currentSalesData.paymentBuckets.due
       + currentSalesData.paymentBuckets.other;
+
+    const receivable = customerLedgerGroups.reduce(
+      (sum, entry) => sum + Math.max(0, Number(entry._sum.debit ?? 0) - Number(entry._sum.credit ?? 0)),
+      0
+    );
+    const payable = supplierLedgerGroups.reduce(
+      (sum, entry) => sum + Math.max(0, Number(entry._sum.debit ?? 0) - Number(entry._sum.credit ?? 0)),
+      0
+    );
+    const totalProducts = shopProducts.length;
+    const lowStockCount = shopProducts.filter(
+      (p) => Number(p.openingStock ?? 0) > 0 && Number(p.openingStock ?? 0) < Number(p.lowStockLimit ?? 0)
+    ).length;
 
     const paymentMethods = [
       {
@@ -510,6 +558,11 @@ router.get("/dashboard", async (request, response) => {
         purchases: Math.round(totalPurchases),
         expenses: Math.round(totalExpenses),
         purchaseCount: purchases.length,
+        receivable: Math.round(receivable),
+        payable: Math.round(payable),
+        lowStockCount,
+        totalProducts,
+        salesGrowthPercent: salesChangePct,
       },
       trend,
       trendSummary: {
@@ -1111,7 +1164,7 @@ router.get("/expenses/summary", async (request, response) => {
 
     const shopId = context.shopId;
     const rangeParam = typeof request.query.range === "string" ? request.query.range.trim() : "month";
-    const range: ReportRange = ["today", "week", "month", "year"].includes(rangeParam) ? (rangeParam as ReportRange) : "month";
+    const range: ReportRange = ["today", "week", "month", "year", "all"].includes(rangeParam) ? (rangeParam as ReportRange) : "month";
     const { start, end } = getRangeBounds(range);
     const previousRange = getPreviousRangeBounds(range, start, end);
 

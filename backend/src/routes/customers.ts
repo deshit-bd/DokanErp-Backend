@@ -322,13 +322,39 @@ async function resolveDefaultMoneyBoxByType(shopId: string, type?: string | null
     return null;
   }
 
-  return (prisma as any).moneyBox.findFirst({
+  const existing = await (prisma as any).moneyBox.findFirst({
     where: {
       shopId,
       type: normalizedType,
       status: "ACTIVE",
     },
     orderBy: [{ createdAt: "asc" }],
+    select: {
+      id: true,
+      boxName: true,
+      code: true,
+      type: true,
+      currentBalance: true,
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const boxName = normalizedType === "CASH" ? "Cash Box" : (normalizedType === "BKASH" ? "bKash Wallet" : "Nagad Wallet");
+  const code = `${normalizedType.toLowerCase()}-${shopId.substring(0, 8)}-${Date.now()}`;
+
+  return (prisma as any).moneyBox.create({
+    data: {
+      shopId,
+      boxName,
+      code,
+      type: normalizedType,
+      openingBalance: 0,
+      currentBalance: 0,
+      status: "ACTIVE",
+    },
     select: {
       id: true,
       boxName: true,
