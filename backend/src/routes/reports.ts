@@ -69,7 +69,7 @@ function mapHourToSlot(hour: number) {
   return "8pm";
 }
 
-function getPreviousRangeBounds(range: ReportRange, start: Date, end: Date) {
+function getPreviousRangeBounds(range: ReportRange | "custom", start: Date, end: Date) {
   if (range === "all") {
     return { start: new Date(0), end: new Date(0) };
   }
@@ -224,11 +224,16 @@ async function loadPurchaseDataset(shopId: string, start: Date, end: Date) {
     }
   }
 
+  const totalProducts = purchases.reduce((sum, purchase) => {
+    return sum + purchase.items.reduce((itemSum, item) => itemSum + Number(item.quantity ?? 0), 0);
+  }, 0);
+
   return {
     purchases,
     totalPurchases: Math.round(totalPurchases),
     totalPaid: Math.round(totalPaid),
     totalDue: Math.round(totalDue),
+    totalProducts: Math.round(totalProducts),
     paymentBuckets,
     supplierMap,
     productMap,
@@ -403,6 +408,10 @@ async function requireReportAccess(request: Parameters<typeof getAuthenticatedUs
   return { auth, shopId };
 }
 
+function isReportContextError(context: any): context is { status: number; body: unknown } {
+  return Boolean(context && typeof context.status === "number" && "body" in context);
+}
+
 // 1. GET /dashboard
 router.get("/dashboard", async (request, response) => {
   try {
@@ -412,10 +421,42 @@ router.get("/dashboard", async (request, response) => {
       return sendAuthError(response, context);
     }
 
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
+    }
+
     const shopId = context.shopId;
     const rangeParam = typeof request.query.range === "string" ? request.query.range.trim() : "month";
-    const range: ReportRange = ["today", "week", "month", "year"].includes(rangeParam) ? (rangeParam as ReportRange) : "month";
-    const { start, end } = getRangeBounds(range);
+    const fromParam =
+      typeof request.query.from === "string"
+        ? request.query.from.trim()
+        : typeof request.query.startDate === "string"
+          ? request.query.startDate.trim()
+          : "";
+    const toParam =
+      typeof request.query.to === "string"
+        ? request.query.to.trim()
+        : typeof request.query.endDate === "string"
+          ? request.query.endDate.trim()
+          : "";
+    let range: ReportRange | "custom" = ["today", "week", "month", "year"].includes(rangeParam)
+      ? (rangeParam as ReportRange)
+      : "month";
+    let start: Date;
+    let end: Date;
+
+    if (fromParam && toParam) {
+      start = new Date(fromParam);
+      end = new Date(toParam);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+        return response.status(400).json({ message: "Invalid purchase summary date range." });
+      }
+      range = "custom";
+    } else {
+      const bounds = getRangeBounds(range);
+      start = bounds.start;
+      end = bounds.end;
+    }
     const previousRange = getPreviousRangeBounds(range, start, end);
 
     const [
@@ -521,10 +562,11 @@ router.get("/dashboard", async (request, response) => {
       },
     ];
 
-    const trendBuckets = getTrendBuckets(range, start);
+    const trendRange: ReportRange = range === "custom" ? "today" : range;
+    const trendBuckets = getTrendBuckets(trendRange, start);
     const trendMap = new Map(trendBuckets.map((bucket) => [bucket.key, 0]));
     for (const sale of sales) {
-      const key = getTrendKey(range, sale.saleDate);
+      const key = getTrendKey(trendRange, sale.saleDate);
       trendMap.set(key, (trendMap.get(key) || 0) + Number(sale.totalAmount));
     }
     const trend = trendBuckets.map((bucket) => ({
@@ -593,6 +635,10 @@ router.get("/sales/daily", async (request, response) => {
 
     if (isAuthError(context)) {
       return sendAuthError(response, context);
+    }
+
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
     }
 
     const shopId = context.shopId;
@@ -761,21 +807,66 @@ router.get("/purchases/summary", async (request, response) => {
       return sendAuthError(response, context);
     }
 
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
+    }
+
     const shopId = context.shopId;
     const rangeParam = typeof request.query.range === "string" ? request.query.range.trim() : "month";
-    const range: ReportRange = ["today", "week", "month", "year"].includes(rangeParam) ? (rangeParam as ReportRange) : "month";
-    const { start, end } = getRangeBounds(range);
+    const fromParam =
+      typeof request.query.from === "string"
+        ? request.query.from.trim()
+        : typeof request.query.startDate === "string"
+          ? request.query.startDate.trim()
+          : "";
+    const toParam =
+      typeof request.query.to === "string"
+        ? request.query.to.trim()
+        : typeof request.query.endDate === "string"
+          ? request.query.endDate.trim()
+          : "";
+    let range: ReportRange | "custom" = ["today", "week", "month", "year"].includes(rangeParam)
+      ? (rangeParam as ReportRange)
+      : "month";
+    let start: Date;
+    let end: Date;
+
+    if (fromParam && toParam) {
+      start = new Date(fromParam);
+      end = new Date(toParam);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+        return response.status(400).json({ message: "Invalid purchase summary date range." });
+      }
+      range = "custom";
+    } else {
+      const bounds = getRangeBounds(range);
+      start = bounds.start;
+      end = bounds.end;
+    }
     const previousRange = getPreviousRangeBounds(range, start, end);
 
-    const [currentPurchaseData, previousPurchaseData] = await Promise.all([
+    const [currentPurchaseData, previousPurchaseData, currentExpenses] = await Promise.all([
       loadPurchaseDataset(shopId, start, end),
       loadPurchaseDataset(shopId, previousRange.start, previousRange.end),
+      prisma.expense.findMany({
+        where: {
+          shopId,
+          expenseDate: {
+            gte: start,
+            lte: end,
+          },
+        },
+        select: { amount: true },
+      }),
     ]);
 
-    const trendBuckets = getTrendBuckets(range, start);
+    const totalExpense = currentExpenses.reduce((sum, item) => sum + Number(item.amount), 0);
+
+    const trendRange: ReportRange = range === "custom" ? "today" : range;
+    const trendBuckets = getTrendBuckets(trendRange, start);
     const trendMap = new Map(trendBuckets.map((bucket) => [bucket.key, 0]));
     for (const purchase of currentPurchaseData.purchases) {
-      const key = getTrendKey(range, purchase.purchaseDate);
+      const key = getTrendKey(trendRange, purchase.purchaseDate);
       trendMap.set(key, (trendMap.get(key) || 0) + Number(purchase.totalAmount));
     }
 
@@ -847,6 +938,8 @@ router.get("/purchases/summary", async (request, response) => {
           currentPurchaseData.purchases.length > 0 ? Math.round(currentTotal / currentPurchaseData.purchases.length) : 0,
         paidAmount: currentPurchaseData.totalPaid,
         dueAmount: currentPurchaseData.totalDue,
+        totalProducts: currentPurchaseData.totalProducts,
+        totalExpense: Math.round(totalExpense),
       },
       trend,
       trendSummary: {
@@ -878,6 +971,10 @@ router.get("/dues/summary", async (request, response) => {
 
     if (isAuthError(context)) {
       return sendAuthError(response, context);
+    }
+
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
     }
 
     const shopId = context.shopId;
@@ -1162,11 +1259,19 @@ router.get("/expenses/summary", async (request, response) => {
       return sendAuthError(response, context);
     }
 
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
+    }
+
     const shopId = context.shopId;
     const rangeParam = typeof request.query.range === "string" ? request.query.range.trim() : "month";
     const range: ReportRange = ["today", "week", "month", "year", "all"].includes(rangeParam) ? (rangeParam as ReportRange) : "month";
     const { start, end } = getRangeBounds(range);
     const previousRange = getPreviousRangeBounds(range, start, end);
+    const requestedLimit = Number(request.query.limit ?? 100);
+    const detailLimit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.round(requestedLimit), 1), 500)
+      : 100;
 
     const [expenses, previousExpenses] = await Promise.all([
       prisma.expense.findMany({
@@ -1272,14 +1377,18 @@ router.get("/expenses/summary", async (request, response) => {
       amount: Math.round(trendMap.get(bucket.key) || 0),
     }));
 
-    const recentExpenses = expenses.slice(0, 5).map((expense) => ({
+    const detailedExpenses = expenses.slice(0, detailLimit).map((expense) => ({
       id: expense.id,
       category: expense.category,
       amount: Math.round(Number(expense.amount ?? 0)),
       expenseDate: expense.expenseDate,
       description: expense.description,
       paymentMethod: expense.paymentMethod,
+      moneyBoxId: expense.moneyBoxId,
+      bankAccountId: expense.bankAccountId,
       status: expense.status,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
     }));
 
     return response.json({
@@ -1289,6 +1398,7 @@ router.get("/expenses/summary", async (request, response) => {
         averageExpense,
         highestExpense,
         topCategory: categories[0]?.name || "খরচ নেই",
+        topCategoryAmount: categories[0]?.amount || 0,
       },
       trend,
       trendSummary: {
@@ -1299,11 +1409,14 @@ router.get("/expenses/summary", async (request, response) => {
       },
       categories,
       paymentMethods,
-      recentExpenses,
+      expenses: detailedExpenses,
+      recentExpenses: detailedExpenses.slice(0, 5),
       meta: {
         range,
         startDate: start,
         endDate: end,
+        returnedExpenseCount: detailedExpenses.length,
+        expenseLimit: detailLimit,
         generatedAt: new Date(),
       },
     });
@@ -1322,10 +1435,24 @@ router.get("/profit-loss", async (request, response) => {
       return sendAuthError(response, context);
     }
 
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
+    }
+
     const shopId = context.shopId;
     const rangeParam = typeof request.query.range === "string" ? request.query.range.trim() : "month";
-    const startDateParam = typeof request.query.startDate === "string" ? request.query.startDate.trim() : "";
-    const endDateParam = typeof request.query.endDate === "string" ? request.query.endDate.trim() : "";
+    const startDateParam =
+      typeof request.query.startDate === "string"
+        ? request.query.startDate.trim()
+        : typeof request.query.from === "string"
+          ? request.query.from.trim()
+          : "";
+    const endDateParam =
+      typeof request.query.endDate === "string"
+        ? request.query.endDate.trim()
+        : typeof request.query.to === "string"
+          ? request.query.to.trim()
+          : "";
     const hasCustomDateRange = startDateParam.length > 0 && endDateParam.length > 0;
     const now = new Date();
 
@@ -1334,8 +1461,8 @@ router.get("/profit-loss", async (request, response) => {
     let end: Date;
 
     if (hasCustomDateRange) {
-      const parsedStart = new Date(`${startDateParam}T00:00:00`);
-      const parsedEnd = new Date(`${endDateParam}T23:59:59.999`);
+      const parsedStart = new Date(startDateParam.includes("T") ? startDateParam : `${startDateParam}T00:00:00`);
+      const parsedEnd = new Date(endDateParam.includes("T") ? endDateParam : `${endDateParam}T23:59:59.999`);
 
       if (Number.isNaN(parsedStart.getTime()) || Number.isNaN(parsedEnd.getTime()) || parsedStart > parsedEnd) {
         return response.status(400).json({ message: "Invalid custom date range." });
@@ -1426,6 +1553,10 @@ router.get("/stock-value", async (request, response) => {
 
     if (isAuthError(context)) {
       return sendAuthError(response, context);
+    }
+
+    if (isReportContextError(context)) {
+      return response.status(context.status).json(context.body);
     }
 
     const shopId = context.shopId;

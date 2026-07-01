@@ -11,6 +11,7 @@ import {
 } from "../utils/stock-movement";
 
 import { reconcileProductStockAndBins } from "../utils/reconciliation";
+import { createNotification } from "./notifications";
 
 const router = Router();
 
@@ -558,6 +559,28 @@ router.post("/stock-movements", async (request, response) => {
 
       return { updated, movement };
     });
+
+    const productName = result.updated.masterProduct?.name ?? result.updated.localName ?? "Unnamed product";
+    const currentStock = Number(result.updated.openingStock ?? 0);
+    const lowStockLimit = Number(result.updated.lowStockLimit ?? 0);
+
+    if (action === "ADD") {
+      await createNotification(
+        context.shop.id,
+        "INVENTORY",
+        "স্টক আপডেট হয়েছে",
+        `পণ্য: ${productName} | নতুন স্টক: ${currentStock} টি যোগ করা হয়েছে।`
+      );
+    }
+
+    if (currentStock <= lowStockLimit) {
+      await createNotification(
+        context.shop.id,
+        "INVENTORY",
+        "কম স্টক সতর্কতা",
+        `একটি পণ্যের (${productName}) স্টক নির্ধারিত সীমার (${lowStockLimit}) নিচে নেমে গেছে। বর্তমান স্টক: ${currentStock}`
+      );
+    }
 
     return response.json({
       message:

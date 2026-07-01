@@ -7,6 +7,7 @@ import {
   normalizeMoney as normalizeStockMoney,
   recordStockMovement,
 } from "../utils/stock-movement";
+import { createNotification } from "./notifications";
 
 const router = Router();
 
@@ -757,6 +758,13 @@ router.post("/", async (request, response) => {
         entryDate: new Date(),
       },
     });
+
+    await createNotification(
+      shop.id,
+      "GENERAL",
+      "নতুন গ্রাহক যুক্ত হয়েছে",
+      `গ্রাহক ${name} আপনার কাস্টমার তালিকায় সফলভাবে যুক্ত হয়েছে।`
+    );
 
     return response.status(201).json({
       message: "Customer created successfully.",
@@ -2249,6 +2257,13 @@ router.post("/sales", async (request, response) => {
       };
     });
 
+    await createNotification(
+      context.shop.id,
+      "SALE",
+      "নতুন বিক্রয় হয়েছে",
+      `রসিদ নং ${sale.createdSale.invoiceNo || sale.createdSale.id} | মোট বিক্রয় ৳${sale.createdSale.totalAmount} | কাস্টমার: ${customer.name}`
+    );
+
     return response.status(201).json({
       message: "Customer sale created successfully.",
       sale: {
@@ -2518,6 +2533,13 @@ router.post("/:id/payments", async (request, response) => {
 
       return createdPayment;
     });
+
+    await createNotification(
+      context.shop.id,
+      "SALE",
+      "পেমেন্ট গ্রহণ হয়েছে",
+      `গ্রাহক ${customer.name} এর কাছ থেকে সফলভাবে ৳${amount} আদায় করা হয়েছে।`
+    );
 
     return response.status(201).json({
       message: "Customer payment recorded successfully.",

@@ -13,6 +13,128 @@ function toMoney(value: unknown) {
   return Number(value ?? 0);
 }
 
+type ExpenseSummaryRange = "today" | "week" | "month" | "year" | "all";
+
+function getExpenseRangeBounds(range: ExpenseSummaryRange, source = new Date()) {
+  const now = new Date(source);
+  const start = new Date(now);
+  const end = new Date(now);
+
+  if (range === "today") {
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (range === "week") {
+    start.setDate(now.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (range === "year") {
+    start.setMonth(0, 1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(11, 31);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (range === "all") {
+    return {
+      start: new Date(0),
+      end: new Date(now.getFullYear() + 100, 11, 31, 23, 59, 59, 999),
+    };
+  }
+
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  end.setMonth(now.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function getPreviousExpenseRangeBounds(range: ExpenseSummaryRange, start: Date, end: Date) {
+  if (range === "all") {
+    return { start: new Date(0), end: new Date(0) };
+  }
+  const rangeMs = end.getTime() - start.getTime() + 1;
+  const previousEnd = new Date(start.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - rangeMs + 1);
+  return { start: previousStart, end: previousEnd };
+}
+
+function getExpenseTrendBuckets(range: ExpenseSummaryRange, start: Date) {
+  if (range === "today") {
+    return [
+      { key: "08", label: "8am" },
+      { key: "10", label: "10am" },
+      { key: "12", label: "12pm" },
+      { key: "14", label: "2pm" },
+      { key: "16", label: "4pm" },
+      { key: "18", label: "6pm" },
+      { key: "20", label: "8pm" },
+    ];
+  }
+
+  if (range === "week") {
+    const dayNames = ["রবি", "সোম", "মঙ্গল", "বুধ", "বৃহ", "শুক্র", "শনি"];
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return {
+        key: date.toISOString().slice(0, 10),
+        label: dayNames[date.getDay()],
+      };
+    });
+  }
+
+  if (range === "year" || range === "all") {
+    const monthNames = ["জানু", "ফেব", "মার্চ", "এপ্রি", "মে", "জুন", "জুল", "আগ", "সেপ", "অক্ট", "নভে", "ডিসে"];
+    return Array.from({ length: 12 }, (_, index) => ({
+      key: String(index),
+      label: monthNames[index],
+    }));
+  }
+
+  const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+  const bucketDays = Array.from(new Set([1, 5, 10, 15, 20, 25, lastDay])).sort((a, b) => a - b);
+  return bucketDays.map((day) => ({
+    key: String(day),
+    label: `${day}`,
+  }));
+}
+
+function getExpenseTrendKey(range: ExpenseSummaryRange, date: Date) {
+  if (range === "today") {
+    if (date.getHours() < 10) return "08";
+    if (date.getHours() < 12) return "10";
+    if (date.getHours() < 14) return "12";
+    if (date.getHours() < 16) return "14";
+    if (date.getHours() < 18) return "16";
+    if (date.getHours() < 20) return "18";
+    return "20";
+  }
+
+  if (range === "week") {
+    return date.toISOString().slice(0, 10);
+  }
+
+  if (range === "year" || range === "all") {
+    return String(date.getMonth());
+  }
+
+  const day = date.getDate();
+  if (day <= 1) return "1";
+  if (day <= 5) return "5";
+  if (day <= 10) return "10";
+  if (day <= 15) return "15";
+  if (day <= 20) return "20";
+  if (day <= 25) return "25";
+  return String(new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate());
+}
+
 async function resolveDefaultMoneyBoxByType(tx: any, shopId: string, type?: string | null) {
   const normalizedType = typeof type === "string" ? type.trim().toUpperCase() : "";
 
@@ -131,6 +253,60 @@ async function requireExpenseContext(request: Parameters<typeof getAuthenticated
   return { auth, shop };
 }
 
+async function requireExpenseReportContext(request: Parameters<typeof getAuthenticatedUser>[0]): Promise<any> {
+  const auth = await getAuthenticatedUser(request);
+
+  if (isAuthError(auth)) {
+    return auth;
+  }
+
+  if (!["SUPER_ADMIN", "ADMIN", "SHOP_OWNER", "SALESMAN"].includes(auth.payload.role)) {
+    return {
+      status: 403,
+      body: { message: "You do not have permission to view expense reports." },
+    };
+  }
+
+  const rawShopId =
+    auth.payload.shopId ??
+    (typeof request.query.shopId === "string" ? request.query.shopId.trim() : "") ??
+    ((request.body as { shopId?: string } | undefined)?.shopId?.trim() ?? "");
+
+  if (!rawShopId) {
+    return {
+      status: 400,
+      body: { message: "shopId is required for expense report operations." },
+    };
+  }
+
+  if (["SHOP_OWNER", "SALESMAN"].includes(auth.payload.role) && auth.payload.shopId && auth.payload.shopId !== rawShopId) {
+    return {
+      status: 403,
+      body: { message: "You can only access expense reports for your own shop." },
+    };
+  }
+
+  const shop = await prisma.shop.findFirst({
+    where: {
+      OR: [{ id: rawShopId }, { shopCode: rawShopId }],
+    },
+    select: {
+      id: true,
+      shopCode: true,
+      shopName: true,
+    },
+  });
+
+  if (!shop) {
+    return {
+      status: 404,
+      body: { message: "Shop not found for the provided shopId/shopCode." },
+    };
+  }
+
+  return { auth, shop };
+}
+
 function mapExpense(expense: any) {
   return {
     id: expense.id,
@@ -147,6 +323,185 @@ function mapExpense(expense: any) {
     updatedAt: expense.updatedAt,
   };
 }
+
+router.get("/summary", async (request, response) => {
+  try {
+    const context = await requireExpenseReportContext(request);
+
+    if (isAuthError(context as any)) {
+      return sendAuthError(response, context as any);
+    }
+
+    if ("status" in context) {
+      return response.status(context.status).json(context.body);
+    }
+
+    const rangeParam = normalizeText(request.query.range).toLowerCase() || "month";
+    const range: ExpenseSummaryRange = ["today", "week", "month", "year", "all"].includes(rangeParam)
+      ? (rangeParam as ExpenseSummaryRange)
+      : "month";
+    const requestedLimit = Number(request.query.limit ?? 100);
+    const detailLimit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.round(requestedLimit), 1), 500)
+      : 100;
+    const requestedFrom = normalizeText(request.query.from);
+    const requestedTo = normalizeText(request.query.to);
+    const defaultBounds = getExpenseRangeBounds(range);
+    const start = requestedFrom ? new Date(requestedFrom) : defaultBounds.start;
+    const end = requestedTo ? new Date(requestedTo) : defaultBounds.end;
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return response.status(400).json({ message: "from/to must be valid ISO date strings." });
+    }
+
+    const previousRange = getPreviousExpenseRangeBounds(range, start, end);
+
+    const [expenses, previousExpenses] = await Promise.all([
+      (prisma as any).expense.findMany({
+        where: {
+          shopId: context.shop.id,
+          expenseDate: {
+            gte: start,
+            lte: end,
+          },
+        },
+        orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
+      }),
+      (prisma as any).expense.findMany({
+        where: {
+          shopId: context.shop.id,
+          status: "PAID",
+          expenseDate: {
+            gte: previousRange.start,
+            lte: previousRange.end,
+          },
+        },
+      }),
+    ]);
+
+    const paidExpenses = expenses.filter((expense: any) => expense.status === "PAID");
+    const totalExpenses = Math.round(paidExpenses.reduce((sum: number, item: any) => sum + Number(item.amount ?? 0), 0));
+    const previousTotal = Math.round(previousExpenses.reduce((sum: number, item: any) => sum + Number(item.amount ?? 0), 0));
+    const expenseCount = expenses.length;
+    const paidCount = paidExpenses.length;
+    const pendingCount = expenses.filter((expense: any) => expense.status === "PENDING").length;
+    const averageExpense = paidCount > 0 ? Math.round(totalExpenses / paidCount) : 0;
+    const highestExpense = Math.round(
+      paidExpenses.reduce((max: number, item: any) => Math.max(max, Number(item.amount ?? 0)), 0),
+    );
+    const changePct =
+      previousTotal > 0
+        ? Math.round(((totalExpenses - previousTotal) / previousTotal) * 100)
+        : totalExpenses > 0
+          ? 100
+          : 0;
+
+    const categoryMap = new Map<string, { amount: number; count: number }>();
+    const paymentBuckets = { cash: 0, wallet: 0, bank: 0, other: 0 };
+    const trendBuckets = getExpenseTrendBuckets(range, start);
+    const trendMap = new Map(trendBuckets.map((bucket) => [bucket.key, 0]));
+
+    for (const expense of paidExpenses) {
+      const amount = Number(expense.amount ?? 0);
+      const category = expense.category || "অন্যান্য";
+      const paymentMethod = (expense.paymentMethod || "CASH").toUpperCase();
+      const currentCategory = categoryMap.get(category) || { amount: 0, count: 0 };
+      currentCategory.amount += amount;
+      currentCategory.count += 1;
+      categoryMap.set(category, currentCategory);
+
+      if (paymentMethod === "BANK") paymentBuckets.bank += amount;
+      else if (paymentMethod === "BKASH" || paymentMethod === "NAGAD" || paymentMethod === "CARD") paymentBuckets.wallet += amount;
+      else if (paymentMethod === "CASH") paymentBuckets.cash += amount;
+      else paymentBuckets.other += amount;
+
+      const key = getExpenseTrendKey(range, expense.expenseDate);
+      trendMap.set(key, (trendMap.get(key) || 0) + amount);
+    }
+
+    const categories = Array.from(categoryMap.entries())
+      .map(([name, value]) => ({
+        name,
+        category: name,
+        amount: Math.round(value.amount),
+        count: value.count,
+        percentage: totalExpenses > 0 ? Math.round((value.amount / totalExpenses) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const paymentTotal = paymentBuckets.cash + paymentBuckets.wallet + paymentBuckets.bank + paymentBuckets.other;
+    const paymentMethods = [
+      {
+        method: "CASH",
+        label: "নগদ",
+        amount: Math.round(paymentBuckets.cash),
+        percentage: paymentTotal > 0 ? Math.round((paymentBuckets.cash / paymentTotal) * 100) : 0,
+      },
+      {
+        method: "WALLET",
+        label: "bKash/Nagad",
+        amount: Math.round(paymentBuckets.wallet),
+        percentage: paymentTotal > 0 ? Math.round((paymentBuckets.wallet / paymentTotal) * 100) : 0,
+      },
+      {
+        method: "BANK",
+        label: "ব্যাংক",
+        amount: Math.round(paymentBuckets.bank),
+        percentage: paymentTotal > 0 ? Math.round((paymentBuckets.bank / paymentTotal) * 100) : 0,
+      },
+      {
+        method: "OTHER",
+        label: "অন্যান্য",
+        amount: Math.round(paymentBuckets.other),
+        percentage: paymentTotal > 0 ? Math.round((paymentBuckets.other / paymentTotal) * 100) : 0,
+      },
+    ];
+
+    const trend = trendBuckets.map((bucket) => ({
+      label: bucket.label,
+      date: bucket.label,
+      amount: Math.round(trendMap.get(bucket.key) || 0),
+    }));
+    const detailedExpenses = expenses.slice(0, detailLimit).map(mapExpense);
+
+    return response.json({
+      shop: context.shop,
+      summary: {
+        totalExpenses,
+        totalAmount: totalExpenses,
+        expenseCount,
+        paidCount,
+        pendingCount,
+        averageExpense,
+        highestExpense,
+        topCategory: categories[0]?.name || "খরচ নেই",
+        topCategoryAmount: categories[0]?.amount || 0,
+      },
+      trend,
+      trendSummary: {
+        currentTotal: totalExpenses,
+        previousTotal,
+        changePct,
+        direction: changePct >= 0 ? "up" : "down",
+      },
+      categories,
+      paymentMethods,
+      expenses: detailedExpenses,
+      recentExpenses: detailedExpenses.slice(0, 5),
+      meta: {
+        range,
+        startDate: start,
+        endDate: end,
+        returnedExpenseCount: detailedExpenses.length,
+        expenseLimit: detailLimit,
+        generatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to load expense summary.", error);
+    return response.status(503).json({ message: "Expense summary could not be loaded right now." });
+  }
+});
 
 router.get("/", async (request, response) => {
   try {

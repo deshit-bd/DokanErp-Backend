@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../auth/current-user";
 import { prisma } from "../config/prisma";
+import { broadcastToShop } from "../utils/socket";
 
 const router = Router();
 
@@ -100,6 +101,100 @@ router.put("/settings", async (request, response) => {
   } catch (error: any) {
     console.error("Failed to save notification settings:", error);
     return response.status(500).json({ message: error.message || "Failed to save settings." });
+  }
+});
+
+// GET /send-test-dummies - Trigger dummy notifications for the current shop
+router.get("/send-test-dummies", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+    const shopId = auth.payload.shopId;
+    if (!shopId) {
+      return response.status(400).json({ message: "Shop ID not associated with user." });
+    }
+
+    await createNotification(
+      shopId,
+      "SALE",
+      "টেস্ট বিক্রয় সম্পন্ন",
+      "রসিদ নং TXN-TEST-101 | মোট বিক্রয় ৳১২০০ | কাস্টমার: কামাল হোসেন"
+    );
+
+    await createNotification(
+      shopId,
+      "INVENTORY",
+      "টেস্ট স্টক সতর্কতা",
+      "পণ্য: মিনিকেট চাল ৫০ কেজি এর স্টক কমে ৩ এ নেমেছে।"
+    );
+
+    await createNotification(
+      shopId,
+      "GENERAL",
+      "নতুন গ্রাহক যুক্ত হয়েছে",
+      "গ্রাহক আবির রহমান আপনার কাস্টমার তালিকায় সফলভাবে যুক্ত হয়েছে।"
+    );
+
+    return response.json({ message: "Dummy notifications triggered successfully" });
+  } catch (error: any) {
+    console.error("Failed to trigger dummy notifications:", error);
+    return response.status(500).json({ message: error.message || "Failed to trigger dummies." });
+  }
+});
+
+// GET /send-test-dummies-unauth - Trigger dummy notifications without authentication (for testing)
+router.get("/send-test-dummies-unauth", async (request, response) => {
+  try {
+    const shops = await prisma.shop.findMany();
+    if (shops.length === 0) {
+      return response.status(404).json({ message: "No shops found in database." });
+    }
+
+    // Check if custom message is provided via query
+    const customTitle = request.query.title as string;
+    const customMessage = request.query.message as string;
+    const customCategory = (request.query.category as string) || "GENERAL";
+
+    for (const shop of shops) {
+      const shopId = shop.id;
+
+      if (customTitle && customMessage) {
+        await createNotification(
+          shopId,
+          customCategory,
+          customTitle,
+          customMessage
+        );
+      } else {
+        await createNotification(
+          shopId,
+          "SALE",
+          "টেস্ট বিক্রয় সম্পন্ন",
+          "রসিদ নং TXN-TEST-101 | মোট বিক্রয় ৳১২০০ | কাস্টমার: কামাল হোসেন"
+        );
+
+        await createNotification(
+          shopId,
+          "INVENTORY",
+          "টেস্ট স্টক সতর্কতা",
+          "পণ্য: মিনিকেট চাল ৫০ কেজি এর স্টক কমে ৩ এ নেমেছে।"
+        );
+
+        await createNotification(
+          shopId,
+          "GENERAL",
+          "নতুন গ্রাহক যুক্ত হয়েছে",
+          "গ্রাহক আবির রহমান আপনার কাস্টমার তালিকায় সফলভাবে যুক্ত হয়েছে।"
+        );
+      }
+    }
+
+    return response.json({ message: `Dummy notifications triggered successfully for ${shops.length} shops.` });
+  } catch (error: any) {
+    console.error("Failed to trigger dummy notifications:", error);
+    return response.status(500).json({ message: error.message || "Failed to trigger dummies." });
   }
 });
 
@@ -229,5 +324,104 @@ router.delete("/", async (request, response) => {
     return response.status(500).json({ message: error.message || "Failed to delete notifications." });
   }
 });
+
+// PATCH /:id/read - Mark single notification as read
+router.patch("/:id/read", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+    const shopId = auth.payload.shopId;
+    if (!shopId) {
+      return response.status(400).json({ message: "Shop ID not associated with user." });
+    }
+
+    const { id } = request.params;
+    await (prisma as any).inAppNotification.update({
+      where: { id },
+      data: { isRead: true },
+    });
+
+    return response.json({ message: "Notification marked as read" });
+  } catch (error: any) {
+    console.error("Failed to mark notification as read:", error);
+    return response.status(500).json({ message: error.message || "Failed to update notification." });
+  }
+});
+
+// POST /read-all - Mark all notifications as read
+router.post("/read-all", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+    const shopId = auth.payload.shopId;
+    if (!shopId) {
+      return response.status(400).json({ message: "Shop ID not associated with user." });
+    }
+
+    await (prisma as any).inAppNotification.updateMany({
+      where: { shopId, isRead: false },
+      data: { isRead: true },
+    });
+
+    return response.json({ message: "All notifications marked as read" });
+  } catch (error: any) {
+    console.error("Failed to mark all notifications as read:", error);
+    return response.status(500).json({ message: error.message || "Failed to update notifications." });
+  }
+});
+
+// DELETE /:id - Delete single notification
+router.delete("/:id", async (request, response) => {
+  try {
+    const auth = await getAuthenticatedUser(request);
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+    const shopId = auth.payload.shopId;
+    if (!shopId) {
+      return response.status(400).json({ message: "Shop ID not associated with user." });
+    }
+
+    const { id } = request.params;
+    await (prisma as any).inAppNotification.delete({
+      where: { id },
+    });
+
+    return response.json({ message: "Notification deleted successfully" });
+  } catch (error: any) {
+    console.error("Failed to delete notification:", error);
+    return response.status(500).json({ message: error.message || "Failed to delete notification." });
+  }
+});
+
+// Helper function to create notification from business events
+export async function createNotification(
+  shopId: string,
+  type: string,
+  title: string,
+  message: string,
+) {
+  try {
+    const timestamp = new Date().toLocaleTimeString("bn-BD") + " | " + new Date().toLocaleDateString("bn-BD");
+    const notification = await (prisma as any).inAppNotification.create({
+      data: {
+        shopId,
+        type,
+        title,
+        message,
+        timestamp,
+      },
+    });
+
+    // Broadcast newly created notification in real time!
+    broadcastToShop(shopId, "new-notification", notification);
+  } catch (error) {
+    console.error("Failed to create in-app notification:", error);
+  }
+}
 
 export default router;
