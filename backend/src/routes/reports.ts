@@ -479,7 +479,7 @@ router.get("/dashboard", async (request, response) => {
             lte: end,
           },
         },
-        select: { totalAmount: true },
+        select: { totalAmount: true, paymentMethod: true },
       }),
       prisma.expense.findMany({
         where: {
@@ -562,6 +562,37 @@ router.get("/dashboard", async (request, response) => {
       },
     ];
 
+    const purchasePaymentBuckets = { cash: 0, wallet: 0, due: 0 };
+    for (const purchase of purchases) {
+      const method = (purchase.paymentMethod || "CASH").toUpperCase();
+      const amount = Number(purchase.totalAmount);
+      if (method === "DUE") purchasePaymentBuckets.due += amount;
+      else if (["BKASH", "NAGAD", "CARD", "ROCKET"].includes(method)) purchasePaymentBuckets.wallet += amount;
+      else purchasePaymentBuckets.cash += amount;
+    }
+    const purchasePaymentTotal =
+      purchasePaymentBuckets.cash +
+      purchasePaymentBuckets.wallet +
+      purchasePaymentBuckets.due;
+
+    const purchasePaymentMethods = [
+      {
+        method: "CASH",
+        amount: Math.round(purchasePaymentBuckets.cash),
+        percentage: purchasePaymentTotal > 0 ? Math.round((purchasePaymentBuckets.cash / purchasePaymentTotal) * 100) : 0,
+      },
+      {
+        method: "BKASH",
+        amount: Math.round(purchasePaymentBuckets.wallet),
+        percentage: purchasePaymentTotal > 0 ? Math.round((purchasePaymentBuckets.wallet / purchasePaymentTotal) * 100) : 0,
+      },
+      {
+        method: "DUE",
+        amount: Math.round(purchasePaymentBuckets.due),
+        percentage: purchasePaymentTotal > 0 ? Math.round((purchasePaymentBuckets.due / purchasePaymentTotal) * 100) : 0,
+      },
+    ];
+
     const trendRange: ReportRange = range === "custom" ? "today" : range;
     const trendBuckets = getTrendBuckets(trendRange, start);
     const trendMap = new Map(trendBuckets.map((bucket) => [bucket.key, 0]));
@@ -596,6 +627,7 @@ router.get("/dashboard", async (request, response) => {
     return response.json({
       summary: {
         sales: Math.round(totalSales),
+        saleCount: sales.length,
         profit: Math.round(profit),
         purchases: Math.round(totalPurchases),
         expenses: Math.round(totalExpenses),
@@ -614,6 +646,7 @@ router.get("/dashboard", async (request, response) => {
         direction: salesChangePct >= 0 ? "up" : "down",
       },
       paymentMethods,
+      purchasePaymentMethods,
       meta: {
         range,
         startDate: start,

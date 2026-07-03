@@ -581,6 +581,7 @@ router.post("/", async (request, response) => {
     }
 
     const body = request.body as {
+      title?: string | null;
       category?: string;
       amount?: number | string;
       expenseDate?: string | null;
@@ -588,14 +589,19 @@ router.post("/", async (request, response) => {
       description?: string | null;
       note?: string | null;
       paymentMethod?: string | null;
+      payment_method?: string | null;
       moneyBoxId?: string | null;
+      money_box_id?: string | null;
       bankAccountId?: string | null;
+      bank_account_id?: string | null;
     };
 
     const category = normalizeText(body.category);
     const amount = Number(body.amount ?? 0);
-    const paymentMethod = normalizeText(body.paymentMethod).toUpperCase() || "CASH";
-    const description = normalizeText(body.description ?? body.note) || null;
+    const paymentMethod = normalizeText(body.paymentMethod ?? body.payment_method).toUpperCase() || "CASH";
+    const titleVal = normalizeText(body.title ?? body.description) || "";
+    const noteVal = normalizeText(body.note) || "";
+    const description = noteVal ? `${titleVal} | ${noteVal}` : (titleVal || null);
     const expenseDateRaw = body.expenseDate ?? body.date;
     const expenseDate = expenseDateRaw ? new Date(expenseDateRaw) : new Date();
 
@@ -611,16 +617,19 @@ router.post("/", async (request, response) => {
       return response.status(400).json({ message: "Payment method must be CASH, BKASH, NAGAD, or BANK." });
     }
 
+    const resolvedMoneyBoxId = body.moneyBoxId ?? body.money_box_id;
+    const resolvedBankAccountId = body.bankAccountId ?? body.bank_account_id;
+
     const createdExpense = await prisma.$transaction(async (tx) => {
       const typedTx = tx as any;
       let moneyBoxId: string | null = null;
       let bankAccountId: string | null = null;
 
       if (paymentMethod === "CASH" || paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
-        let moneyBox = body.moneyBoxId
+        let moneyBox = resolvedMoneyBoxId
           ? await typedTx.moneyBox.findFirst({
               where: {
-                id: body.moneyBoxId,
+                id: resolvedMoneyBoxId,
                 shopId: context.shop.id,
                 type: paymentMethod,
                 status: "ACTIVE",
@@ -656,10 +665,10 @@ router.post("/", async (request, response) => {
       }
 
       if (paymentMethod === "BANK") {
-        let bankAccount = body.bankAccountId
+        let bankAccount = resolvedBankAccountId
           ? await typedTx.bankAccount.findFirst({
               where: {
-                id: body.bankAccountId,
+                id: resolvedBankAccountId,
                 shopId: context.shop.id,
                 status: "ACTIVE",
               },
@@ -766,15 +775,20 @@ router.patch("/:id", async (request, response) => {
       description?: string | null;
       note?: string | null;
       paymentMethod?: string | null;
+      payment_method?: string | null;
       moneyBoxId?: string | null;
+      money_box_id?: string | null;
       bankAccountId?: string | null;
+      bank_account_id?: string | null;
       status?: string | null;
     };
 
     const category = normalizeText(body.category) || existingExpense.category;
     const amount = body.amount == null ? Number(existingExpense.amount) : Number(body.amount);
-    const paymentMethod = normalizeText(body.paymentMethod || existingExpense.paymentMethod).toUpperCase() || "CASH";
-    const description = normalizeText(body.description ?? body.note) || existingExpense.description || null;
+    const paymentMethod = normalizeText((body.paymentMethod ?? body.payment_method) || existingExpense.paymentMethod).toUpperCase() || "CASH";
+    const titleVal = normalizeText(body.title ?? body.description) || "";
+    const noteVal = normalizeText(body.note) || "";
+    const description = noteVal ? `${titleVal} | ${noteVal}` : (titleVal || existingExpense.description || null);
     const expenseDateRaw = body.expenseDate ?? body.date;
     const expenseDate = expenseDateRaw ? new Date(expenseDateRaw) : existingExpense.expenseDate;
     const status = normalizeText(body.status) || existingExpense.status;
@@ -795,6 +809,9 @@ router.patch("/:id", async (request, response) => {
       return response.status(400).json({ message: "Expense date must be a valid date." });
     }
 
+    const resolvedMoneyBoxId = body.moneyBoxId ?? body.money_box_id;
+    const resolvedBankAccountId = body.bankAccountId ?? body.bank_account_id;
+
     const updatedExpense = await prisma.$transaction(async (tx) => {
       const typedTx = tx as any;
 
@@ -802,10 +819,10 @@ router.patch("/:id", async (request, response) => {
       let bankAccountId: string | null = null;
 
       if (paymentMethod === "CASH" || paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
-        let moneyBox = body.moneyBoxId
+        let moneyBox = resolvedMoneyBoxId
           ? await typedTx.moneyBox.findFirst({
               where: {
-                id: body.moneyBoxId,
+                id: resolvedMoneyBoxId,
                 shopId: context.shop.id,
                 type: paymentMethod,
                 status: "ACTIVE",
@@ -841,10 +858,10 @@ router.patch("/:id", async (request, response) => {
       }
 
       if (paymentMethod === "BANK") {
-        let bankAccount = body.bankAccountId
+        let bankAccount = resolvedBankAccountId
           ? await typedTx.bankAccount.findFirst({
               where: {
-                id: body.bankAccountId,
+                id: resolvedBankAccountId,
                 shopId: context.shop.id,
                 status: "ACTIVE",
               },

@@ -353,12 +353,8 @@ function normalizePurchasePayment(
   const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
 
   if (paymentMethod === "BKASH" || paymentMethod === "NAGAD" || paymentMethod === "ROCKET") {
-    const senderNumber = normalizeText(paymentMeta.senderNumber);
-    const transactionId = normalizeText(paymentMeta.transactionId);
-
-    if (!senderNumber || !transactionId) {
-      return { error: `${paymentMethod} payments require senderNumber and transactionId.` };
-    }
+    const senderNumber = normalizeText(paymentMeta.senderNumber) || "";
+    const transactionId = normalizeText(paymentMeta.transactionId) || "";
 
     return {
       paymentMethod,
@@ -839,7 +835,7 @@ router.post("/", async (request, response) => {
       return response.status(400).json({ message: "At least one purchase item is required." });
     }
 
-    const normalizedItems: NormalizedPurchaseItem[] = rawItems.map((item: any) => {
+    let normalizedItems: NormalizedPurchaseItem[] = rawItems.map((item: any) => {
       const masterProductId = item.masterProductId ?? item.productId ?? item.product_id ?? item.shopProductId ?? "";
       const quantity = Number(item.quantity ?? item.qty ?? item.orderedQuantity ?? item.ordered_quantity ?? 0);
       const purchasePrice = Number(item.purchasePrice ?? item.purchase_price ?? item.unitCost ?? item.unit_cost ?? 0);
@@ -861,6 +857,51 @@ router.post("/", async (request, response) => {
     if (normalizedItems.some((item: NormalizedPurchaseItem) => item.expiryDate && Number.isNaN(item.expiryDate.getTime()))) {
       return response.status(400).json({ message: "Expiry date must be a valid date." });
     }
+
+    const resolvedItems: NormalizedPurchaseItem[] = [];
+    for (const item of normalizedItems) {
+      const { resolveShopProductByIdentifier } = await import("../utils/stock-movement");
+      let shopProduct = await resolveShopProductByIdentifier(prisma, context.shopId, item.masterProductId);
+
+      if (!shopProduct) {
+        return response.status(404).json({ message: `Product not found in shop: ${item.masterProductId}` });
+      }
+
+      if (!shopProduct.masterProductId) {
+        const sku = `LOCAL-${shopProduct.id}`;
+        const shadowMaster = await (prisma as any).masterProduct.create({
+          data: {
+            name: shopProduct.localName || "Unnamed Local Product",
+            sku: sku,
+            price: shopProduct.salePrice,
+            suggestedPrice: shopProduct.salePrice,
+            status: "ACTIVE",
+            createdByUserId: context.auth.user.id,
+            updatedByUserId: context.auth.user.id,
+          }
+        });
+
+        shopProduct = await (prisma as any).shopProduct.update({
+          where: { id: shopProduct.id },
+          data: {
+            masterProductId: shadowMaster.id,
+            source: "MASTER"
+          },
+          include: { masterProduct: true }
+        });
+      }
+
+      resolvedItems.push({
+        masterProductId: shopProduct.masterProductId!,
+        quantity: item.quantity,
+        purchasePrice: item.purchasePrice,
+        totalAmount: item.totalAmount,
+        batchNo: item.batchNo,
+        expiryDate: item.expiryDate,
+      });
+    }
+
+    normalizedItems = resolvedItems;
 
     const subtotalAmount = Number(
       normalizedItems.reduce((sum: number, item: NormalizedPurchaseItem) => sum + item.totalAmount, 0).toFixed(2),

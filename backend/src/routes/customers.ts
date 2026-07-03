@@ -45,6 +45,67 @@ function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function resolveShopProduct(tx: any, shopId: string, identifier: string) {
+  if (!identifier) return null;
+  // 1. Try to find by ShopProduct.id directly
+  let shopProduct = await tx.shopProduct.findUnique({
+    where: { id: identifier },
+    include: { masterProduct: true }
+  });
+  if (shopProduct && shopProduct.shopId === shopId) {
+    return shopProduct;
+  }
+
+  // 2. Try to find by ShopProduct.localBarcode
+  shopProduct = await tx.shopProduct.findFirst({
+    where: { shopId, localBarcode: identifier },
+    include: { masterProduct: true }
+  });
+  if (shopProduct) {
+    return shopProduct;
+  }
+
+  // 3. Try to find by ShopProduct.masterProductId
+  shopProduct = await tx.shopProduct.findUnique({
+    where: {
+      shopId_masterProductId: {
+        shopId,
+        masterProductId: identifier
+      }
+    },
+    include: { masterProduct: true }
+  });
+  if (shopProduct) {
+    return shopProduct;
+  }
+
+  // 4. Try to find by master product barcode
+  const masterBarcode = await tx.masterProductBarcode.findUnique({
+    where: { barcode: identifier },
+    include: { masterProduct: { include: { shopProducts: { where: { shopId } } } } }
+  });
+  if (masterBarcode?.masterProduct?.shopProducts?.[0]) {
+    return {
+      ...masterBarcode.masterProduct.shopProducts[0],
+      masterProduct: masterBarcode.masterProduct
+    };
+  }
+
+  // 5. Try to find by master product SKU
+  const masterSku = await tx.masterProduct.findUnique({
+    where: { sku: identifier },
+    include: { shopProducts: { where: { shopId } } }
+  });
+  if (masterSku?.shopProducts?.[0]) {
+    return {
+      ...masterSku.shopProducts[0],
+      masterProduct: masterSku
+    };
+  }
+
+  return null;
+}
+
 function normalizeWhatsAppNumber(value: unknown) {
   const digits = `${value ?? ""}`.replace(/\D/g, "");
 
@@ -1857,15 +1918,16 @@ router.post("/sales", async (request, response) => {
       return response.status(400).json({ message: paymentInfo.error });
     }
 
-    const masterProducts = await (prisma as any).masterProduct.findMany({
-      where: {
-        id: { in: normalizedItems.map((item) => item.masterProductId) },
-      },
-      select: { id: true, sku: true, name: true },
-    });
-
-    if (masterProducts.length !== normalizedItems.length) {
-      return response.status(400).json({ message: "One or more sale products do not exist." });
+    console.log(`[DEBUG CHECKOUT] Shop ID: ${context.shop.id}`);
+    const resolvedShopProducts = [];
+    for (const item of normalizedItems) {
+      console.log(`[DEBUG CHECKOUT] Validating item: masterProductId="${item.masterProductId}"`);
+      const sp = await resolveShopProduct(prisma, context.shop.id, item.masterProductId);
+      console.log(`[DEBUG CHECKOUT] resolveShopProduct returned: ${sp ? `ID=${sp.id}, localBarcode=${sp.localBarcode}, masterProductId=${sp.masterProductId}` : 'null'}`);
+      if (!sp) {
+        return response.status(400).json({ message: "One or more sale products do not exist." });
+      }
+      resolvedShopProducts.push(sp);
     }
 
     const moneyBox = await resolveShopMoneyBox(context.shop.id, body.moneyBoxId);
@@ -1891,6 +1953,7 @@ router.post("/sales", async (request, response) => {
       });
       const reduceStock = inventorySetting ? inventorySetting.reduceStockOnSale : true;
       const allowNegative = inventorySetting ? inventorySetting.allowNegativeStock : false;
+      const requireBinAssignment = inventorySetting ? inventorySetting.requireBinAssignment : false;
       const stockMethod = normalizeBatchOrder(inventorySetting?.stockMethod);
       const saleItemRecords: Array<{
         masterProductId: string;
@@ -1912,33 +1975,90 @@ router.post("/sales", async (request, response) => {
       }> = [];
 
       for (const item of normalizedItems) {
-        const shopProduct = await tx.shopProduct.findUnique({
-          where: {
-            shopId_masterProductId: {
-              shopId: context.shop.id,
-              masterProductId: item.masterProductId,
-            },
-          },
-        });
+        let shopProduct = await resolveShopProduct(tx, context.shop.id, item.masterProductId);
 
         if (!shopProduct) {
           throw new Error(`Product not found in shop inventory: ${item.masterProductId}`);
         }
 
+        // If the shop product is local (masterProductId is null), dynamically create a shadow MasterProduct!
+        if (!shopProduct.masterProductId) {
+          const sku = `LOCAL-${shopProduct.id}`;
+          const shadowMaster = await tx.masterProduct.create({
+            data: {
+              name: shopProduct.localName || "Unnamed Local Product",
+              sku: sku,
+              price: shopProduct.salePrice,
+              suggestedPrice: shopProduct.salePrice,
+              status: "ACTIVE",
+              createdByUserId: context.auth.user.id,
+              updatedByUserId: context.auth.user.id,
+            }
+          });
+
+          // Link the ShopProduct to this shadow MasterProduct
+          shopProduct = await tx.shopProduct.update({
+            where: { id: shopProduct.id },
+            data: {
+              masterProductId: shadowMaster.id,
+              source: "MASTER"
+            },
+            include: { masterProduct: true }
+          });
+        }
+
+        const effectiveMasterProductId = shopProduct.masterProductId!;
         const currentStock = Number(shopProduct.openingStock ?? 0);
         if (reduceStock && !allowNegative && currentStock < item.quantity) {
           throw new Error(`Insufficient stock for product. Available: ${currentStock}, Requested: ${item.quantity}`);
         }
 
-        const binItems = await tx.inventoryBinItem.findMany({
+        let binItems = await tx.inventoryBinItem.findMany({
           where: {
             shopId: context.shop.id,
-            masterProductId: item.masterProductId,
+            masterProductId: effectiveMasterProductId,
             quantity: { gt: 0 },
             ...(item.batchNo ? { batchNo: item.batchNo } : {}),
           },
           orderBy: [{ createdAt: stockMethod === "LIFO" ? "desc" : "asc" }, { id: "asc" }],
         });
+
+        if (binItems.length === 0 && currentStock > 0) {
+          let targetBin = await tx.inventoryBin.findFirst({
+            where: { shopId: context.shop.id, name: "General" },
+          });
+          if (!targetBin) {
+            targetBin = await tx.inventoryBin.create({
+              data: {
+                shopId: context.shop.id,
+                name: "General",
+                description: "Default inventory placement",
+                status: "ACTIVE",
+              },
+            });
+          }
+          await tx.inventoryBinItem.create({
+            data: {
+              shopId: context.shop.id,
+              binId: targetBin.id,
+              masterProductId: effectiveMasterProductId,
+              quantity: currentStock,
+              purchasePrice: shopProduct.purchasePrice,
+              salePrice: shopProduct.salePrice,
+              batchNo: "1",
+              notes: "Auto-generated bin item for checkout",
+            },
+          });
+          binItems = await tx.inventoryBinItem.findMany({
+            where: {
+              shopId: context.shop.id,
+              masterProductId: effectiveMasterProductId,
+              quantity: { gt: 0 },
+              ...(item.batchNo ? { batchNo: item.batchNo } : {}),
+            },
+            orderBy: [{ createdAt: stockMethod === "LIFO" ? "desc" : "asc" }, { id: "asc" }],
+          });
+        }
 
         const touchedBinIds = new Set<string>();
         let remainingToAllocate = item.quantity;
@@ -1963,7 +2083,7 @@ router.post("/sales", async (request, response) => {
           );
 
           saleItemRecords.push({
-            masterProductId: item.masterProductId,
+            masterProductId: effectiveMasterProductId,
             quantity: allocatedQty,
             salePrice: batchSalePrice,
             purchasePrice: Number(binItem.purchasePrice ?? shopProduct.purchasePrice ?? 0),
@@ -1974,7 +2094,7 @@ router.post("/sales", async (request, response) => {
           if (reduceStock) {
             saleMovementRecords.push({
               shopProductId: shopProduct.id,
-              masterProductId: item.masterProductId,
+              masterProductId: effectiveMasterProductId,
               quantity: allocatedQty,
               stockBefore: roundQuantity(currentStock - (item.quantity - remainingToAllocate)),
               stockAfter: roundQuantity(currentStock - (item.quantity - remainingToAllocate) - allocatedQty),
@@ -2004,7 +2124,7 @@ router.post("/sales", async (request, response) => {
         }
 
         if (remainingToAllocate > 0) {
-          if (reduceStock && !allowNegative) {
+          if (reduceStock && !allowNegative && requireBinAssignment) {
             throw new Error(
               `Insufficient batch stock for product. Requested: ${item.quantity}, Allocated: ${roundQuantity(item.quantity - remainingToAllocate)}`,
             );
@@ -2015,7 +2135,7 @@ router.post("/sales", async (request, response) => {
           );
 
           saleItemRecords.push({
-            masterProductId: item.masterProductId,
+            masterProductId: effectiveMasterProductId,
             quantity: remainingToAllocate,
             salePrice: fallbackSalePrice,
             purchasePrice: Number(shopProduct.purchasePrice ?? 0),
@@ -2026,7 +2146,7 @@ router.post("/sales", async (request, response) => {
           if (reduceStock) {
             saleMovementRecords.push({
               shopProductId: shopProduct.id,
-              masterProductId: item.masterProductId,
+              masterProductId: effectiveMasterProductId,
               quantity: remainingToAllocate,
               stockBefore: roundQuantity(currentStock - (item.quantity - remainingToAllocate)),
               stockAfter: roundQuantity(currentStock - item.quantity),
@@ -2067,12 +2187,7 @@ router.post("/sales", async (request, response) => {
           }
 
           await tx.shopProduct.update({
-            where: {
-              shopId_masterProductId: {
-                shopId: context.shop.id,
-                masterProductId: item.masterProductId,
-              },
-            },
+            where: { id: shopProduct.id },
             data: {
               openingStock: {
                 decrement: item.quantity,
@@ -2080,10 +2195,10 @@ router.post("/sales", async (request, response) => {
             },
           });
 
-          if (saleMovementRecords.every((entry) => entry.shopProductId != shopProduct.id || entry.masterProductId != item.masterProductId)) {
+          if (saleMovementRecords.every((entry) => entry.shopProductId != shopProduct.id || entry.masterProductId != effectiveMasterProductId)) {
             saleMovementRecords.push({
               shopProductId: shopProduct.id,
-              masterProductId: item.masterProductId,
+              masterProductId: effectiveMasterProductId,
               quantity: item.quantity,
               stockBefore: currentStock,
               stockAfter: nextStock,

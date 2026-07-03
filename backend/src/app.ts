@@ -93,6 +93,16 @@ function mountApiScope(prefix: string, appType: AppType) {
   scopedRouter.use("/staff", staffRoutes);
   scopedRouter.use("/add-suppliers", supplierRoutes);
   scopedRouter.use("/units", unitRoutes);
+  scopedRouter.get("/dashboard*", (request, response, next) => {
+    if (request.path === "/dashboard/activity") {
+      return response.json([]);
+    }
+    const queryStart = request.url.indexOf("?");
+    request.url = queryStart >= 0
+      ? `/reports/dashboard${request.url.slice(queryStart)}`
+      : "/reports/dashboard";
+    next();
+  });
   scopedRouter.use("/reports", reportsRoutes);
   scopedRouter.use("/notifications", notificationRoutes);
   scopedRouter.use("/settings", settingsRoutes);

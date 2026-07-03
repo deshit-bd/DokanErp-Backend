@@ -1392,7 +1392,7 @@ router.get("/products", async (request, response) => {
       orderBy: [{ createdAt: "asc" }],
     });
 
-    const configuredMasterProductIds = shopProducts.map((item: any) => item.masterProductId);
+    const configuredMasterProductIds = shopProducts.map((item: any) => item.masterProductId).filter(Boolean);
 
     const masterProducts = await (prisma as any).masterProduct.findMany({
       where: {

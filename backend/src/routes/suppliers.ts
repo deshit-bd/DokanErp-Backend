@@ -297,12 +297,8 @@ function normalizeSupplierPayment(
   const paymentMeta = paymentMetaRaw && typeof paymentMetaRaw === "object" ? paymentMetaRaw : {};
 
   if (paymentMethod === "BKASH" || paymentMethod === "NAGAD") {
-    const senderNumber = normalizeText(paymentMeta.senderNumber);
-    const transactionId = normalizeText(paymentMeta.transactionId);
-
-    if (!senderNumber || !transactionId) {
-      return { error: `${paymentMethod} payments require senderNumber and transactionId.` };
-    }
+    const senderNumber = normalizeText(paymentMeta.senderNumber) || "";
+    const transactionId = normalizeText(paymentMeta.transactionId) || "";
 
     return {
       paymentMethod,
