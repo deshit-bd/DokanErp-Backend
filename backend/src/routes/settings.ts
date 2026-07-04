@@ -372,4 +372,17 @@ router.patch("/inventory", async (request, response) => {
   }
 });
 
+// GET /support-contact
+router.get("/support-contact", async (request, response) => {
+  try {
+    return response.json({
+      whatsapp: "8801700000000",
+      email: "support@dokanerp.com",
+      phone: "+8801700000000",
+    });
+  } catch (error) {
+    return response.status(500).json({ message: "Failed to fetch support contact details." });
+  }
+});
+
 export default router;

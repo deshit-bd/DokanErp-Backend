@@ -212,8 +212,9 @@ async function resolveDefaultBankAccount(tx: any, shopId: string) {
   });
 }
 
-export async function ensureGeneralInventoryBin(tx: any, shopId: string, masterProductId: string, productName: string) {
-  const binCode = `BASIC-${masterProductId.slice(-8).toUpperCase()}`;
+export async function ensureGeneralInventoryBin(tx: any, shopId: string, masterProductId: string | null | undefined, productName: string) {
+  const effectiveId = masterProductId || "GENERAL";
+  const binCode = `BASIC-${effectiveId.slice(-8).toUpperCase()}`;
 
   const existing = await tx.inventoryBin.findFirst({
     where: {

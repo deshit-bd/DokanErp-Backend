@@ -84,6 +84,12 @@ export async function ensureShopSubscription(shopId: string, client: PrismaLike 
   });
 
   if (existing) {
+    if (Number(existing.dailyRatePerAccount) !== DEFAULT_DAILY_RATE_PER_ACCOUNT) {
+      return client.subscription.update({
+        where: { id: existing.id },
+        data: { dailyRatePerAccount: DEFAULT_DAILY_RATE_PER_ACCOUNT },
+      });
+    }
     return existing;
   }
 

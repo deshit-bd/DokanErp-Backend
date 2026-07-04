@@ -198,6 +198,79 @@ router.get("/send-test-dummies-unauth", async (request, response) => {
   }
 });
 
+async function checkDeadStock(shopId: string) {
+  try {
+    // 1. Check if a DEAD_STOCK notification was created in the last 24 hours to prevent spam
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentNotification = await prisma.inAppNotification.findFirst({
+      where: {
+        shopId,
+        type: "DEAD_STOCK",
+        createdAt: { gte: oneDayAgo },
+      },
+    });
+
+    if (recentNotification) {
+      return; // Already notified in the last 24 hours
+    }
+
+    // 2. Fetch all products older than 10 days
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const products = await prisma.shopProduct.findMany({
+      where: {
+        shopId,
+        createdAt: { lte: tenDaysAgo },
+      },
+      include: {
+        masterProduct: true,
+      },
+    });
+
+    // Filter products with stock > 0
+    const productsWithStock = products.filter(p => Number(p.openingStock ?? 0) > 0);
+
+    if (productsWithStock.length === 0) {
+      return;
+    }
+
+    // 3. Find all sales items in the last 10 days
+    const recentSalesItems = await prisma.customerSaleItem.findMany({
+      where: {
+        customerSale: {
+          shopId,
+          saleDate: { gte: tenDaysAgo },
+        },
+      },
+      select: {
+        masterProductId: true,
+      },
+    });
+
+    const soldMasterProductIds = new Set(recentSalesItems.map(item => item.masterProductId));
+
+    // 4. Identify dead products (products with stock > 0 but no sales in 10 days)
+    const deadProducts = new Set<string>();
+    for (const p of productsWithStock) {
+      if (p.masterProductId && !soldMasterProductIds.has(p.masterProductId)) {
+        const name = p.localName || p.masterProduct?.name || "Unknown Product";
+        deadProducts.add(name);
+      }
+    }
+
+    if (deadProducts.size > 0) {
+      const deadProductsList = Array.from(deadProducts);
+      const limitList = deadProductsList.slice(0, 3).join(", ");
+      const suffix = deadProductsList.length > 3 ? ` এবং আরও ${deadProductsList.length - 3}টি পণ্য` : "";
+      const title = "অচল স্টক সতর্কতা (Dead Stock Alert)";
+      const message = `গত ১০ দিনে আপনার এই পণ্যগুলো কোনো বিক্রি হয়নি: ${limitList}${suffix}। অচল স্টক কমাতে দ্রুত ব্যবস্থা নিন।`;
+      
+      await createNotification(shopId, "DEAD_STOCK", title, message);
+    }
+  } catch (error) {
+    console.error("Failed to run checkDeadStock:", error);
+  }
+}
+
 // GET / - Fetch in-app notifications
 router.get("/", async (request, response) => {
   try {
@@ -209,6 +282,8 @@ router.get("/", async (request, response) => {
     if (!shopId) {
       return response.status(400).json({ message: "Shop ID not associated with user." });
     }
+
+    await checkDeadStock(shopId);
 
     const notifications = await prisma.inAppNotification.findMany({
       where: { shopId },

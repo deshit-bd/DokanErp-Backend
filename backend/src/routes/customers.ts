@@ -8,6 +8,7 @@ import {
   recordStockMovement,
 } from "../utils/stock-movement";
 import { createNotification } from "./notifications";
+import { ensureGeneralInventoryBin } from "./purchases";
 
 const router = Router();
 
@@ -2024,19 +2025,12 @@ router.post("/sales", async (request, response) => {
         });
 
         if (binItems.length === 0 && currentStock > 0) {
-          let targetBin = await tx.inventoryBin.findFirst({
-            where: { shopId: context.shop.id, name: "General" },
-          });
-          if (!targetBin) {
-            targetBin = await tx.inventoryBin.create({
-              data: {
-                shopId: context.shop.id,
-                name: "General",
-                description: "Default inventory placement",
-                status: "ACTIVE",
-              },
-            });
-          }
+          const targetBin = await ensureGeneralInventoryBin(
+            tx,
+            context.shop.id,
+            effectiveMasterProductId,
+            shopProduct.masterProduct?.name ?? "Stock"
+          );
           await tx.inventoryBinItem.create({
             data: {
               shopId: context.shop.id,

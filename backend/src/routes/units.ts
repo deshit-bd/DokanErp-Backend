@@ -191,6 +191,85 @@ router.post("/", async (request, response) => {
   }
 });
 
+router.patch("/:id", async (request, response) => {
+  try {
+    const auth = await requirePlatformUser(request);
+
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
+    }
+
+    const { id } = request.params;
+    const body = request.body as {
+      name?: string;
+      shortName?: string;
+      type?: UnitType;
+      description?: string | null;
+      status?: UnitStatus;
+    };
+
+    const unit = await prisma.unit.findUnique({
+      where: { id },
+    });
+
+    if (!unit) {
+      return response.status(404).json({ message: "Unit not found." });
+    }
+
+    const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(auth.payload.role);
+
+    if (!isAdmin && unit.shopId !== auth.payload.shopId) {
+      return response.status(403).json({ message: "You do not have permission to edit this unit." });
+    }
+
+    const name = body.name?.trim();
+    const shortName = body.shortName?.trim();
+    const description = body.description !== undefined ? (body.description?.trim() || null) : undefined;
+    const type = body.type;
+    const status = body.status;
+
+    if (name !== undefined || shortName !== undefined) {
+      const existingUnit = await prisma.unit.findFirst({
+        where: {
+          id: { not: id },
+          OR: isAdmin ? [
+            { name: name || unit.name, isGlobal: true },
+            { shortName: shortName || unit.shortName, isGlobal: true }
+          ] : [
+            { name: name || unit.name, isGlobal: true },
+            { name: name || unit.name, shopId: auth.payload.shopId },
+            { shortName: shortName || unit.shortName, isGlobal: true },
+            { shortName: shortName || unit.shortName, shopId: auth.payload.shopId }
+          ]
+        },
+      });
+
+      if (existingUnit) {
+        return response.status(409).json({ message: "Unit name or short name already exists." });
+      }
+    }
+
+    const updated = await prisma.unit.update({
+      where: { id },
+      data: {
+        name: name !== undefined ? name : undefined,
+        shortName: shortName !== undefined ? shortName : undefined,
+        type: type !== undefined ? type : undefined,
+        description: description !== undefined ? description : undefined,
+        status: status !== undefined ? status : undefined,
+      },
+    });
+
+    return response.json({
+      message: "Unit updated successfully.",
+      unit: serializeUnit(updated),
+    });
+  } catch (error) {
+    console.error("Failed to update unit.", error);
+    return response.status(500).json({ message: "Failed to update unit." });
+  }
+});
+
 router.delete("/:id", async (request, response) => {
   try {
     const auth = await requirePlatformUser(request);
