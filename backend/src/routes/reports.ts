@@ -326,7 +326,7 @@ async function loadSalesDataset(shopId: string, start: Date, end: Date) {
     }
   }
 
-  const totalSales = sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
+  const totalSales = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + Number(item.totalAmount), 0), 0);
   const paymentBuckets = { cash: 0, bkash: 0, nagad: 0, card: 0, due: 0, other: 0 };
   const productSalesMap = new Map<string, { name: string; qty: number; value: number }>();
   let costOfGoodsSold = 0;
@@ -705,7 +705,7 @@ router.get("/sales/daily", async (request, response) => {
       },
     });
 
-    const totalSales = daySales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+    const totalSales = daySales.reduce((sum, s) => sum + s.items.reduce((itemSum, item) => itemSum + Number(item.totalAmount), 0), 0);
     const transactionCount = daySales.length;
     const averageOrderValue = transactionCount > 0 ? Math.round(totalSales / transactionCount) : 0;
 
@@ -1549,6 +1549,25 @@ router.get("/profit-loss", async (request, response) => {
     const netProfit = netSales - totalCost;
     const netMargin = netSales > 0 ? Math.round((netProfit / netSales) * 100) : 0;
 
+    // Calculate Others (VAT/tax + delivery charges)
+    const totalTax = currentSalesData.sales.reduce((sum, s) => sum + Number(s.taxAmount ?? 0), 0);
+    const totalCharge = currentSalesData.sales.reduce((sum, s) => sum + Number(s.chargeAmount ?? 0), 0);
+    const totalOthers = Math.round(totalTax + totalCharge);
+
+    // Calculate percentages for the ratio analysis doughnut chart
+    const totalRatioSum = Math.max(0, grossProfit) + totalCost + totalOthers;
+    let profitPercent = 0;
+    let costPercent = 0;
+    let otherPercent = 0;
+
+    if (totalRatioSum > 0) {
+      profitPercent = Math.round((Math.max(0, grossProfit) / totalRatioSum) * 100);
+      costPercent = Math.round((totalCost / totalRatioSum) * 100);
+      otherPercent = 100 - profitPercent - costPercent;
+    } else {
+      costPercent = 100;
+    }
+
     return response.json({
       summary: {
         grossProfit: Math.round(grossProfit),
@@ -1565,6 +1584,16 @@ router.get("/profit-loss", async (request, response) => {
         purchaseCost: Math.round(purchaseCost),
         operatingExpenses: Math.round(operatingExpenses),
         totalCost: Math.round(totalCost),
+      },
+      others: {
+        tax: Math.round(totalTax),
+        charge: Math.round(totalCharge),
+        totalOthers: Math.round(totalTax + totalCharge),
+      },
+      ratios: {
+        profitPercent,
+        costPercent,
+        otherPercent,
       },
       meta: {
         range,
