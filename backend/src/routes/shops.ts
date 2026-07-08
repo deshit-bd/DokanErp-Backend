@@ -1976,17 +1976,17 @@ router.patch("/products/:shopProductId", async (request, response) => {
 
 router.get("/me/taxes-charges", async (request, response) => {
   try {
-    const context = await requireOwnerShopContext(request);
+    const auth = await getAuthenticatedUser(request);
 
-    if (isAuthError(context as any)) {
-      return sendAuthError(response, context as any);
+    if (isAuthError(auth)) {
+      return sendAuthError(response, auth);
     }
 
-    if ("status" in context) {
-      return response.status(context.status).json(context.body);
+    if (auth.payload.appType !== "MOBILE" || !auth.payload.shopId) {
+      return response.status(403).json({ message: "Only mobile clients can retrieve taxes and charges." });
     }
 
-    const shopId = context.shop.id;
+    const shopId = auth.payload.shopId;
 
     const taxes = await prisma.shopTax.findMany({
       where: { shopId },

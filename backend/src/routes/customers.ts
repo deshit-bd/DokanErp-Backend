@@ -2284,7 +2284,7 @@ router.post("/sales", async (request, response) => {
           customerSaleId: createdSale.id,
           entryType: "SALE",
           referenceNo: createdSale.invoiceNo || customer.customerCode || null,
-          debit: totalAmount,
+          debit: grandTotal,
           credit: 0,
           notes: createdSale.notes,
           entryDate: saleDate,

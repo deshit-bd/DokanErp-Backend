@@ -285,6 +285,25 @@ async function resolveShopIdentifier(shopIdentifier?: string | null) {
     return null;
   }
 
+  // Check if it matches format "DID-XXXXXX" or "SID-XXXXXX" (case-insensitive)
+  const match = normalized.match(/^(did|sid)[-]?(\d+)$/i);
+  if (match) {
+    const digits = match[2];
+    return (prisma as any).shop.findFirst({
+      where: {
+        shopCode: {
+          endsWith: digits,
+        },
+      },
+      select: {
+        id: true,
+        shopCode: true,
+        shopName: true,
+        status: true,
+      },
+    });
+  }
+
   return (prisma as any).shop.findFirst({
     where: {
       OR: [{ id: normalized }, { shopCode: normalized }],
@@ -343,7 +362,7 @@ async function verifyOwnerLoginCredentials(body: PreLoginBody): Promise<OwnerCre
 async function verifySalesmanLoginCredentials(body: SalesmanLoginBody): Promise<SalesmanCredentialVerificationResult> {
   const mobile = normalizeMobile(body.mobile);
   const password = body.password?.trim() ?? "";
-  const shopIdentifier = body.shopId?.trim() ?? "";
+  const shopIdentifier = body.shopId?.trim() ?? (body as any).shop_id?.trim() ?? "";
 
   if (!mobile || !password || !shopIdentifier) {
     return {
@@ -2065,7 +2084,7 @@ router.post("/login", async (request, response) => {
     const body = request.body as LoginBody;
     const identity = body.identity?.trim() ?? (body as any).phone?.trim() ?? (body as any).mobile?.trim();
     const password = body.password?.trim();
-    const requestedShopIdentifier = body.shopId?.trim();
+    const requestedShopIdentifier = body.shopId?.trim() ?? (body as any).shop_id?.trim();
     const appType = body.appType ?? (request as ScopedRequest).apiClientAppType ?? AppType.WEB;
 
     const requestedShop = requestedShopIdentifier ? await resolveShopIdentifier(requestedShopIdentifier) : null;
@@ -2152,6 +2171,44 @@ router.post("/login", async (request, response) => {
     setAccessCookie(response, accessToken);
     setRefreshCookie(response, refreshToken, rememberMe);
 
+    let shop = null;
+    if (authContext.shopId) {
+      shop = await prisma.shop.findUnique({
+        where: { id: authContext.shopId },
+      });
+    }
+
+    let permissions = {
+      canSell: true,
+      canViewStock: true,
+      canViewReports: true,
+      canChangePrice: true,
+      canCollectDue: true,
+    };
+
+    if (authContext.role === "SALESMAN" && authContext.shopId) {
+      const shopUser = await prisma.shopUser.findUnique({
+        where: {
+          shopId_userId: {
+            shopId: authContext.shopId,
+            userId: user.id,
+          },
+        },
+        include: {
+          salesmanPermission: true,
+        },
+      });
+      if (shopUser?.salesmanPermission) {
+        permissions = {
+          canSell: shopUser.salesmanPermission.canSell,
+          canViewStock: shopUser.salesmanPermission.canViewStock,
+          canViewReports: shopUser.salesmanPermission.canViewReports,
+          canChangePrice: shopUser.salesmanPermission.canChangePrice,
+          canCollectDue: shopUser.salesmanPermission.canCollectDue,
+        };
+      }
+    }
+
     const responseData: any = {
       message: blockedOwnerSubscriptionAccess?.message ?? "Login successful.",
       redirectTo: getDefaultRedirect(authContext.role, appType),
@@ -2159,6 +2216,19 @@ router.post("/login", async (request, response) => {
       appType,
       subscription: blockedOwnerSubscriptionAccess,
       subscriptionLocked: blockedOwnerSubscriptionAccess?.allowed === false,
+      permissions,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: authContext.role,
+        shop: shop ? {
+          id: shop.id,
+          name: shop.shopName,
+          shopCode: shop.shopCode,
+        } : null,
+      },
     };
 
     if (appType === AppType.MOBILE) {
@@ -2356,13 +2426,55 @@ router.get("/me", async (request, response) => {
     return sendAuthError(response, auth);
   }
 
+  let shopCode: string | null = null;
+  if (auth.payload.shopId) {
+    const shop = await prisma.shop.findUnique({
+      where: { id: auth.payload.shopId },
+      select: { shopCode: true }
+    });
+    shopCode = shop?.shopCode ?? null;
+  }
+
+  let permissions = {
+    canSell: true,
+    canViewStock: true,
+    canViewReports: true,
+    canChangePrice: true,
+    canCollectDue: true,
+  };
+
+  if (auth.payload.role === "SALESMAN" && auth.payload.shopId) {
+    const shopUser = await prisma.shopUser.findUnique({
+      where: {
+        shopId_userId: {
+          shopId: auth.payload.shopId,
+          userId: auth.user.id,
+        },
+      },
+      include: {
+        salesmanPermission: true,
+      },
+    });
+    if (shopUser?.salesmanPermission) {
+      permissions = {
+        canSell: shopUser.salesmanPermission.canSell,
+        canViewStock: shopUser.salesmanPermission.canViewStock,
+        canViewReports: shopUser.salesmanPermission.canViewReports,
+        canChangePrice: shopUser.salesmanPermission.canChangePrice,
+        canCollectDue: shopUser.salesmanPermission.canCollectDue,
+      };
+    }
+  }
+
   return response.json({
     user: auth.user,
     session: {
       appType: auth.payload.appType,
       role: auth.payload.role,
       shopId: auth.payload.shopId ?? null,
+      shopCode,
     },
+    permissions,
   });
 });
 

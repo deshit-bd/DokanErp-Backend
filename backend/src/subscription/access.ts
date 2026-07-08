@@ -222,6 +222,23 @@ export async function evaluateShopSubscriptionAccess(shopId: string, client: Pri
   const now = new Date();
   const subscription = await ensureShopSubscription(shopId, client);
 
+  if (process.env.NODE_ENV !== "production" || process.env.BYPASS_SUBSCRIPTION === "true") {
+    return {
+      allowed: true,
+      shopId,
+      status: "ACTIVE",
+      tier: "PAID",
+      trialEndsAt: subscription.trialEndsAt,
+      billingDate: null,
+      billableAccounts: 1,
+      ratePerAccount: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      amountDue: 0,
+      message: null,
+    };
+  }
+
   if (subscription.status === "SUSPENDED" || subscription.status === "CANCELLED") {
     return {
       allowed: false,

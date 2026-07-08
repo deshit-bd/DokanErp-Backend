@@ -325,6 +325,8 @@ router.post("/", async (request, response) => {
       },
     });
 
+    broadcastToShop(shopId, "new-notification", notification);
+
     return response.status(201).json({ notification });
   } catch (error: any) {
     console.error("Failed to create notification:", error);
