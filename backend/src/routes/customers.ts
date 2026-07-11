@@ -543,13 +543,6 @@ router.get("/", async (request, response) => {
           },
           ...(status ? { status } : {}),
           AND: [
-            {
-              OR: [
-                { sales: { some: { shopId: context.shop.id } } },
-                { payments: { some: { shopId: context.shop.id } } },
-                { ledgerEntries: { some: { shopId: context.shop.id } } },
-              ],
-            },
             ...(search
               ? [
                 {
