@@ -248,13 +248,6 @@ async function resolveCustomerLinkedToShop(customerId: string, shopId: string) {
         { mobile: normalized },
         { name: normalized },
       ],
-      AND: {
-        OR: [
-          { sales: { some: { shopId } } },
-          { payments: { some: { shopId } } },
-          { ledgerEntries: { some: { shopId } } },
-        ],
-      },
     },
   });
 }
