@@ -95,6 +95,14 @@ class _DokanGlobalSearchScreenState
                       },
                     ),
                   ),
+                  DokanVoiceSearchButton(
+                    onResult: (text) {
+                      _searchController.text = text;
+                      _searchController.selection =
+                          TextSelection.collapsed(offset: text.length);
+                      setState(() => _query = text);
+                    },
+                  ),
                 ],
               ),
             ),

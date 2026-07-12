@@ -48,6 +48,8 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.13.0
   bangla_pdf_fixer: ^2.0.0
+  mobile_scanner: ^5.2.3
+  speech_to_text: ^7.0.0
 
 dependency_overrides:
   win32: ^5.5.1

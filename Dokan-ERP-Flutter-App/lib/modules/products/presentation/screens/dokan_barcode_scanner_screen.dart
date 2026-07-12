@@ -13,6 +13,11 @@ class _DokanBarcodeScannerScreenState
     with SingleTickerProviderStateMixin {
   late final AnimationController _scanLineController;
 
+  // Real camera scanner. Unavailable on web / desktop without a camera, in
+  // which case we fall back to the manual-entry simulator view.
+  MobileScannerController? _scannerController;
+  bool get _cameraSupported => !kIsWeb;
+
   bool _cameraReady = true;
   bool _cameraPermissionGranted = true;
   bool _handlingResult = false;
@@ -31,12 +36,47 @@ class _DokanBarcodeScannerScreenState
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat();
+    if (_cameraSupported) {
+      _scannerController = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        formats: const [
+          BarcodeFormat.ean13,
+          BarcodeFormat.ean8,
+          BarcodeFormat.code128,
+          BarcodeFormat.code39,
+          BarcodeFormat.upcA,
+          BarcodeFormat.upcE,
+          BarcodeFormat.qrCode,
+        ],
+      );
+    }
   }
 
   @override
   void dispose() {
     _scanLineController.dispose();
+    _scannerController?.dispose();
     super.dispose();
+  }
+
+  void _onBarcodeDetected(BarcodeCapture capture) {
+    if (_handlingResult || _resolvedProduct != null) return;
+    final code = capture.barcodes
+        .map((barcode) => barcode.rawValue)
+        .firstWhere((value) => value != null && value.trim().isNotEmpty,
+            orElse: () => null);
+    if (code == null) return;
+    _handleCodeInput(code);
+  }
+
+  Widget _buildCameraView() {
+    return Positioned.fill(
+      child: MobileScanner(
+        controller: _scannerController,
+        onDetect: _onBarcodeDetected,
+        errorBuilder: (context, error, child) => _buildMockScannerView(),
+      ),
+    );
   }
 
   Future<void> _closeScanner() async {
@@ -48,6 +88,9 @@ class _DokanBarcodeScannerScreenState
   Future<void> _toggleTorch() async {
     if (!mounted) return;
     setState(() => _torchEnabled = !_torchEnabled);
+    if (_cameraSupported) {
+      await _scannerController?.toggleTorch();
+    }
   }
 
   Future<void> _handleCodeInput(String code) async {
@@ -496,7 +539,7 @@ class _DokanBarcodeScannerScreenState
           body: SafeArea(
             child: Stack(
               children: [
-                _buildMockScannerView(),
+                _cameraSupported ? _buildCameraView() : _buildMockScannerView(),
                 _buildScannerOverlay(role),
               ],
             ),
