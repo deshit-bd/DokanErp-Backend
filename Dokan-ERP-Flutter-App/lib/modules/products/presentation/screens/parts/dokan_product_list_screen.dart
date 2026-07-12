@@ -320,8 +320,10 @@ class _DokanProductListScreenState
                 itemCount: visibleProducts.length,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 10),
-                itemBuilder: (context, index) =>
-                    _productCard(visibleProducts[index], threshold),
+                itemBuilder: (context, index) => DokanFadeSlideIn(
+                  delay: Duration(milliseconds: 45 * (index.clamp(0, 9))),
+                  child: _productCard(visibleProducts[index], threshold),
+                ),
               ),
             const SizedBox(height: 18),
           ],
