@@ -1,0 +1,33 @@
+import '../../domain/entities/dokan_catalog_product.dart';
+import 'product_service.dart';
+
+class DokanScanResult {
+  const DokanScanResult({
+    required this.rawCode,
+    required this.normalizedCode,
+    required this.product,
+  });
+
+  final String rawCode;
+  final String normalizedCode;
+  final DokanCatalogProduct? product;
+
+  bool get isResolved => product != null;
+}
+
+class DokanScanService {
+  const DokanScanService(this._productService);
+
+  final ProductService _productService;
+
+  DokanScanResult resolve(String rawCode) {
+    final normalizedCode = _productService.normalizeProductId(rawCode);
+    final product = _productService.getProduct(normalizedCode);
+
+    return DokanScanResult(
+      rawCode: rawCode,
+      normalizedCode: normalizedCode,
+      product: product,
+    );
+  }
+}

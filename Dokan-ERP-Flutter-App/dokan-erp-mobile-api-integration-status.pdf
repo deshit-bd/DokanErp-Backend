@@ -1,0 +1,758 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R] /Count 7 >>
+endobj
+3 0 obj
+<< /Length 2059 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(Dokan-ERP Mobile API Integration Status) Tj
+T*
+() Tj
+T*
+(Generated from the current repository source on 2026-06-29.) Tj
+T*
+() Tj
+T*
+(Scope) Tj
+T*
+() Tj
+T*
+(- - Backend source checked: backend/src/app.ts and backend/src/routes/*.ts) Tj
+T*
+(- - Mobile source checked: mobile/lib/core/constants/api_endpoints.dart,) Tj
+T*
+(- mobile/lib/data/network/erp_remote_data_source.dart, and all) Tj
+T*
+(- mobile/lib/modules/**/data/datasources/*remote*.dart files) Tj
+T*
+(- - Base API scope for mobile: '/app/api') Tj
+T*
+() Tj
+T*
+(How To Read This) Tj
+T*
+() Tj
+T*
+(- - Integrated means the mobile app has a real caller and the backend route exists with a) Tj
+T*
+(- matching path/method.) Tj
+T*
+(- - Needs Fix means mobile code calls an API, but the backend path or method does not) Tj
+T*
+(- match the current backend implementation.) Tj
+T*
+(- - Need To Integrate means the backend already exposes the route under /app/api, but) Tj
+T*
+(- the current mobile app has no direct caller for it.) Tj
+T*
+() Tj
+T*
+(Integrated APIs) Tj
+T*
+() Tj
+T*
+(Auth) Tj
+T*
+() Tj
+T*
+(Mobile source: mobile/lib/modules/auth/data/datasources/auth_remote_data_source.dart and) Tj
+T*
+(mobile/lib/data/network/api_providers.dart) Tj
+T*
+() Tj
+T*
+(- - POST /app/api/auth/login) Tj
+T*
+(- - POST /app/api/auth/register-owner) Tj
+T*
+(- - POST /app/api/auth/check-mobile) Tj
+T*
+(- - POST /app/api/auth/send-otp) Tj
+T*
+(- - POST /app/api/auth/verify-otp) Tj
+T*
+(- - POST /app/api/auth/refresh) Tj
+T*
+(- - POST /app/api/auth/logout) Tj
+T*
+(- - GET /app/api/auth/me) Tj
+T*
+() Tj
+T*
+(Customers And Sales) Tj
+T*
+() Tj
+T*
+(Mobile source:) Tj
+T*
+(mobile/lib/modules/customers/data/datasources/customer_remote_data_source.dart,) Tj
+T*
+(mobile/lib/modules/sales/data/datasources/sales_remote_data_source.dart, and) Tj
+T*
+(mobile/lib/modules/sales/presentation/screens/parts/sales_screens_pos_checkout.dart) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/customers) Tj
+T*
+(- - POST /app/api/customers) Tj
+T*
+(- - GET /app/api/customers/:id) Tj
+T*
+(- - POST /app/api/customers/:id/payments) Tj
+T*
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 1910 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - GET /app/api/customers/sales) Tj
+T*
+(- - POST /app/api/customers/sales) Tj
+T*
+(- - POST /app/api/customers/sales/:saleId/cancel) Tj
+T*
+(- - POST /app/api/customers/send-due-otp) Tj
+T*
+(- - POST /app/api/customers/verify-due-otp) Tj
+T*
+() Tj
+T*
+(Products, Categories, Shop Catalog, And Stock Movement) Tj
+T*
+() Tj
+T*
+(Mobile source:) Tj
+T*
+(mobile/lib/modules/products/data/datasources/product_remote_data_source.dart and) Tj
+T*
+(mobile/lib/modules/products/data/datasources/quick_setup_catalog_remote_data_source.dart) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/products) Tj
+T*
+(- - POST /app/api/products) Tj
+T*
+(- - GET /app/api/products/:id) Tj
+T*
+(- - PATCH /app/api/products/:id) Tj
+T*
+(- - DELETE /app/api/products/:id) Tj
+T*
+(- - GET /app/api/categories) Tj
+T*
+(- - POST /app/api/categories) Tj
+T*
+(- - DELETE /app/api/categories/:id) Tj
+T*
+(- - GET /app/api/shops/products) Tj
+T*
+(- - GET /app/api/inventory/stock-movements) Tj
+T*
+(- - POST /app/api/inventory/stock-movements) Tj
+T*
+(- - GET /app/api/shops/quick-setup/catalog) Tj
+T*
+(- - POST /app/api/shops/quick-setup/catalog/select) Tj
+T*
+(- - PATCH /app/api/shops/quick-setup/catalog/pricing) Tj
+T*
+() Tj
+T*
+(Purchases) Tj
+T*
+() Tj
+T*
+(Mobile source:) Tj
+T*
+(mobile/lib/modules/purchases/data/datasources/purchase_remote_data_source.dart) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/purchases) Tj
+T*
+(- - POST /app/api/purchases) Tj
+T*
+(- - GET /app/api/purchases/:id) Tj
+T*
+(- - POST /app/api/purchases/:id/receive) Tj
+T*
+(- - POST /app/api/purchases/:id/cancel) Tj
+T*
+(- - POST /app/api/purchases/:id/returns) Tj
+T*
+() Tj
+T*
+(Suppliers) Tj
+T*
+() Tj
+T*
+(Mobile source:) Tj
+T*
+(mobile/lib/modules/suppliers/data/datasources/supplier_remote_data_source.dart) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/suppliers) Tj
+T*
+(- - POST /app/api/suppliers) Tj
+T*
+(- - DELETE /app/api/suppliers/:id) Tj
+T*
+(- - GET /app/api/suppliers/:id/ledger) Tj
+T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 2155 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - POST /app/api/suppliers/:id/payments) Tj
+T*
+() Tj
+T*
+(Expenses) Tj
+T*
+() Tj
+T*
+(Mobile source:) Tj
+T*
+(mobile/lib/modules/expenses/data/datasources/expense_remote_data_source.dart) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/expenses) Tj
+T*
+(- - POST /app/api/expenses) Tj
+T*
+() Tj
+T*
+(Business Settings, Subscription, Inventory Layout, Staff, Notifications) Tj
+T*
+() Tj
+T*
+(Mobile source: mobile/lib/modules/settings/data/datasources/*.dart and) Tj
+T*
+(mobile/lib/data/network/erp_remote_data_source.dart) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/settings/inventory) Tj
+T*
+(- - PATCH /app/api/settings/inventory) Tj
+T*
+(- - GET /app/api/settings/store) Tj
+T*
+(- - PUT /app/api/settings/store) Tj
+T*
+(- - POST /app/api/settings/store/documents/:type) Tj
+T*
+(- - PATCH /app/api/shops/me/logo) Tj
+T*
+(- - GET /app/api/subscriptions/me) Tj
+T*
+(- - POST /app/api/subscriptions/payments) Tj
+T*
+(- - GET /app/api/inventory/mode) Tj
+T*
+(- - GET /app/api/inventory/layout-tree) Tj
+T*
+(- - POST /app/api/inventory/zones) Tj
+T*
+(- - PATCH /app/api/inventory/zones/:id) Tj
+T*
+(- - DELETE /app/api/inventory/zones/:id) Tj
+T*
+(- - POST /app/api/inventory/racks) Tj
+T*
+(- - PATCH /app/api/inventory/racks/:id) Tj
+T*
+(- - DELETE /app/api/inventory/racks/:id) Tj
+T*
+(- - POST /app/api/inventory/shelves) Tj
+T*
+(- - PATCH /app/api/inventory/shelves/:id) Tj
+T*
+(- - DELETE /app/api/inventory/shelves/:id) Tj
+T*
+(- - POST /app/api/inventory/bins) Tj
+T*
+(- - PATCH /app/api/inventory/bins/:id) Tj
+T*
+(- - DELETE /app/api/inventory/bins/:id) Tj
+T*
+(- - GET /app/api/staff) Tj
+T*
+(- - GET /app/api/notifications) Tj
+T*
+() Tj
+T*
+(APIs That Need Fixing In Mobile) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/dashboard - The backend does not mount a root /dashboard route in) Tj
+T*
+(- backend/src/app.ts. Existing dashboard-style endpoints are under reports and) Tj
+T*
+(- inventory instead. Source: mobile/lib/data/network/erp_remote_data_source.dart) Tj
+T*
+(- - PATCH /app/api/inventory/mode - Backend route is POST /app/api/inventory/mode, not) Tj
+T*
+(- PATCH. Source:) Tj
+T*
+(- mobile/lib/modules/settings/data/datasources/inventory_layout_remote_data_source.dart) Tj
+T*
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 2043 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - PATCH /app/api/purchases/:id - Backend has no update route for purchase detail.) Tj
+T*
+(- Current purchase routes are create, list, detail, receive, cancel, returns, approve,) Tj
+T*
+(- reject, and payments. Source:) Tj
+T*
+(- mobile/lib/modules/purchases/data/datasources/purchase_remote_data_source.dart) Tj
+T*
+(- - PATCH /app/api/expenses/:id and DELETE /app/api/expenses/:id - Backend) Tj
+T*
+(- backend/src/routes/expenses.ts currently exposes only GET /expenses and POST) Tj
+T*
+(- /expenses. Source:) Tj
+T*
+(- mobile/lib/modules/expenses/data/datasources/expense_remote_data_source.dart) Tj
+T*
+(- - GET /app/api/reports/{reportName} - Backend does not expose a generic dynamic report) Tj
+T*
+(- route. It exposes fixed endpoints like /reports/dashboard, /reports/sales/daily,) Tj
+T*
+(- /reports/purchases/summary, /reports/dues/summary, /reports/expenses/summary,) Tj
+T*
+(- /reports/profit-loss, and /reports/stock-value. Source:) Tj
+T*
+(- mobile/lib/data/network/erp_remote_data_source.dart) Tj
+T*
+() Tj
+T*
+(Backend APIs That Still Need Mobile Integration) Tj
+T*
+() Tj
+T*
+(Bank Accounts) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/bank-accounts) Tj
+T*
+(- - POST /app/api/bank-accounts) Tj
+T*
+(- - PUT /app/api/bank-accounts/:id) Tj
+T*
+() Tj
+T*
+(Brands) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/brands) Tj
+T*
+(- - POST /app/api/brands) Tj
+T*
+(- - PUT /app/api/brands/:id) Tj
+T*
+(- - DELETE /app/api/brands) Tj
+T*
+(- - DELETE /app/api/brands/:id) Tj
+T*
+() Tj
+T*
+(Money Boxes) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/money-boxes) Tj
+T*
+(- - POST /app/api/money-boxes) Tj
+T*
+(- - PUT /app/api/money-boxes/:id) Tj
+T*
+() Tj
+T*
+(Product Templates) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/product-templates) Tj
+T*
+(- - POST /app/api/product-templates) Tj
+T*
+(- - PUT /app/api/product-templates/:id) Tj
+T*
+(- - DELETE /app/api/product-templates/:id) Tj
+T*
+(- - PUT /app/api/product-templates/:id/products) Tj
+T*
+(- - DELETE /app/api/product-templates/:id/products/:productId) Tj
+T*
+() Tj
+T*
+(Units) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/units) Tj
+T*
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 1936 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - POST /app/api/units) Tj
+T*
+(- - DELETE /app/api/units/:id) Tj
+T*
+(- - POST /app/api/units/:id/approve) Tj
+T*
+() Tj
+T*
+(Shop Management APIs Beyond Logo) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/shops) Tj
+T*
+(- - GET /app/api/shops/me/settings) Tj
+T*
+(- - PATCH /app/api/shops/me/settings) Tj
+T*
+(- - GET /app/api/shops/me/finance-sources) Tj
+T*
+(- - POST /app/api/shops/me/money-boxes) Tj
+T*
+(- - PUT /app/api/shops/me/money-boxes/:id) Tj
+T*
+(- - POST /app/api/shops/me/bank-accounts) Tj
+T*
+(- - PUT /app/api/shops/me/bank-accounts/:id) Tj
+T*
+(- - GET /app/api/shops/me/inventory-settings) Tj
+T*
+(- - PATCH /app/api/shops/me/inventory-settings) Tj
+T*
+(- - GET /app/api/shops/me/taxes-charges) Tj
+T*
+(- - POST /app/api/shops/me/taxes) Tj
+T*
+(- - POST /app/api/shops/me/charges) Tj
+T*
+(- - PATCH /app/api/shops/me/taxes/:id) Tj
+T*
+(- - PATCH /app/api/shops/me/charges/:id) Tj
+T*
+(- - DELETE /app/api/shops/me/taxes/:id) Tj
+T*
+(- - DELETE /app/api/shops/me/charges/:id) Tj
+T*
+() Tj
+T*
+(Customer Read APIs Not Yet Used In Mobile) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/customers/:id/sales) Tj
+T*
+(- - GET /app/api/customers/:id/ledger) Tj
+T*
+(- - GET /app/api/customers/sales/closing-summary) Tj
+T*
+(- - GET /app/api/customers/sales/:saleId) Tj
+T*
+() Tj
+T*
+(Supplier Read And Admin APIs Not Yet Used In Mobile) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/suppliers/:id) Tj
+T*
+(- - PUT /app/api/suppliers/:id) Tj
+T*
+(- - PATCH /app/api/suppliers/:id/status) Tj
+T*
+(- - GET /app/api/suppliers/:id/dues) Tj
+T*
+(- - GET /app/api/suppliers/:id/payments) Tj
+T*
+(- - GET /app/api/suppliers/:id/purchases) Tj
+T*
+(- - GET /app/api/add-suppliers/* alias routes) Tj
+T*
+() Tj
+T*
+(Purchase Admin APIs Not Yet Used In Mobile) Tj
+T*
+() Tj
+T*
+(- - POST /app/api/purchases/:id/payments) Tj
+T*
+(- - GET /app/api/purchases/:id/returns) Tj
+T*
+(- - PATCH /app/api/purchases/:id/approve) Tj
+T*
+(- - PATCH /app/api/purchases/:id/reject) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 1833 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(Product APIs Not Yet Used In Mobile) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/products/:id/barcode.svg) Tj
+T*
+(- - POST /app/api/products/:id/duplicate) Tj
+T*
+(- - GET /app/api/products/approval-requests) Tj
+T*
+(- - PATCH /app/api/products/approval-requests/:id/approve) Tj
+T*
+(- - PATCH /app/api/products/approval-requests/:id/reject) Tj
+T*
+(- - PATCH /app/api/products/:id/status) Tj
+T*
+() Tj
+T*
+(Inventory APIs Not Yet Used In Mobile) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/inventory/dashboard) Tj
+T*
+(- - GET /app/api/inventory/attention) Tj
+T*
+(- - GET /app/api/inventory/general-store) Tj
+T*
+(- - GET /app/api/inventory/zones) Tj
+T*
+(- - GET /app/api/inventory/racks) Tj
+T*
+(- - GET /app/api/inventory/shelves) Tj
+T*
+(- - GET /app/api/inventory/bins) Tj
+T*
+(- - POST /app/api/inventory/placements) Tj
+T*
+() Tj
+T*
+(Reports APIs) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/reports/dashboard) Tj
+T*
+(- - GET /app/api/reports/sales/daily) Tj
+T*
+(- - GET /app/api/reports/purchases/summary) Tj
+T*
+(- - GET /app/api/reports/dues/summary) Tj
+T*
+(- - GET /app/api/reports/expenses/summary) Tj
+T*
+(- - GET /app/api/reports/profit-loss) Tj
+T*
+(- - GET /app/api/reports/stock-value) Tj
+T*
+() Tj
+T*
+(Notifications Write APIs) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/notifications/settings) Tj
+T*
+(- - PUT /app/api/notifications/settings) Tj
+T*
+(- - POST /app/api/notifications) Tj
+T*
+(- - PUT /app/api/notifications/read) Tj
+T*
+(- - DELETE /app/api/notifications) Tj
+T*
+() Tj
+T*
+(Staff Detail/Admin APIs) Tj
+T*
+() Tj
+T*
+(- - GET /app/api/staff/me/performance) Tj
+T*
+(- - GET /app/api/staff/:staffUserId) Tj
+T*
+(- - PATCH /app/api/staff/:staffUserId/permissions) Tj
+T*
+(- - POST /app/api/staff/:staffUserId/pin-reset) Tj
+T*
+(- - PATCH /app/api/staff/:staffUserId/status) Tj
+T*
+() Tj
+T*
+(Auth Flows Not Yet Hooked In Mobile) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 1501 >>
+stream
+BT
+/F1 10 Tf
+50 760 Td
+14 TL
+(- - POST /app/api/auth/register-salesman) Tj
+T*
+(- - POST /app/api/auth/register-owner-draft) Tj
+T*
+(- - POST /app/api/auth/setup-pin) Tj
+T*
+(- - POST /app/api/auth/complete-registration) Tj
+T*
+(- - POST /app/api/auth/pre-login) Tj
+T*
+(- - POST /app/api/auth/owners-login) Tj
+T*
+(- - POST /app/api/auth/salesmans-login) Tj
+T*
+(- - POST /app/api/auth/send-owner-login-otp) Tj
+T*
+(- - POST /app/api/auth/owners-login-otp) Tj
+T*
+(- - POST /app/api/auth/salesmans-login-otp) Tj
+T*
+(- - POST /app/api/auth/send-login-otp) Tj
+T*
+(- - POST /app/api/auth/verify-login-otp) Tj
+T*
+(- - POST /app/api/auth/owners-verify-otp) Tj
+T*
+(- - POST /app/api/auth/salesmans-verify-otp) Tj
+T*
+(- - PATCH /app/api/auth/me) Tj
+T*
+(- - PATCH /app/api/auth/me/password) Tj
+T*
+(- - PATCH /app/api/auth/me/avatar) Tj
+T*
+() Tj
+T*
+(Recommended Next Work) Tj
+T*
+() Tj
+T*
+(- - Fix the broken mobile calls first: /dashboard, generic /reports/{reportName}, PATCH) Tj
+T*
+(- /inventory/mode, PATCH /purchases/:id, and item-level expense update/delete.) Tj
+T*
+(- - After that, the highest-value missing integrations for daily mobile workflows are shop) Tj
+T*
+(- settings, supplier detail/dues/payment history, customer ledger/sales history, purchase) Tj
+T*
+(- approval/payment history, and reports.) Tj
+T*
+(- - If you want tighter mobile coverage for owner operations, the next route groups to wire) Tj
+T*
+(- are bank-accounts, money-boxes, units, brands, and notifications write actions.) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+xref
+0 18
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000176 00000 n 
+0000002287 00000 n 
+0000002413 00000 n 
+0000004375 00000 n 
+0000004501 00000 n 
+0000006708 00000 n 
+0000006834 00000 n 
+0000008929 00000 n 
+0000009056 00000 n 
+0000011045 00000 n 
+0000011173 00000 n 
+0000013059 00000 n 
+0000013187 00000 n 
+0000014741 00000 n 
+0000014869 00000 n 
+trailer
+<< /Size 18 /Root 17 0 R >>
+startxref
+14919
+%%EOF

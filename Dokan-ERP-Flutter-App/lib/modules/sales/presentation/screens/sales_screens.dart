@@ -1,0 +1,41 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:bangla_pdf_fixer/bangla_pdf_fixer.dart';
+
+import 'package:dokan_erp/core/core.dart';
+import 'package:dokan_erp/data/data.dart';
+import 'package:dokan_erp/modules/auth/auth.dart';
+import 'package:dokan_erp/modules/branches/branches.dart';
+import 'package:dokan_erp/modules/dashboard/dashboard.dart';
+import 'package:dokan_erp/modules/products/products.dart';
+import 'package:dokan_erp/modules/reports/reports.dart';
+import 'package:dokan_erp/modules/settings/settings.dart';
+import 'package:dokan_erp/modules/sales/presentation/providers/cart_provider.dart';
+
+part 'parts/dokan_pos_main_screen.dart';
+part 'parts/pos_sales_side_menu.dart';
+part 'parts/payment_breakdown_row.dart';
+part 'parts/sales_header_bar.dart';
+part 'parts/sales_empty_state.dart';
+part 'parts/sales_cancellation_screen.dart';
+part 'parts/sales_cancellation_success_screen.dart';
+part 'parts/summary_amount_row.dart';
+part 'parts/sales_search_screen.dart';
+part 'parts/history_filter_selection.dart';
+part 'parts/filter_action_button.dart';
+part 'parts/payment_chip.dart';
+part 'parts/due_customer_summary.dart';
+part 'parts/due_customer_card.dart';
+part 'parts/sales_screens_pos_checkout.dart';
+part 'parts/dokan_global_search_screen.dart';
