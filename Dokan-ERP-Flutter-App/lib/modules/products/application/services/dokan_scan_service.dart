@@ -30,4 +30,19 @@ class DokanScanService {
       product: product,
     );
   }
+
+  /// Best-effort product lookup by (spoken) name for voice-driven selling.
+  DokanCatalogProduct? findByName(String query) {
+    final needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return null;
+    final products = _productService.allProducts;
+    for (final product in products) {
+      if (product.name.toLowerCase() == needle) return product;
+    }
+    for (final product in products) {
+      final name = product.name.toLowerCase();
+      if (name.contains(needle) || needle.contains(name)) return product;
+    }
+    return null;
+  }
 }

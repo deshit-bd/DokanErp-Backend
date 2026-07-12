@@ -167,6 +167,7 @@ class _DokanHomeDashboardScreenState
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFEAF5FB),
+        floatingActionButton: const DokanVoiceAssistantButton(),
         body: SafeArea(
           bottom: false,
           child: LayoutBuilder(

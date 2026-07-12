@@ -2,6 +2,7 @@ export 'calculation_helper.dart';
 export 'currency_formatter.dart';
 export 'date_formatter.dart';
 export 'due_voice_parser.dart';
+export 'voice_command_parser.dart';
 export 'logger.dart';
 export 'numeric_input_formatters.dart';
 export 'store_location_capture.dart';
