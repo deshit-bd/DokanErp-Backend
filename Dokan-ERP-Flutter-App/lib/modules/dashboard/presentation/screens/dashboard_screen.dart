@@ -8,6 +8,7 @@ import 'package:dokan_erp/modules/auth/auth.dart';
 import 'package:dokan_erp/modules/branches/branches.dart';
 import 'package:dokan_erp/modules/expenses/expenses.dart';
 import 'package:dokan_erp/modules/dashboard/presentation/widgets/dokan_voice_assistant_button.dart';
+import 'package:dokan_erp/modules/dashboard/presentation/widgets/dokan_habit_card.dart';
 import 'package:dokan_erp/modules/notifications/notifications.dart';
 import 'package:dokan_erp/modules/products/products.dart';
 import 'package:dokan_erp/modules/purchases/purchases.dart';

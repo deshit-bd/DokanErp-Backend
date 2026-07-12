@@ -288,6 +288,13 @@ class _DokanHomeDashboardScreenState
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    DokanHabitCard(
+                                      todaySales: totalSales,
+                                      todayProfit: todayProfit,
+                                      growthPercent:
+                                          dashboardSummary?.salesGrowthPercent ??
+                                              0,
+                                    ),
                                     _SalesSummaryCard(
                                       dateLabel: todayLabel,
                                       totalSales:
