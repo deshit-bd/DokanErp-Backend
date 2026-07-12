@@ -1,5 +1,36 @@
 import 'package:flutter/material.dart';
 
+/// A single professional page transition applied to every screen in the app:
+/// a smooth fade combined with a subtle upward slide. One place, all pages.
+class DokanPageTransitionsBuilder extends PageTransitionsBuilder {
+  const DokanPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.04),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
+    );
+  }
+}
+
 abstract final class AppColors {
   static const primary = Color(0xFF00694C);
   static const primaryLight = Color(0xFF0C8C67);
@@ -110,11 +141,11 @@ abstract final class AppTheme {
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.android: DokanPageTransitionsBuilder(),
+          TargetPlatform.iOS: DokanPageTransitionsBuilder(),
+          TargetPlatform.macOS: DokanPageTransitionsBuilder(),
+          TargetPlatform.windows: DokanPageTransitionsBuilder(),
+          TargetPlatform.linux: DokanPageTransitionsBuilder(),
         },
       ),
       colorScheme: ColorScheme.fromSeed(
@@ -174,11 +205,11 @@ abstract final class AppTheme {
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.android: DokanPageTransitionsBuilder(),
+          TargetPlatform.iOS: DokanPageTransitionsBuilder(),
+          TargetPlatform.macOS: DokanPageTransitionsBuilder(),
+          TargetPlatform.windows: DokanPageTransitionsBuilder(),
+          TargetPlatform.linux: DokanPageTransitionsBuilder(),
         },
       ),
       colorScheme: ColorScheme.fromSeed(
