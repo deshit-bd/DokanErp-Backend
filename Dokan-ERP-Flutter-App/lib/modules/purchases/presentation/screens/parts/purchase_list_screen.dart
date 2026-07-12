@@ -147,7 +147,10 @@ class _DokanPurchaseListScreenState
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final order = filtered[index];
-                    return _orderCard(order);
+                    return DokanFadeSlideIn(
+                      delay: Duration(milliseconds: 45 * (index.clamp(0, 9))),
+                      child: _orderCard(order),
+                    );
                   },
                 );
               },
