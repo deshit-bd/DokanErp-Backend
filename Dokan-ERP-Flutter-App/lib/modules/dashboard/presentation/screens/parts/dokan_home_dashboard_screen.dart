@@ -320,8 +320,8 @@ class _DokanHomeDashboardScreenState
                                           const NeverScrollableScrollPhysics(),
                                       childAspectRatio:
                                           constraints.maxWidth < 380
-                                              ? 1.5
-                                              : 1.62,
+                                              ? 1.78
+                                              : 1.9,
                                       children: [
                                         _StatCard(
                                           background: const Color(0xFFFFE7CC),
