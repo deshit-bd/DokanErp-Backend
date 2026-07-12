@@ -141,6 +141,22 @@ app.use(
   ),
 );
 app.use(express.json());
+
+// Some hosting layers in front of this API reject the verbs PUT/PATCH/DELETE
+// outright. The clients therefore send those requests as POST carrying an
+// `X-HTTP-Method-Override` header; restore the real verb here, before routing,
+// so every existing route keeps working unchanged.
+app.use((request, _response, next) => {
+  const override = request.headers["x-http-method-override"];
+  if (request.method === "POST" && typeof override === "string") {
+    const verb = override.toUpperCase();
+    if (verb === "PUT" || verb === "PATCH" || verb === "DELETE") {
+      request.method = verb;
+    }
+  }
+  next();
+});
+
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
 app.get("/confirm-due/:token", handleGetConfirmDue);
