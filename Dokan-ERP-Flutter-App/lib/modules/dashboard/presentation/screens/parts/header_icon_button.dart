@@ -247,56 +247,75 @@ class _StatCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: tint.withOpacity(0.14)),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFEDF1F5)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F1E293B),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(icon, color: tint, size: 30),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: FittedBox(
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: tint.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: tint, size: 20),
+                  ),
+                  const Spacer(),
+                  Icon(Icons.chevron_right_rounded,
+                      color: const Color(0xFFCBD5E1), size: 20),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FittedBox(
                         fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
+                        alignment: Alignment.centerLeft,
                         child: Text(
                           value,
                           maxLines: 1,
                           softWrap: false,
-                          style: TextStyle(
-                            color: tint,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: tint.withOpacity(0.95),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1.15,
-                    ),
+                      const SizedBox(height: 3),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
