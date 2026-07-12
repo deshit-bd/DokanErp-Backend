@@ -1,7 +1,11 @@
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import path from "node:path";
 import { AppType } from "@prisma/client";
+
+import { env } from "./config/env";
 
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "./auth/current-user";
 import { startOtpAutoRenewalJob } from "./auth/otp-renewal";
@@ -30,6 +34,15 @@ import settingsRoutes from "./routes/settings";
 import { evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "./subscription/access";
 
 const app = express();
+
+// Throttle authentication endpoints to blunt brute-force / credential-stuffing.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many attempts. Please try again later." },
+});
 
 function mountApiScope(prefix: string, appType: AppType) {
   const scopedRouter = express.Router();
@@ -76,7 +89,7 @@ function mountApiScope(prefix: string, appType: AppType) {
     });
   }
 
-  scopedRouter.use("/auth", authRoutes);
+  scopedRouter.use("/auth", authLimiter, authRoutes);
   scopedRouter.use("/bank-accounts", bankAccountRoutes);
   scopedRouter.use("/brands", brandRoutes);
   scopedRouter.use("/categories", categoryRoutes);
@@ -110,7 +123,23 @@ function mountApiScope(prefix: string, appType: AppType) {
   app.use(prefix, scopedRouter);
 }
 
-app.use(cors());
+// Security headers. CSP is for HTML pages (this is a JSON API), and resource
+// policy is relaxed so cross-origin clients (mobile web build) can read responses.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
+
+// In production, restrict origins to the configured allow-list; in dev, stay open.
+app.use(
+  cors(
+    env.corsAllowedOrigins.length > 0
+      ? { origin: env.corsAllowedOrigins, credentials: true }
+      : undefined,
+  ),
+);
 app.use(express.json());
 app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
@@ -128,6 +157,15 @@ app.get("/health", (_request, response) => {
 
 mountApiScope("/web/api", AppType.WEB);
 mountApiScope("/app/api", AppType.MOBILE);
+
+// Central error handler: log the detail, never leak stack traces to clients.
+app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+  console.error("Unhandled error:", error);
+  if (response.headersSent) {
+    return;
+  }
+  response.status(500).json({ message: "Internal server error." });
+});
 
 startOtpAutoRenewalJob();
 

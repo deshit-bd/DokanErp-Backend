@@ -10,9 +10,10 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
 } from "./constants";
 import { signAccessToken } from "./jwt";
+import { env } from "../config/env";
 
 export function getAuthSecret() {
-  return process.env.AUTH_JWT_SECRET || process.env.JWT_SECRET || "dev-only-auth-secret";
+  return env.AUTH_JWT_SECRET;
 }
 
 export function hashRefreshToken(token: string) {
