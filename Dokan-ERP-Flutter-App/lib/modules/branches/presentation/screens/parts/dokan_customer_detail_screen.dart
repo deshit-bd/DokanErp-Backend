@@ -153,6 +153,7 @@ class _DokanCustomerDetailScreenState
 
       return Scaffold(
         backgroundColor: const Color(0xFFF4F8F6),
+        floatingActionButton: const DokanVoiceDueButton(),
         appBar: AppBar(
           backgroundColor: const Color(0xFFF4F8F6),
           elevation: 0,
