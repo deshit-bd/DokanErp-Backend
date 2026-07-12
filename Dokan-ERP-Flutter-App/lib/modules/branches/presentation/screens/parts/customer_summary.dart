@@ -310,7 +310,7 @@ class _ReceivableHeroCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    AnimatedNumberString(
                       _formatCurrency(totalReceivable),
                       style: const TextStyle(
                         color: Colors.white,

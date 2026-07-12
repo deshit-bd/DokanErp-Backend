@@ -26,7 +26,7 @@ class _SummaryAmountRow extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        Text(
+        AnimatedNumberString(
           value,
           style: TextStyle(
             color: valueColor,
