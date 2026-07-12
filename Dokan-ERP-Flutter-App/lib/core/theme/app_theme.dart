@@ -113,7 +113,7 @@ abstract final class AppTheme {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: AppColors.background,
-      fontFamily: 'Inter',
+      fontFamily: 'HindSiliguri',
       textTheme: const TextTheme(
         titleLarge: TextStyle(fontWeight: FontWeight.w800),
         titleMedium: TextStyle(fontWeight: FontWeight.w700),
@@ -168,7 +168,7 @@ abstract final class AppTheme {
         brightness: Brightness.dark,
       ),
       scaffoldBackgroundColor: const Color(0xFF121212),
-      fontFamily: 'Inter',
+      fontFamily: 'HindSiliguri',
       textTheme: const TextTheme(
         titleLarge: TextStyle(fontWeight: FontWeight.w800),
         titleMedium: TextStyle(fontWeight: FontWeight.w700),
