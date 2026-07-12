@@ -27,7 +27,7 @@ class _DailyHeroMetric extends StatelessWidget {
         const SizedBox(height: 6),
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
+          child: AnimatedNumberString(
             value,
             style: const TextStyle(
               color: Colors.white,

@@ -7,21 +7,28 @@ class _ExpenseTrendChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 180,
-      width: double.infinity,
-      child: CustomPaint(
-        painter: _ExpenseTrendChartPainter(points: points),
-        child: const SizedBox.expand(),
+    // Draw the line in from left to right, fading the fill and dots as it goes.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 950),
+      curve: Curves.easeOutCubic,
+      builder: (context, progress, _) => SizedBox(
+        height: 180,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _ExpenseTrendChartPainter(points: points, progress: progress),
+          child: const SizedBox.expand(),
+        ),
       ),
     );
   }
 }
 
 class _ExpenseTrendChartPainter extends CustomPainter {
-  const _ExpenseTrendChartPainter({this.points = const []});
+  const _ExpenseTrendChartPainter({this.points = const [], this.progress = 1});
 
   final List<ExpenseTrendPoint> points;
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -74,22 +81,41 @@ class _ExpenseTrendChartPainter extends CustomPainter {
       path.lineTo(chartPoints[i].dx, chartPoints[i].dy);
     }
 
+    final clamped = progress.clamp(0.0, 1.0);
+
+    // Fill fades in as the line draws.
     final fillPath = Path.from(path)
       ..lineTo(size.width, size.height)
       ..lineTo(0, size.height)
       ..close();
+    canvas.saveLayer(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = Colors.white.withValues(alpha: clamped),
+    );
     canvas.drawPath(fillPath, fillPaint);
-    canvas.drawPath(path, linePaint);
+    canvas.restore();
 
+    // Line draws in from left to right.
+    for (final metric in path.computeMetrics()) {
+      canvas.drawPath(
+        metric.extractPath(0, metric.length * clamped),
+        linePaint,
+      );
+    }
+
+    // Dots reveal as the line reaches them.
+    final revealX = size.width * clamped;
     final dotPaint = Paint()..color = const Color(0xFF0C8C67);
     for (final point in chartPoints) {
-      canvas.drawCircle(point, 4.2, dotPaint);
+      if (point.dx <= revealX + 0.5) {
+        canvas.drawCircle(point, 4.2, dotPaint);
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant _ExpenseTrendChartPainter oldDelegate) =>
-      oldDelegate.points != points;
+      oldDelegate.points != points || oldDelegate.progress != progress;
 }
 
 String _expenseDateLabel(DateTime date) {
