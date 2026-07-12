@@ -142,7 +142,7 @@ class _SalesSummaryCard extends StatelessWidget {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(
+                  child: AnimatedNumberString(
                     totalSales,
                     maxLines: 1,
                     softWrap: false,
@@ -289,7 +289,7 @@ class _StatCard extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(
+                    child: AnimatedNumberString(
                       value,
                       maxLines: 1,
                       softWrap: false,

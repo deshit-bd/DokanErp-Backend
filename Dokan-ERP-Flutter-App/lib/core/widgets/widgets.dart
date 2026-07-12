@@ -1,3 +1,4 @@
+export 'dokan_animations.dart';
 export 'dokan_buttons.dart';
 export 'dokan_search_field.dart';
 export 'dokan_voice_search_button.dart';
