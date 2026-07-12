@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/di/app_dependency_overrides.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/loading/dokan_api_loader_overlay.dart';
+import 'core/widgets/dokan_responsive_shell.dart';
 import 'core/widgets/dokan_buttons.dart';
 import 'data/network/api_providers.dart';
 import 'core/routing/app_routes.dart';
@@ -65,7 +66,9 @@ class _AppBootstrap extends ConsumerWidget {
                 ref.watch(apiActivityCountProvider).valueOrNull ?? 0;
             return DokanApiLoaderOverlay(
               loading: activeRequests > 0,
-              child: child ?? const SizedBox.shrink(),
+              child: DokanResponsiveShell(
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
         );
