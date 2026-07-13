@@ -134,38 +134,42 @@ class _DokanHomeDashboardScreenState
     final salesComparisonLabel = dashboardSummary?.salesComparisonLabel ??
         'গত ৭ দিনের তুলনায় ১৫% বৃদ্ধি';
 
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) async {
-        if (didPop) return;
-        final shouldLogout = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: Text(tr('লগ আউট করবেন?', 'Log out?')),
-              content: Text(
-                tr('আপনি কি এই অ্যাকাউন্ট থেকে লগ আউট করতে চান?',
-                    'Are you sure you want to log out from this account?'),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(tr('না', 'No')),
+    final isWide = MediaQuery.of(context).size.width >= 720;
+
+    return DokanResponsivePage(
+      selectedIndex: 0,
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          final shouldLogout = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) {
+              return AlertDialog(
+                title: Text(tr('লগ আউট করবেন?', 'Log out?')),
+                content: Text(
+                  tr('আপনি কি এই অ্যাকাউন্ট থেকে লগ আউট করতে চান?',
+                      'Are you sure you want to log out from this account?'),
                 ),
-                FilledButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(tr('হ্যাঁ', 'Yes')),
-                ),
-              ],
-            );
-          },
-        );
-        if (shouldLogout == true && context.mounted) {
-          await ref.read(dokanAppFlowProvider.notifier).logout();
-        }
-      },
-      child: Scaffold(
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: Text(tr('না', 'No')),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    child: Text(tr('হ্যাঁ', 'Yes')),
+                  ),
+                ],
+              );
+            },
+          );
+          if (shouldLogout == true && context.mounted) {
+            await ref.read(dokanAppFlowProvider.notifier).logout();
+          }
+        },
+        child: Scaffold(
         backgroundColor: const Color(0xFFF6F8FB),
         floatingActionButton: const DokanVoiceAssistantButton(),
         body: SafeArea(
@@ -279,8 +283,8 @@ class _DokanHomeDashboardScreenState
                             child: SingleChildScrollView(
                               physics: const AlwaysScrollableScrollPhysics(
                                   parent: ClampingScrollPhysics()),
-                              padding: const EdgeInsets.fromLTRB(
-                                  20, 16, 20, footerHeight + 44),
+                              padding: EdgeInsets.fromLTRB(
+                                  20, 16, 20, isWide ? 20 : footerHeight + 44),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                     minHeight: constraints.maxHeight - 126),
@@ -288,171 +292,200 @@ class _DokanHomeDashboardScreenState
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    DokanHabitCard(
-                                      todaySales: totalSales,
-                                      todayProfit: todayProfit,
-                                      growthPercent:
-                                          dashboardSummary?.salesGrowthPercent ??
-                                              0,
+                                    DokanFadeSlideIn(
+                                      delay: Duration.zero,
+                                      child: DokanHabitCard(
+                                        todaySales: totalSales,
+                                        todayProfit: todayProfit,
+                                        growthPercent:
+                                            dashboardSummary?.salesGrowthPercent ??
+                                                0,
+                                      ),
                                     ),
-                                    _SalesSummaryCard(
-                                      dateLabel: todayLabel,
-                                      totalSales:
-                                          '৳ ${_bengaliNumber(totalSales)}',
-                                      totalOrders:
-                                          '${_bengaliNumber(totalOrders)}${tr('টি', ' sales')}',
-                                      profit:
-                                          '৳ ${_bengaliNumber(todayProfit)}',
-                                      onTap: () => Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const DokanDailySalesReportScreen(),
+                                    DokanFadeSlideIn(
+                                      delay: const Duration(milliseconds: 100),
+                                      child: _SalesSummaryCard(
+                                        dateLabel: todayLabel,
+                                        totalSales:
+                                            '৳ ${_bengaliNumber(totalSales)}',
+                                        totalOrders:
+                                            '${_bengaliNumber(totalOrders)}${tr('টি', ' sales')}',
+                                        profit:
+                                            '৳ ${_bengaliNumber(todayProfit)}',
+                                        onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const DokanDailySalesReportScreen(),
+                                          ),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(height: 12),
                                     GridView.count(
-                                      crossAxisCount: 2,
+                                      crossAxisCount: isWide ? 4 : 2,
                                       crossAxisSpacing: 12,
                                       mainAxisSpacing: 12,
                                       shrinkWrap: true,
                                       physics:
                                           const NeverScrollableScrollPhysics(),
-                                      childAspectRatio:
-                                          constraints.maxWidth < 380
-                                              ? 1.78
-                                              : 1.9,
+                                      childAspectRatio: isWide
+                                          ? 1.5
+                                          : (constraints.maxWidth < 380 ? 1.4 : 1.5),
                                       children: [
-                                        _StatCard(
-                                          background: const Color(0xFFFFE7CC),
-                                          tint: const Color(0xFFF49B1A),
-                                          icon: Icons.warning_amber_rounded,
-                                          label: tr('স্বল্প মজুদ', 'Low Stock'),
-                                          value:
-                                              '${_bengaliNumber(dashboardLowStockCount)} ${tr('টি', 'items')}',
-                                          onTap: () {
-                                            if (!flow.can(
-                                              DokanPermission.stockAdjust,
-                                            )) {
-                                              return;
-                                            }
-                                            Navigator.of(context).push(
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 200),
+                                          child: _StatCard(
+                                            background: const Color(0xFFFFE7CC),
+                                            tint: const Color(0xFFF49B1A),
+                                            icon: Icons.warning_amber_rounded,
+                                            label: tr('স্বল্প মজুদ', 'Low Stock'),
+                                            value:
+                                                '${_bengaliNumber(dashboardLowStockCount)} ${tr('টি', 'items')}',
+                                            onTap: () {
+                                              if (!flow.can(
+                                                DokanPermission.stockAdjust,
+                                              )) {
+                                                return;
+                                              }
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const DokanLowStockAlertListScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 240),
+                                          child: _StatCard(
+                                            background: const Color(0xFFFCE7E8),
+                                            tint: const Color(0xFFB11E24),
+                                            icon: Icons.menu_book_rounded,
+                                            label: tr(
+                                                'গ্রাহকের বকেয়া', 'Customer Due'),
+                                            value:
+                                                '৳ ${_bengaliNumber(customerDueTotal)}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) =>
-                                                    const DokanLowStockAlertListScreen(),
+                                                    const DokanProfitLossReportScreen(),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                        _StatCard(
-                                          background: const Color(0xFFFCE7E8),
-                                          tint: const Color(0xFFB11E24),
-                                          icon: Icons.menu_book_rounded,
-                                          label: tr(
-                                              'গ্রাহকের বকেয়া', 'Customer Due'),
-                                          value:
-                                              '৳ ${_bengaliNumber(customerDueTotal)}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanProfitLossReportScreen(),
                                             ),
                                           ),
                                         ),
-                                        _StatCard(
-                                          background: const Color(0xFFE7F0FF),
-                                          tint: const Color(0xFF1F63E0),
-                                          icon: Icons.shopping_cart_outlined,
-                                          label: tr(
-                                              'আজকের ক্রয়', "Today's Purchase"),
-                                          value:
-                                              '৳ ${_bengaliNumber(dashboardPurchases)}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanPurchaseListScreen(),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 280),
+                                          child: _StatCard(
+                                            background: const Color(0xFFE7F0FF),
+                                            tint: const Color(0xFF1F63E0),
+                                            icon: Icons.shopping_cart_outlined,
+                                            label: tr(
+                                                'আজকের ক্রয়', "Today's Purchase"),
+                                            value:
+                                                '৳ ${_bengaliNumber(dashboardPurchases)}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanPurchaseListScreen(),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                        _StatCard(
-                                          background: const Color(0xFFE2F3E8),
-                                          tint: const Color(0xFF0E7B58),
-                                          icon: Icons.inventory_2_outlined,
-                                          label:
-                                              tr('মোট পণ্য', 'Total Products'),
-                                          value:
-                                              '${_bengaliNumber(dashboardProductCount)} ${tr('টি', 'items')}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanProductListScreen(),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 320),
+                                          child: _StatCard(
+                                            background: const Color(0xFFE2F3E8),
+                                            tint: const Color(0xFF0E7B58),
+                                            icon: Icons.inventory_2_outlined,
+                                            label:
+                                                tr('মোট পণ্য', 'Total Products'),
+                                            value:
+                                                '${_bengaliNumber(dashboardProductCount)} ${tr('টি', 'items')}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanProductListScreen(),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                        _StatCard(
-                                          background: const Color(0xFFEDE9FF),
-                                          tint: const Color(0xFF6B46C1),
-                                          icon: Icons.local_shipping_outlined,
-                                          label: tr('সরবরাহকারীর বকেয়া',
-                                              'Supplier Due'),
-                                          value:
-                                              '৳ ${_bengaliNumber(dashboardSupplierDue)}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanNewSupplierAddScreen(),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 360),
+                                          child: _StatCard(
+                                            background: const Color(0xFFEDE9FF),
+                                            tint: const Color(0xFF6B46C1),
+                                            icon: Icons.local_shipping_outlined,
+                                            label: tr('সরবরাহকারীর বকেয়া',
+                                                'Supplier Due'),
+                                            value:
+                                                '৳ ${_bengaliNumber(dashboardSupplierDue)}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanNewSupplierAddScreen(),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                        _StatCard(
-                                          background: const Color(0xFFFFF1F2),
-                                          tint: const Color(0xFFE11D48),
-                                          icon: Icons.receipt_long_rounded,
-                                          label: tr(
-                                              'আজকের খরচ', "Today's Expense"),
-                                          value:
-                                              '৳ ${_bengaliNumber(dashboardExpenses)}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanExpenseEntryScreen(),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 400),
+                                          child: _StatCard(
+                                            background: const Color(0xFFFFF1F2),
+                                            tint: const Color(0xFFE11D48),
+                                            icon: Icons.receipt_long_rounded,
+                                            label: tr(
+                                                'আজকের খরচ', "Today's Expense"),
+                                            value:
+                                                '৳ ${_bengaliNumber(dashboardExpenses)}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanExpenseEntryScreen(),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                        _StatCard(
-                                          background: const Color(0xFFE6FFFA),
-                                          tint: const Color(0xFF0D9488),
-                                          icon: Icons.badge_outlined,
-                                          label: tr(
-                                              'কর্মচারী বিক্রয়', "Employee Sales"),
-                                          value:
-                                              '৳ ${_bengaliNumber(todaySalesmanSalesTotal)}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanSalesmanTransactionsScreen(),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 440),
+                                          child: _StatCard(
+                                            background: const Color(0xFFE6FFFA),
+                                            tint: const Color(0xFF0D9488),
+                                            icon: Icons.badge_outlined,
+                                            label: tr(
+                                                'কর্মচারী বিক্রয়', "Employee Sales"),
+                                            value:
+                                                '৳ ${_bengaliNumber(todaySalesmanSalesTotal)}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanSalesmanTransactionsScreen(),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                        _StatCard(
-                                          background: const Color(0xFFF0FDF4),
-                                          tint: const Color(0xFF15803D),
-                                          icon: Icons.group_outlined,
-                                          label: tr(
-                                              'মোট কাস্টমার', 'Total Customers'),
-                                          value:
-                                              '${_bengaliNumber(supplierState.customerProfiles.length)} ${tr('জন', 'people')}',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DokanCustomerListScreen(),
+                                        DokanFadeSlideIn(
+                                          delay: const Duration(milliseconds: 480),
+                                          child: _StatCard(
+                                            background: const Color(0xFFF0FDF4),
+                                            tint: const Color(0xFF15803D),
+                                            icon: Icons.group_outlined,
+                                            label: tr(
+                                                'মোট কাস্টমার', 'Total Customers'),
+                                            value:
+                                                '${_bengaliNumber(supplierState.customerProfiles.length)} ${tr('জন', 'people')}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanCustomerListScreen(),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -612,63 +645,65 @@ class _DokanHomeDashboardScreenState
                       ],
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      height:
-                          footerHeight + MediaQuery.of(context).padding.bottom,
-                      decoration: const BoxDecoration(
-                        color: AppColors.surface,
-                        border: Border(
-                            top: BorderSide(color: AppColors.bottomNavBorder)),
-                      ),
-                      padding: EdgeInsets.fromLTRB(
-                        12,
-                        0,
-                        12,
-                        MediaQuery.of(context).padding.bottom,
-                      ),
-                      child: Row(
-                        children: [
-                          _BottomNavItem(
-                            icon: Icons.home_rounded,
-                            label: AppStrings.tabHome,
-                            selected: true,
-                            onTap: () {},
-                          ),
-                          _BottomNavItem(
-                            icon: Icons.calculate_rounded,
-                            label: AppStrings.tabSales,
-                            onTap: () => Navigator.of(context)
-                                .pushNamed(AppRoutes.sales),
-                          ),
-                          _BottomNavItem(
-                            icon: Icons.inventory_2_rounded,
-                            label: AppStrings.tabProducts,
-                            onTap: () => Navigator.of(context)
-                                .pushNamed(AppRoutes.products),
-                          ),
-                          _BottomNavItem(
-                            icon: Icons.bar_chart_rounded,
-                            label: AppStrings.tabReports,
-                            onTap: () => Navigator.of(context)
-                                .pushNamed(AppRoutes.reports),
-                          ),
-                          _BottomNavItem(
-                            icon: Icons.more_horiz_rounded,
-                            label: AppStrings.tabMore,
-                            onTap: () => Navigator.of(context)
-                                .pushNamed(AppRoutes.settings),
-                          ),
-                        ],
+                  if (!isWide)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        height:
+                            footerHeight + MediaQuery.of(context).padding.bottom,
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          border: Border(
+                              top: BorderSide(color: AppColors.bottomNavBorder)),
+                        ),
+                        padding: EdgeInsets.fromLTRB(
+                          12,
+                          0,
+                          12,
+                          MediaQuery.of(context).padding.bottom,
+                        ),
+                        child: Row(
+                          children: [
+                            _BottomNavItem(
+                              icon: Icons.home_rounded,
+                              label: AppStrings.tabHome,
+                              selected: true,
+                              onTap: () {},
+                            ),
+                            _BottomNavItem(
+                              icon: Icons.calculate_rounded,
+                              label: AppStrings.tabSales,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.sales),
+                            ),
+                            _BottomNavItem(
+                              icon: Icons.inventory_2_rounded,
+                              label: AppStrings.tabProducts,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.products),
+                            ),
+                            _BottomNavItem(
+                              icon: Icons.bar_chart_rounded,
+                              label: AppStrings.tabReports,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.reports),
+                            ),
+                            _BottomNavItem(
+                              icon: Icons.more_horiz_rounded,
+                              label: AppStrings.tabMore,
+                              onTap: () => Navigator.of(context)
+                                  .pushNamed(AppRoutes.settings),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               );
             },
           ),
         ),
+      ),
       ),
     );
   }

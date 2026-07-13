@@ -60,7 +60,33 @@ class _DokanVoiceSearchButtonState extends State<DokanVoiceSearchButton> {
   }
 
   Future<void> _toggle() async {
-    if (!_available) return;
+    if (!_available) {
+      try {
+        final available = await _speech.initialize(
+          onStatus: (status) {
+            if (!mounted) return;
+            if (status == 'done' || status == 'notListening') {
+              setState(() => _listening = false);
+            }
+          },
+          onError: (_) {
+            if (mounted) setState(() => _listening = false);
+          },
+        );
+        if (mounted) setState(() => _available = available);
+        if (!available) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('মাইক্রোফোন অনুমোদন করুন')),
+          );
+          return;
+        }
+      } catch (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('মাইক্রোফোন অনুমোদন করুন')),
+        );
+        return;
+      }
+    }
     if (_listening) {
       await _speech.stop();
       if (mounted) setState(() => _listening = false);
@@ -87,7 +113,7 @@ class _DokanVoiceSearchButtonState extends State<DokanVoiceSearchButton> {
     final color = widget.color ?? Theme.of(context).colorScheme.primary;
     return IconButton(
       tooltip: widget.tooltip,
-      onPressed: _available ? _toggle : null,
+      onPressed: _toggle,
       icon: Icon(
         _listening ? Icons.mic : Icons.mic_none_rounded,
         color: _listening ? Colors.redAccent : color,

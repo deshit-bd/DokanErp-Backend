@@ -54,6 +54,7 @@ class _DokanSalesmanDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final flow = ref.watch(dokanAppFlowProvider);
+    final isWide = MediaQuery.of(context).size.width >= 720;
 
     final allowedPages = [
       _SalesmanHomeTab(onTabChange: (i) => setState(() => _tab = i)),
@@ -107,12 +108,27 @@ class _DokanSalesmanDashboardScreenState
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: IndexedStack(
-            index: safeTab,
-            children: allowedPages,
-          ),
+          child: isWide
+              ? Row(
+                  children: [
+                    _buildSidebar(context, flow, safeTab, allowedPages.length),
+                    const VerticalDivider(width: 1, color: Color(0xFFD6E4E0)),
+                    Expanded(
+                      child: IndexedStack(
+                        index: safeTab,
+                        children: allowedPages,
+                      ),
+                    ),
+                  ],
+                )
+              : IndexedStack(
+                  index: safeTab,
+                  children: allowedPages,
+                ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
+        bottomNavigationBar: isWide
+            ? null
+            : BottomNavigationBar(
           currentIndex: safeTab,
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
@@ -142,6 +158,165 @@ class _DokanSalesmanDashboardScreenState
       ),
     );
   }
+
+  Widget _buildSidebar(BuildContext context, DokanAppFlowState flow, int selectedIndex, int totalPages) {
+    final List<Map<String, dynamic>> items = [
+      {'index': 0, 'label': 'হোম', 'icon': Icons.home_outlined, 'selectedIcon': Icons.home_rounded},
+      if (flow.can(DokanPermission.salesCreate))
+        {'index': 1, 'label': 'বিক্রয়', 'icon': Icons.point_of_sale_outlined, 'selectedIcon': Icons.point_of_sale_rounded},
+      if (flow.can(DokanPermission.stockView))
+        {'index': flow.can(DokanPermission.salesCreate) ? 2 : 1, 'label': 'স্টক', 'icon': Icons.inventory_2_outlined, 'selectedIcon': Icons.inventory_2_rounded},
+      if (flow.can(DokanPermission.reportsView))
+        {
+          'index': (flow.can(DokanPermission.salesCreate) ? 1 : 0) + (flow.can(DokanPermission.stockView) ? 1 : 0) + 1,
+          'label': 'রিপোর্ট',
+          'icon': Icons.bar_chart_outlined,
+          'selectedIcon': Icons.bar_chart_rounded
+        },
+      {'index': totalPages - 1, 'label': 'প্রোফাইল', 'icon': Icons.person_outline, 'selectedIcon': Icons.person},
+    ];
+
+    return Container(
+      width: 260,
+      color: const Color(0xFF15803D), // Salesman green
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                const Icon(Icons.storefront_rounded, color: Colors.white, size: 36),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        flow.shopName.isNotEmpty ? flow.shopName : 'Dokan ERP',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'সেলসম্যান',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 16),
+          for (final item in items)
+            _buildSidebarItem(
+              icon: item['icon'] as IconData,
+              selectedIcon: item['selectedIcon'] as IconData,
+              label: item['label'] as String,
+              selected: selectedIndex == item['index'],
+              onTap: () {
+                setState(() => _tab = item['index'] as int);
+              },
+            ),
+          const Spacer(),
+          const Divider(color: Colors.white24, height: 1),
+          _buildSidebarItem(
+            icon: Icons.logout_rounded,
+            selectedIcon: Icons.logout_rounded,
+            label: 'লগ আউট',
+            selected: false,
+            onTap: () => _triggerLogout(context),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem({
+    required IconData icon,
+    required IconData selectedIcon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: selected ? Colors.white.withOpacity(0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? selectedIcon : icon,
+                  color: selected ? Colors.white : Colors.white70,
+                  size: 24,
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? Colors.white : Colors.white70,
+                    fontSize: 15,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _triggerLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout from salesman?'),
+          content: const Text(
+            'Press Yes to log out and return to the salesman login screen.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('No'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
+    if (shouldLogout != true) {
+      return;
+    }
+    await ref.read(dokanAppFlowProvider.notifier).logout();
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
 }
 
 class _SalesmanHomeTab extends ConsumerWidget {
@@ -153,6 +328,7 @@ class _SalesmanHomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final flow = ref.watch(dokanAppFlowProvider);
     final pos = ref.watch(dokanPosProvider);
+    final isWide = MediaQuery.of(context).size.width >= 720;
     final myPhone = flow.currentSalesmanPhone;
 
     final salesHistoryOrders =
@@ -218,10 +394,10 @@ class _SalesmanHomeTab extends ConsumerWidget {
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
+          crossAxisCount: isWide ? 4 : 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.45,
+          childAspectRatio: isWide ? 1.8 : 1.45,
           children: [
             _ActionCard('নতুন বিক্রয়', Icons.add_shopping_cart_outlined,
                 () => onTabChange(1)),

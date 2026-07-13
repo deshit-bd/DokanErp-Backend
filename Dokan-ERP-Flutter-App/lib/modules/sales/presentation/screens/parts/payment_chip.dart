@@ -121,7 +121,7 @@ class _CartDock extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
+                    AnimatedNumberString(
                       '৳${trNum(total)}',
                       style: const TextStyle(
                         color: Colors.white70,

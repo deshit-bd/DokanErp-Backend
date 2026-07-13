@@ -205,24 +205,22 @@ abstract final class AppRoutes {
             },
           ),
         ),
-      DokanStartupStage.home => DokanPhoneShell(
-          child: flow.hasSession
-              ? (flow.isSubscriptionBlocked
-                  ? (flow.isSalesman
-                      ? const SalesmanBlockedScreen()
-                      : const DokanNotificationSubscriptionSettingsScreen(lockedMode: true))
-                  : (flow.isSalesman
-                      ? const DokanSalesmanDashboardScreen()
-                      : const OwnerSubscriptionGate()))
-              : DokanLoginScreen(
-                  onBack: flowController.goToOnboarding,
-                  onLogin: flowController.goToHome,
-                  onOtpLogin: flowController.goToOtpLogin,
-                  onAccountOpen: flowController.goToRegister,
-                  initialRole: flow.loginRole,
-                  onRoleChanged: flowController.setLoginRole,
-                ),
-        ),
+      DokanStartupStage.home => flow.hasSession
+          ? (flow.isSubscriptionBlocked
+              ? (flow.isSalesman
+                  ? const SalesmanBlockedScreen()
+                  : const DokanNotificationSubscriptionSettingsScreen(lockedMode: true))
+              : (flow.isSalesman
+                  ? const DokanSalesmanDashboardScreen()
+                  : const OwnerSubscriptionGate()))
+          : DokanLoginScreen(
+              onBack: flowController.goToOnboarding,
+              onLogin: flowController.goToHome,
+              onOtpLogin: flowController.goToOtpLogin,
+              onAccountOpen: flowController.goToRegister,
+              initialRole: flow.loginRole,
+              onRoleChanged: flowController.setLoginRole,
+            ),
     };
   }
 }

@@ -43,8 +43,17 @@ class _DokanVoiceDueButtonState extends ConsumerState<DokanVoiceDueButton> {
 
   Future<void> _startListening() async {
     if (!_available) {
-      _toast('মাইক্রোফোন পাওয়া যায়নি');
-      return;
+      try {
+        final available = await _speech.initialize();
+        if (mounted) setState(() => _available = available);
+        if (!available) {
+          _toast('মাইক্রোফোন অনুমোদন করুন');
+          return;
+        }
+      } catch (_) {
+        _toast('মাইক্রোফোন অনুমোদন করুন');
+        return;
+      }
     }
     var transcript = '';
     final completed = await showModalBottomSheet<String>(
@@ -114,30 +123,6 @@ class _DokanVoiceDueButtonState extends ConsumerState<DokanVoiceDueButton> {
       _toast('বুঝতে পারিনি: "$text" — আবার চেষ্টা করুন');
       return;
     }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('বকেয়া যোগ করবেন?'),
-        content: Text(
-          '${command.customerName} — ৳${command.amount} বকেয়া যোগ হবে '
-          '(তারিখ: আজ)।',
-          style: const TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('বাতিল'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('যোগ করুন'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
 
     await ref.read(dokanPosProvider.notifier).addCustomer(
           name: command.customerName,

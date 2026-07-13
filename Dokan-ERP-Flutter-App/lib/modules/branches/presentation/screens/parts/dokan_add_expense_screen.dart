@@ -285,11 +285,30 @@ class _DokanAddNewStaffScreenState
       setState(() => _isSubmitting = false);
       return;
     }
-    final staffUserId = staff.address.isNotEmpty ? staff.address : staff.key;
+
+    String staffUserId = staff.address;
+    if (staffUserId.isEmpty) {
+      final profiles = ref.read(dokanPosProvider).staffProfiles;
+      try {
+        final match = profiles.firstWhere(
+          (p) => p.phone == staff.phone || p.key == staff.key || p.phone == staff.key,
+        );
+        if (match.address.isNotEmpty) {
+          staffUserId = match.address;
+        }
+      } catch (_) {}
+    }
+    if (staffUserId.isEmpty) {
+      staffUserId = staff.key;
+    }
+
     try {
       final client = ref.read(apiClientProvider);
-      await client.patch(
+      await client.post(
         '/app/api/staff/$staffUserId/permissions',
+        headers: const <String, String>{
+          'X-HTTP-Method-Override': 'PATCH',
+        },
         body: {
           'canSell': _canSell,
           'canViewStock': _canViewStock,
@@ -405,7 +424,7 @@ class _DokanAddNewStaffScreenState
       final phone = _phoneController.text.trim();
       final password = _passwordController.text.trim();
 
-      await client.post(
+      final response = await client.post(
         '/app/api/auth/register-salesman',
         body: {
           'shopId': shopId,
@@ -422,11 +441,15 @@ class _DokanAddNewStaffScreenState
         },
       );
 
+      final responseData = response.data;
+      final registeredUser = responseData['user'] as Map<String, dynamic>?;
+      final salesmanId = registeredUser?['id'] as String? ?? '';
+
       ref.read(dokanPosProvider.notifier).addStaff(
             name: name,
             phone: phone,
             role: _role,
-            address: _addressController.text,
+            address: salesmanId.isNotEmpty ? salesmanId : _addressController.text,
             note: _noteController.text,
             permissions: _defaultPermissionsForRole(_role),
             pinCode: password,

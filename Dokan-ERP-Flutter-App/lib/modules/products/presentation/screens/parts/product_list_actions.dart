@@ -314,6 +314,10 @@ extension _DokanProductListActions on _DokanProductListScreenState {
   }
 
   Widget _buildBottomNav() {
+    final isWide = MediaQuery.of(context).size.width >= 720;
+    if (isWide) {
+      return const SizedBox.shrink();
+    }
     return _ProductBottomNav(
       selectedIndex: 2,
       onHomeTap: () => Navigator.of(context).push(

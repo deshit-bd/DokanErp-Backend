@@ -425,8 +425,14 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
     ];
   }
 
+  bool _disposed = false;
+
   @override
   DokanPosState build() {
+    _disposed = false;
+    ref.onDispose(() {
+      _disposed = true;
+    });
     ref.watch(dokanAppFlowProvider);
     unawaited(_hydrateSalesHistory());
     unawaited(fetchTaxesAndCharges());
@@ -440,14 +446,18 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   }
 
   Future<void> _hydrateSalesHistory() async {
+    if (_disposed) return;
     final storage = ref.read(salesHistoryRepositoryProvider);
     final snapshotJson = await storage.readSnapshot();
+    if (_disposed) return;
     await _loadCartFromPrefs();
+    if (_disposed) return;
 
     if (snapshotJson == null || snapshotJson.trim().isEmpty) {
       const bootstrapOrders = <DokanPosOrderRecord>[];
       state = state.copyWith(orders: _dedupeOrders(bootstrapOrders));
       await storage.writeSnapshot(_stateSnapshotJson(state));
+      if (_disposed) return;
       unawaited(fetchCustomers());
       unawaited(fetchSuppliers());
       ref.read(dokanSalesHistoryReadyProvider.notifier).state = true;
@@ -459,6 +469,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
       const bootstrapOrders = <DokanPosOrderRecord>[];
       state = state.copyWith(orders: _dedupeOrders(bootstrapOrders));
       await storage.writeSnapshot(_stateSnapshotJson(state));
+      if (_disposed) return;
       unawaited(fetchCustomers());
       unawaited(fetchSuppliers());
       ref.read(dokanSalesHistoryReadyProvider.notifier).state = true;
@@ -487,6 +498,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
     if (!listEquals(restoredOrders, dedupedOrders)) {
       await storage.writeSnapshot(_stateSnapshotJson(state));
     }
+    if (_disposed) return;
     unawaited(fetchCustomers());
     unawaited(fetchSuppliers());
     unawaited(fetchStaff());
@@ -512,6 +524,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   }
 
   Future<void> _persistSalesHistory() async {
+    if (_disposed) return;
     await ref
         .read(salesHistoryRepositoryProvider)
         .writeSnapshot(_stateSnapshotJson(state));
@@ -982,10 +995,12 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   }
 
   Future<void> fetchCustomers() async {
+    if (_disposed) return;
     final repository = ref.read(customerRepositoryProvider);
     if (repository == null) return;
     try {
       final customers = await repository.list(shopId: _currentShopId);
+      if (_disposed) return;
       final filteredCustomers = customers.where((c) {
         final nameLower = c.name.toLowerCase().trim();
         return nameLower != 'guest customer' &&
@@ -1005,9 +1020,11 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   }
 
   Future<void> fetchStaff() async {
+    if (_disposed) return;
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.get('/app/api/staff');
+      if (_disposed) return;
       final data = response.data;
       if (data is Map<String, dynamic>) {
         final staffList = data['staff'] as List? ?? [];
@@ -1048,6 +1065,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
             ),
           );
         }
+        if (_disposed) return;
         state = state.copyWith(
           staffProfiles: List<DokanStaffProfileRecord>.unmodifiable(profiles),
         );
@@ -1059,9 +1077,11 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   }
 
   Future<void> fetchTaxesAndCharges() async {
+    if (_disposed) return;
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.get('/app/api/shops/me/taxes-charges');
+      if (_disposed) return;
       final data = response.data;
       if (data is Map<String, dynamic>) {
         final taxesRaw = data['taxes'] as List? ?? [];
@@ -1108,6 +1128,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
           }
         }
 
+        if (_disposed) return;
         state = state.copyWith(
           taxPercent: activeTaxPercent.round(),
           fixedCharges: fixedCharges.round(),
@@ -1204,10 +1225,12 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   }
 
   Future<void> fetchSuppliers() async {
+    if (_disposed) return;
     final repository = ref.read(supplierRepositoryProvider);
     if (repository == null) return;
     try {
       final suppliers = await repository.list(shopId: _currentShopId);
+      if (_disposed) return;
       final profiles = suppliers.map(_supplierProfile).toList(growable: false);
       final summaries = <DokanSupplierLedgerRecord>[
         for (final supplier in suppliers) ...[
@@ -1235,6 +1258,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
             ),
         ],
       ];
+      if (_disposed) return;
       state = state.copyWith(
         supplierProfiles:
             List<DokanSupplierProfileRecord>.unmodifiable(profiles),

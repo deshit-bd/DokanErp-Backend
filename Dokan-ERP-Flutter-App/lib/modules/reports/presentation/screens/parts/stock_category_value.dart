@@ -75,7 +75,7 @@ class _StockHeroMiniMetric extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          AnimatedNumberString(
             value,
             style: const TextStyle(
               color: Colors.white,
@@ -112,7 +112,7 @@ class _StockCategoryBarItem extends StatelessWidget {
                 ),
               ),
             ),
-            Text(
+            AnimatedNumberString(
               '${_bnDigits(item.percent.toString())}%',
               style: TextStyle(
                 color: item.color,
@@ -122,13 +122,18 @@ class _StockCategoryBarItem extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: const Color(0xFFE7EEEC),
-            valueColor: AlwaysStoppedAnimation<Color>(item.color),
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.0, end: progress),
+          duration: const Duration(milliseconds: 950),
+          curve: Curves.easeOutCubic,
+          builder: (context, val, _) => ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: val,
+              minHeight: 8,
+              backgroundColor: const Color(0xFFE7EEEC),
+              valueColor: AlwaysStoppedAnimation<Color>(item.color),
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -143,7 +148,7 @@ class _StockCategoryBarItem extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            Text(
+            AnimatedNumberString(
               _currency(item.totalValue),
               style: const TextStyle(
                 color: Color(0xFF111111),

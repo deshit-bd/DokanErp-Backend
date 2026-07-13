@@ -192,7 +192,7 @@ class DokanAppFlowNotifier extends Notifier<DokanAppFlowState> {
 
   void startSplash() {
     _transitionTimer?.cancel();
-    _transitionTimer = Timer(const Duration(milliseconds: 2300), () {
+    _transitionTimer = Timer(const Duration(milliseconds: 400), () {
       if (state.hasSession) {
         _setStage(DokanStartupStage.home);
       } else {

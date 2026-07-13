@@ -364,7 +364,7 @@ class _KpiCard extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
+            child: AnimatedNumberString(
               value,
               style: TextStyle(
                 color: accent,

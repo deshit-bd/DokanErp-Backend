@@ -12,7 +12,7 @@ class DokanResponsiveShell extends StatelessWidget {
   final Widget child;
 
   /// Comfortable maximum content width for a mobile-first UI.
-  static const double maxContentWidth = 560;
+  static const double maxContentWidth = 1200;
 
   @override
   Widget build(BuildContext context) {

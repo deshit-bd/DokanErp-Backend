@@ -624,7 +624,7 @@ class _DokanInventoryStockReportPage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    AnimatedNumberString(
                       _currency(resolvedTotalStockValue),
                       style: const TextStyle(
                         color: Colors.white,
@@ -679,7 +679,10 @@ class _DokanInventoryStockReportPage extends ConsumerWidget {
                           for (var i = 0;
                               i < resolvedCategories.length;
                               i++) ...[
-                            _StockCategoryBarItem(item: resolvedCategories[i]),
+                            DokanFadeSlideIn(
+                              delay: Duration(milliseconds: i * 50),
+                              child: _StockCategoryBarItem(item: resolvedCategories[i]),
+                            ),
                             if (i != resolvedCategories.length - 1)
                               const SizedBox(height: 12),
                           ],
@@ -695,7 +698,7 @@ class _DokanInventoryStockReportPage extends ConsumerWidget {
               child: _SectionCard(
                 title: 'শীর্ষ ৫টি পণ্য (মূল্য অনুযায়ী)',
                 child: resolvedTopProducts.isEmpty
-                    ? const _ExpenseEmptyState(
+                     ? const _ExpenseEmptyState(
                         title: 'Top stock products পাওয়া যায়নি',
                         subtitle:
                             'API response এ ranked product list এলে এখানে দেখানো হবে।',
@@ -706,10 +709,13 @@ class _DokanInventoryStockReportPage extends ConsumerWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
                         itemBuilder: (context, index) {
-                          return Padding(
-                            padding: EdgeInsets.only(top: index == 0 ? 0 : 10),
-                            child: _StockValueProductTile(
-                              product: resolvedTopProducts[index],
+                          return DokanFadeSlideIn(
+                            delay: Duration(milliseconds: index * 50),
+                            child: Padding(
+                              padding: EdgeInsets.only(top: index == 0 ? 0 : 10),
+                              child: _StockValueProductTile(
+                                product: resolvedTopProducts[index],
+                              ),
                             ),
                           );
                         },
@@ -735,10 +741,13 @@ class _DokanInventoryStockReportPage extends ConsumerWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
                         itemBuilder: (context, index) {
-                          return Padding(
-                            padding: EdgeInsets.only(top: index == 0 ? 0 : 10),
-                            child: _DeadStockTile(
-                                entry: resolvedDeadStocks[index]),
+                          return DokanFadeSlideIn(
+                            delay: Duration(milliseconds: index * 50),
+                            child: Padding(
+                              padding: EdgeInsets.only(top: index == 0 ? 0 : 10),
+                              child: _DeadStockTile(
+                                  entry: resolvedDeadStocks[index]),
+                            ),
                           );
                         },
                       ),

@@ -34,11 +34,18 @@ class DokanErpApp extends StatelessWidget {
   }
 }
 
-class _AppBootstrap extends ConsumerWidget {
+class _AppBootstrap extends ConsumerStatefulWidget {
   const _AppBootstrap();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AppBootstrap> createState() => _AppBootstrapState();
+}
+
+class _AppBootstrapState extends ConsumerState<_AppBootstrap> {
+  bool _bootstrapped = false;
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(languageProvider);
     final flow = ref.watch(dokanAppFlowProvider);
     ref.read(dokanInventoryCatalogProvider);
@@ -46,7 +53,14 @@ class _AppBootstrap extends ConsumerWidget {
     final inventoryReady = ref.watch(dokanInventoryCatalogReadyProvider);
     final salesHistoryReady = ref.watch(dokanSalesHistoryReadyProvider);
 
-    if (!flow.roleReady || !inventoryReady || !salesHistoryReady) {
+    final ready = flow.roleReady && inventoryReady && salesHistoryReady;
+    if (ready && !_bootstrapped) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _bootstrapped = true);
+      });
+    }
+
+    if (!ready && !_bootstrapped) {
       debugPrint(
           '[BOOTSTRAP] flow.roleReady: ${flow.roleReady}, inventoryReady: $inventoryReady, salesHistoryReady: $salesHistoryReady');
       return const Directionality(
@@ -96,7 +110,7 @@ class _AppRootState extends ConsumerState<_AppRoot>
     super.initState();
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
+      duration: const Duration(milliseconds: 350),
     )..addListener(() {
         ref.read(dokanAppFlowProvider.notifier).setProgress(
               (_progressController.value * 100).round(),

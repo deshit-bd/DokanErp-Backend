@@ -48,8 +48,17 @@ class _DokanVoiceAssistantButtonState
 
   Future<void> _listen() async {
     if (!_available) {
-      _toast('মাইক্রোফোন পাওয়া যায়নি');
-      return;
+      try {
+        final available = await _speech.initialize();
+        if (mounted) setState(() => _available = available);
+        if (!available) {
+          _toast('মাইক্রোফোন অনুমোদন করুন');
+          return;
+        }
+      } catch (_) {
+        _toast('মাইক্রোফোন অনুমোদন করুন');
+        return;
+      }
     }
     var transcript = '';
     final result = await showModalBottomSheet<String>(
@@ -121,6 +130,18 @@ class _DokanVoiceAssistantButtonState
       case VoiceIntent.sell:
         await _addToCart(command);
         break;
+      case VoiceIntent.removeSell:
+        await _removeFromCart(command);
+        break;
+      case VoiceIntent.addStaff:
+        await _addNewStaff(command);
+        break;
+      case VoiceIntent.stockIn:
+        await _updateStockIn(command);
+        break;
+      case VoiceIntent.stockOut:
+        await _updateStockOut(command);
+        break;
       case VoiceIntent.unknown:
         _toast('বুঝতে পারিনি: "${command.rawText}" — আবার বলুন');
         break;
@@ -132,9 +153,6 @@ class _DokanVoiceAssistantButtonState
       _toast('নাম বা টাকা বুঝিনি — আবার বলুন');
       return;
     }
-    final ok = await _confirm(
-        'বকেয়া যোগ', '${c.text} — ৳${c.amount} বকেয়া যোগ হবে (তারিখ: আজ)।');
-    if (ok != true || !mounted) return;
     await ref
         .read(dokanPosProvider.notifier)
         .addCustomer(name: c.text, phone: '', openingDue: c.amount);
@@ -148,9 +166,6 @@ class _DokanVoiceAssistantButtonState
     }
     final title = c.text.isEmpty ? 'ভয়েস খরচ' : c.text;
     final category = _expenseCategory('${c.text} ${c.rawText}');
-    final ok = await _confirm(
-        'খরচ যোগ', '$title — ৳${c.amount} খরচ যোগ হবে ($category, আজ)।');
-    if (ok != true || !mounted) return;
     final record = DokanExpenseRecord(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: title,
@@ -169,7 +184,7 @@ class _DokanVoiceAssistantButtonState
     }
     final product = ref.read(dokanScanServiceProvider).findByName(c.text);
     if (product == null) {
-      _toast('"${c.text}" নামে পণ্য পাওয়া যায়নি');
+      _toast('"${c.text}" (শুনেছি: "${c.rawText}") নামে কোনো পণ্য পাওয়া যায়নি');
       return;
     }
     final qty = c.quantity < 1 ? 1 : c.quantity;
@@ -180,6 +195,79 @@ class _DokanVoiceAssistantButtonState
     if (mounted) {
       _toast('$qty×${product.name} কার্টে যোগ হয়েছে — বিক্রি সম্পন্ন করুন');
     }
+  }
+
+  Future<void> _removeFromCart(VoiceCommand c) async {
+    if (c.text.isEmpty) {
+      _toast('কোন পণ্য বুঝিনি — আবার বলুন');
+      return;
+    }
+    final product = ref.read(dokanScanServiceProvider).findByName(c.text);
+    if (product == null) {
+      _toast('"${c.text}" নামে পণ্য পাওয়া যায়নি');
+      return;
+    }
+    final cart = ref.read(cartServiceProvider);
+    cart.removeProduct(product.barcode);
+    if (mounted) {
+      _toast('${product.name} কার্ট থেকে বাদ দেওয়া হয়েছে');
+    }
+  }
+
+  Future<void> _addNewStaff(VoiceCommand c) async {
+    if (c.text.isEmpty) {
+      _toast('কর্মচারীর নাম বুঝিনি — আবার বলুন');
+      return;
+    }
+    final name = c.text;
+    final phone = '017${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    ref.read(dokanPosProvider.notifier).addStaff(
+      name: name,
+      phone: phone,
+      role: 'SALESMAN',
+      permissions: const ['sales.sell', 'inventory.view'],
+    );
+    if (mounted) _toast('$name (মোবাইল: $phone) কর্মচারী হিসেবে যুক্ত হয়েছে');
+  }
+
+  Future<void> _updateStockIn(VoiceCommand c) async {
+    if (c.text.isEmpty) {
+      _toast('কোন পণ্য বুঝিনি — আবার বলুন');
+      return;
+    }
+    final product = ref.read(dokanScanServiceProvider).findByName(c.text);
+    if (product == null) {
+      _toast('"${c.text}" নামে পণ্য পাওয়া যায়নি');
+      return;
+    }
+    final qty = c.quantity < 1 ? 1 : c.quantity;
+    final purchasePrice = c.amount > 0 ? c.amount : product.purchasePrice;
+    ref.read(dokanInventoryCatalogProvider.notifier).applyStockAdd(
+          product,
+          addAmount: qty,
+          purchasePrice: purchasePrice,
+          referenceText: '',
+        );
+    if (mounted) _toast('${product.name} এর স্টক +$qty বাড়ানো হয়েছে');
+  }
+
+  Future<void> _updateStockOut(VoiceCommand c) async {
+    if (c.text.isEmpty) {
+      _toast('কোন পণ্য বুঝিনি — আবার বলুন');
+      return;
+    }
+    final product = ref.read(dokanScanServiceProvider).findByName(c.text);
+    if (product == null) {
+      _toast('"${c.text}" নামে পণ্য পাওয়া যায়নি');
+      return;
+    }
+    final qty = c.quantity < 1 ? 1 : c.quantity;
+    ref.read(dokanInventoryCatalogProvider.notifier).applyStockReduce(
+          product,
+          amount: qty,
+          reason: 'নষ্ট/ক্ষতি',
+        );
+    if (mounted) _toast('${product.name} এর স্টক -$qty কমানো হয়েছে');
   }
 
   String _expenseCategory(String text) {

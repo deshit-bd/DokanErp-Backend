@@ -30,6 +30,10 @@
 	<string>This app needs camera access to scan QR codes and barcodes.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs your location to save the store's live location.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app needs speech recognition access to parse voice commands.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record voice commands.</string>
 	<key>GMSApiKey</key>
 	<string>YOUR_GOOGLE_MAPS_API_KEY</string>
 	<key>UIApplicationSceneManifest</key>

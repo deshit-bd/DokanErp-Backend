@@ -529,11 +529,18 @@ router.get("/:staffUserId", async (request, response) => {
     return response.status(400).json({ message: "Staff user id is required." });
   }
 
+  const cleanPhone = staffUserId.startsWith("+88") ? staffUserId.slice(3) : staffUserId;
+  const alternativePhone = staffUserId.startsWith("+88") ? staffUserId : `+88${staffUserId}`;
   const member = await prisma.shopUser.findFirst({
     where: {
       shopId: context.shop.id,
-      userId: staffUserId,
       role: "SALESMAN",
+      OR: [
+        { userId: staffUserId },
+        { user: { phone: staffUserId } },
+        { user: { phone: cleanPhone } },
+        { user: { phone: alternativePhone } },
+      ],
     },
     select: {
       id: true,
@@ -651,7 +658,7 @@ router.get("/:staffUserId", async (request, response) => {
   });
 });
 
-router.patch("/:staffUserId/permissions", async (request, response) => {
+const handlePermissionsUpdate = async (request: any, response: any) => {
   const context = await requireOwnerShopContext(request);
 
   if ("status" in context) {
@@ -672,11 +679,18 @@ router.patch("/:staffUserId/permissions", async (request, response) => {
     canCollectDue?: boolean;
   };
 
+  const cleanPhone = staffUserId.startsWith("+88") ? staffUserId.slice(3) : staffUserId;
+  const alternativePhone = staffUserId.startsWith("+88") ? staffUserId : `+88${staffUserId}`;
   const member = await prisma.shopUser.findFirst({
     where: {
       shopId: context.shop.id,
-      userId: staffUserId,
       role: "SALESMAN",
+      OR: [
+        { userId: staffUserId },
+        { user: { phone: staffUserId } },
+        { user: { phone: cleanPhone } },
+        { user: { phone: alternativePhone } },
+      ],
     },
     select: {
       id: true,
@@ -750,7 +764,9 @@ router.patch("/:staffUserId/permissions", async (request, response) => {
     message: "Staff permissions updated successfully.",
     staff: refreshedMember ? mapStaffMember(refreshedMember) : null,
   });
-});
+};
+router.patch("/:staffUserId/permissions", handlePermissionsUpdate);
+router.post("/:staffUserId/permissions", handlePermissionsUpdate);
 
 router.post("/:staffUserId/pin-reset", async (request, response) => {
   const context = await requireOwnerShopContext(request);
@@ -765,11 +781,18 @@ router.post("/:staffUserId/pin-reset", async (request, response) => {
     return response.status(400).json({ message: "Staff user id is required." });
   }
 
+  const cleanPhone = staffUserId.startsWith("+88") ? staffUserId.slice(3) : staffUserId;
+  const alternativePhone = staffUserId.startsWith("+88") ? staffUserId : `+88${staffUserId}`;
   const member = await prisma.shopUser.findFirst({
     where: {
       shopId: context.shop.id,
-      userId: staffUserId,
       role: "SALESMAN",
+      OR: [
+        { userId: staffUserId },
+        { user: { phone: staffUserId } },
+        { user: { phone: cleanPhone } },
+        { user: { phone: alternativePhone } },
+      ],
     },
     select: {
       userId: true,
@@ -818,11 +841,18 @@ router.patch("/:staffUserId/status", async (request, response) => {
     return response.status(400).json({ message: "Status must be ACTIVE or INACTIVE." });
   }
 
+  const cleanPhone = staffUserId.startsWith("+88") ? staffUserId.slice(3) : staffUserId;
+  const alternativePhone = staffUserId.startsWith("+88") ? staffUserId : `+88${staffUserId}`;
   const member = await prisma.shopUser.findFirst({
     where: {
       shopId: context.shop.id,
-      userId: staffUserId,
       role: "SALESMAN",
+      OR: [
+        { userId: staffUserId },
+        { user: { phone: staffUserId } },
+        { user: { phone: cleanPhone } },
+        { user: { phone: alternativePhone } },
+      ],
     },
     select: {
       id: true,

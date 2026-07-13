@@ -9,10 +9,14 @@ abstract final class AppConfig {
     'DOKAN_API_ENABLED',
     defaultValue: true,
   );
-  static const apiBaseUrl = String.fromEnvironment(
-    'DOKAN_API_BASE_URL',
-    defaultValue: 'https://server.dokan.erp.sbmoffice.net',
-  );
+  static String get apiBaseUrl {
+    const fromEnv = String.fromEnvironment('DOKAN_API_BASE_URL');
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    // Fallback to Mac's local network IP for physical device debugging over Wi-Fi
+    return 'http://192.168.0.127:4000';
+  }
   static const syncRemoteDeletions = bool.fromEnvironment(
     'DOKAN_API_SYNC_DELETIONS',
     defaultValue: false,

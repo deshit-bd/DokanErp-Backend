@@ -124,42 +124,55 @@ class _DokanReportsDashboardScreenState
   }
 
   Widget _buildKpiCardGrid(_ReportSummary summary, String monthLabel) {
+    final isWide = MediaQuery.of(context).size.width >= 720;
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: isWide ? 4 : 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 0.9,
+      childAspectRatio: isWide ? 1.4 : 0.9,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       children: [
-        _KpiCard(
-          label: tr('মোট বিক্রয়', 'Total Sales'),
-          value: _currency(summary.sales.abs()),
-          accent: const Color(0xFF0C8C67),
-          icon: Icons.payments_outlined,
-          subtitle: monthLabel,
+        DokanFadeSlideIn(
+          delay: Duration.zero,
+          child: _KpiCard(
+            label: tr('মোট বিক্রয়', 'Total Sales'),
+            value: _currency(summary.sales.abs()),
+            accent: const Color(0xFF0C8C67),
+            icon: Icons.payments_outlined,
+            subtitle: monthLabel,
+          ),
         ),
-        _KpiCard(
-          label: tr('লাভ', 'Profit'),
-          value: _currency(summary.profit.abs()),
-          accent: const Color(0xFF0C8C67),
-          icon: Icons.trending_up_rounded,
-          subtitle: tr('নিট মুনাফা', 'Net Profit'),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 50),
+          child: _KpiCard(
+            label: tr('লাভ', 'Profit'),
+            value: _currency(summary.profit.abs()),
+            accent: const Color(0xFF0C8C67),
+            icon: Icons.trending_up_rounded,
+            subtitle: tr('নিট মুনাফা', 'Net Profit'),
+          ),
         ),
-        _KpiCard(
-          label: tr('ক্রয়', 'Purchase'),
-          value: _currency(summary.purchase.abs()),
-          accent: const Color(0xFF2F6BFF),
-          icon: Icons.shopping_bag_outlined,
-          subtitle: tr('পণ্য ক্রয়', 'Product Purchase'),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 100),
+          child: _KpiCard(
+            label: tr('ক্রয়', 'Purchase'),
+            value: _currency(summary.purchase.abs()),
+            accent: const Color(0xFF2F6BFF),
+            icon: Icons.shopping_bag_outlined,
+            subtitle: tr('পণ্য ক্রয়', 'Product Purchase'),
+          ),
         ),
-        _KpiCard(
-          label: tr('খরচ', 'Expense'),
-          value: _currency(summary.expense.abs()),
-          accent: const Color(0xFFD43B3B),
-          icon: Icons.receipt_long_outlined,
-          subtitle: tr('চলমান ব্যয়', 'Current Expense'),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 150),
+          child: _KpiCard(
+            label: tr('খরচ', 'Expense'),
+            value: _currency(summary.expense.abs()),
+            accent: const Color(0xFFD43B3B),
+            icon: Icons.receipt_long_outlined,
+            subtitle: tr('চলমান ব্যয়', 'Current Expense'),
+          ),
         ),
       ],
     );
@@ -447,8 +460,12 @@ class _DokanReportsDashboardScreenState
                 ? tr('বছরভিত্তিক ট্রেন্ড', 'Yearly Trend')
                 : tr('মাসভিত্তিক ট্রেন্ড', 'Monthly Trend');
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F8F7),
+    final isWide = MediaQuery.of(context).size.width >= 720;
+
+    return DokanResponsivePage(
+      selectedIndex: 3,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF3F8F7),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF3FAFB),
         elevation: 0,
@@ -738,8 +755,9 @@ class _DokanReportsDashboardScreenState
             onExcel: () => _handleExcelExport(context, ref),
             onWhatsApp: () => _handleWhatsAppShare(context, ref),
           ),
-          _ReportsBottomNav(selectedIndex: 3),
+          if (!isWide) _ReportsBottomNav(selectedIndex: 3),
         ],
+      ),
       ),
     );
   }

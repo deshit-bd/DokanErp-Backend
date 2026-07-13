@@ -161,74 +161,27 @@ class _BrandCluster extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 220,
-          height: 220,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 178,
-                height: 178,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF00694C).withOpacity(0.14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF00694C).withOpacity(0.35),
-                      blurRadius: 54,
-                      spreadRadius: 18,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 118,
-                height: 118,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF0BA37A),
-                      Color(0xFF00694C),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.18),
-                    width: 1.2,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x5500694C),
-                      blurRadius: 18,
-                      offset: Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  size: 54,
-                  color: Colors.white,
-                ),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'DokanERP',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 42,
-            height: 1.0,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1.2,
-            color: Color(0xFF00FFB9),
+          child: Image.asset(
+            'assets/images/dokan_logo.png',
+            width: 180,
+            height: 180,
+            fit: BoxFit.contain,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 24),
         Text(
           tr('আপনার দোকানের সহকারী', 'Your Store Assistant'),
           textAlign: TextAlign.center,

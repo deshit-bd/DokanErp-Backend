@@ -249,7 +249,7 @@ class _StatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),

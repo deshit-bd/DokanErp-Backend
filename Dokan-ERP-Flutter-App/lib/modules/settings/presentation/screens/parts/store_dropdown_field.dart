@@ -276,6 +276,19 @@ class DokanAroOptionScreen extends ConsumerWidget {
             ),
           ),
           _MoreItem(
+            icon: Icons.mic_none_rounded,
+            iconBackground: const Color(0xFFF2EDFF),
+            iconColor: const Color(0xFF7B4DF2),
+            title: tr('ভয়েস প্রতিশব্দ (Synonyms)', 'Voice Synonyms'),
+            subtitle: tr('ভয়েস কমান্ডের জন্য কাস্টম প্রতিশব্দ সেট করুন',
+                'Set custom voice command synonyms'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const DokanVoiceSynonymsScreen(),
+              ),
+            ),
+          ),
+          _MoreItem(
             icon: Icons.warning_amber_rounded,
             iconBackground: const Color(0xFFFFF4E5),
             iconColor: const Color(0xFFDF8B1D),
@@ -322,8 +335,12 @@ class DokanAroOptionScreen extends ConsumerWidget {
       ),
     ];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FB),
+    final isWide = MediaQuery.of(context).size.width >= 720;
+
+    return DokanResponsivePage(
+      selectedIndex: 4,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF4F7FB),
       body: SafeArea(
         child: Column(
           children: [
@@ -398,17 +415,20 @@ class DokanAroOptionScreen extends ConsumerWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _MoreBottomNav(
-        selectedIndex: 4,
-        onHomeTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
-        onSalesTap: () =>
-            Navigator.of(context).pushReplacementNamed(AppRoutes.sales),
-        onProductsTap: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DokanProductListScreen()),
-        ),
-        onReportsTap: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DokanReportsHomeScreen()),
-        ),
+      bottomNavigationBar: isWide
+          ? null
+          : _MoreBottomNav(
+              selectedIndex: 4,
+              onHomeTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
+              onSalesTap: () =>
+                  Navigator.of(context).pushReplacementNamed(AppRoutes.sales),
+              onProductsTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const DokanProductListScreen()),
+              ),
+              onReportsTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const DokanReportsHomeScreen()),
+              ),
+            ),
       ),
     );
   }

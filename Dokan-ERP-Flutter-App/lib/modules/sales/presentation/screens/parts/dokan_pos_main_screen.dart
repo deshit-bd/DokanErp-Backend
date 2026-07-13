@@ -419,14 +419,18 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
         ref.watch(dokanPosProvider.select((state) => state.total));
     final syncError = ref.watch(productSyncErrorProvider);
 
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) async {
-        if (didPop) return;
-        await handleDokanBackNavigation(context);
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF2F7F6),
+    final isWide = MediaQuery.of(context).size.width >= 720;
+
+    return DokanResponsivePage(
+      selectedIndex: 1,
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          await handleDokanBackNavigation(context);
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF2F7F6),
         body: SafeArea(
           child: Stack(
             children: [
@@ -600,11 +604,11 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: products.length,
                           gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.88,
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: isWide ? 4 : 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.77,
                           ),
                           itemBuilder: (context, index) {
                             final product = products[index];
@@ -616,12 +620,15 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                               dokanPosProvider.select(
                                   (state) => state.isSelected(product.id)),
                             );
-                            return _ProductCard(
-                              product: product,
-                              quantity: quantity,
-                              selected: selected,
-                              onAdd: () => _addToCart(product),
-                              onRemove: () => _removeFromCart(product),
+                            return DokanFadeSlideIn(
+                              delay: Duration(milliseconds: math.min(index * 40, 300)),
+                              child: _ProductCard(
+                                product: product,
+                                quantity: quantity,
+                                selected: selected,
+                                onAdd: () => _addToCart(product),
+                                onRemove: () => _removeFromCart(product),
+                              ),
                             );
                           },
                         ),
@@ -646,68 +653,71 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF2F0),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: const Color(0xFFD6E4E0)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _BottomNavButton(
-                  icon: Icons.home_outlined,
-                  label: AppStrings.tabHome,
-                  selected: false,
-                  onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
-                ),
-                _BottomNavButton(
-                  icon: Icons.point_of_sale_outlined,
-                  label: AppStrings.tabSales,
-                  selected: true,
-                  onTap: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => DokanPosMainScreen(key: UniqueKey()),
-                    ),
+        bottomNavigationBar: isWide
+            ? null
+            : SafeArea(
+                top: false,
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF2F0),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: const Color(0xFFD6E4E0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _BottomNavButton(
+                        icon: Icons.home_outlined,
+                        label: AppStrings.tabHome,
+                        selected: false,
+                        onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
+                      ),
+                      _BottomNavButton(
+                        icon: Icons.point_of_sale_outlined,
+                        label: AppStrings.tabSales,
+                        selected: true,
+                        onTap: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => DokanPosMainScreen(key: UniqueKey()),
+                          ),
+                        ),
+                      ),
+                      _BottomNavButton(
+                        icon: Icons.inventory_2_outlined,
+                        label: AppStrings.tabProducts,
+                        selected: false,
+                        onTap: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => const DokanProductListScreen(),
+                          ),
+                        ),
+                      ),
+                      _BottomNavButton(
+                        icon: Icons.bar_chart_outlined,
+                        label: AppStrings.tabReports,
+                        selected: false,
+                        onTap: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => const DokanReportsHomeScreen(),
+                          ),
+                        ),
+                      ),
+                      _BottomNavButton(
+                        icon: Icons.more_horiz,
+                        label: AppStrings.tabMore,
+                        selected: false,
+                        onTap: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => const DokanAroOptionScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                _BottomNavButton(
-                  icon: Icons.inventory_2_outlined,
-                  label: AppStrings.tabProducts,
-                  selected: false,
-                  onTap: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const DokanProductListScreen(),
-                    ),
-                  ),
-                ),
-                _BottomNavButton(
-                  icon: Icons.bar_chart_outlined,
-                  label: AppStrings.tabReports,
-                  selected: false,
-                  onTap: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const DokanReportsHomeScreen(),
-                    ),
-                  ),
-                ),
-                _BottomNavButton(
-                  icon: Icons.more_horiz,
-                  label: AppStrings.tabMore,
-                  selected: false,
-                  onTap: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const DokanAroOptionScreen(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
         ),
       ),
     );

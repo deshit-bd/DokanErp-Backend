@@ -61,7 +61,9 @@ class _DokanProductListScreenState
     final outOfStockCount =
         visibleProducts.where((item) => item.stock <= 0).length;
 
-    return Scaffold(
+    return DokanResponsivePage(
+      selectedIndex: 2,
+      child: Scaffold(
       backgroundColor: const Color(0xFFF3F8F7),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
@@ -336,6 +338,7 @@ class _DokanProductListScreenState
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: _buildBottomNav(),
+      ),
     );
   }
 }

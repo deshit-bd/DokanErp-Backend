@@ -47,3 +47,4 @@ part 'parts/store_layout_hero_card.dart';
 part 'parts/store_layout_alert_row.dart';
 part 'parts/header_button.dart';
 part 'parts/tax_charge_sheet.dart';
+part 'parts/dokan_voice_synonyms_screen.dart';
