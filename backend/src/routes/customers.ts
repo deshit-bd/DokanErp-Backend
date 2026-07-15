@@ -7,8 +7,8 @@ import {
   normalizeMoney as normalizeStockMoney,
   recordStockMovement,
 } from "../utils/stock-movement";
-import { createNotification } from "./notifications";
-import { ensureGeneralInventoryBin } from "./purchases";
+import { createNotification } from "../adapters/http/controllers/notification.controller";
+import { ensureGeneralInventoryBin } from "../adapters/persistence/prisma/inventory.repository";
 
 const router = Router();
 

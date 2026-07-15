@@ -10,26 +10,24 @@ import { env } from "../../config/env";
 import { errorHandlerMiddleware } from "../../adapters/http/middleware/error-handler.middleware";
 import { getAuthenticatedUser, isAuthError, sendAuthError } from "../../auth/current-user";
 import authRoutes from "../../adapters/http/routers/auth.router";
-import bankAccountRoutes from "../../routes/bank-accounts";
+import bankAccountRoutes from "../../adapters/http/routers/bank-account.router";
 import brandRoutes from "../../adapters/http/routers/brand.router";
 import categoryRoutes from "../../adapters/http/routers/category.router";
 import customerRoutes, { handleGetConfirmDue, handlePostConfirmDue } from "../../routes/customers";
-import expenseRoutes from "../../routes/expenses";
-import inventoryRoutes from "../../routes/inventory";
-import moneyBoxRoutes from "../../routes/money-boxes";
+import expenseRoutes from "../../adapters/http/routers/expense.router";
+import inventoryRoutes from "../../adapters/http/routers/inventory.router";
+import moneyBoxRoutes from "../../adapters/http/routers/money-box.router";
 import productRoutes from "../../routes/products";
-import productTemplateRoutes from "../../routes/product-templates";
-import purchaseRoutes from "../../routes/purchases";
-import shopRoutes from "../../routes/shops";
-import subscriptionRoutes from "../../routes/subscriptions";
-import supplierRoutes, {
-  handleGetConfirmSupplierDue,
-  handlePostConfirmSupplierDue,
-} from "../../routes/suppliers";
+import productTemplateRoutes from "../../adapters/http/routers/product-template.router";
+import purchaseRoutes from "../../adapters/http/routers/purchase.router";
+import shopRoutes from "../../adapters/http/routers/shop-profile.router";
+import subscriptionRoutes from "../../adapters/http/routers/subscription-billing.router";
+import supplierRoutes from "../../adapters/http/routers/supplier.router";
+import { handleGetConfirmSupplierDue, handlePostConfirmSupplierDue } from "../../adapters/http/controllers/supplier.controller";
 import unitRoutes from "../../adapters/http/routers/unit.router";
-import reportsRoutes from "../../routes/reports";
-import staffRoutes from "../../routes/staff";
-import notificationRoutes from "../../routes/notifications";
+import reportsRoutes from "../../adapters/http/routers/reports.router";
+import staffRoutes from "../../adapters/http/routers/staff.router";
+import notificationRoutes from "../../adapters/http/routers/notification.router";
 import settingsRoutes from "../../routes/settings";
 import { evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "../../subscription/access";
 
