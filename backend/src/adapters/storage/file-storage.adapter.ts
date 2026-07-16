@@ -21,9 +21,9 @@ export type StoredFile = {
 };
 
 // Consolidates the base64-data-URL upload logic that was previously
-// duplicated (byte-for-byte) as persistProductPicture (routes/products.ts)
-// and persistBrandLogo (routes/brands.ts). Not yet wired into those two
-// routes — they migrate to this adapter when products/brands migrate.
+// duplicated (byte-for-byte) as persistProductPicture (routes/products.ts,
+// now adapters/storage/product-picture-storage.adapter.ts) and
+// persistBrandLogo (routes/brands.ts, now brand-logo-storage.adapter.ts).
 export async function storeBase64Upload({ dataUrl, folder, requestOrigin }: Base64Upload): Promise<StoredFile> {
   const dataUrlMatch = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
 

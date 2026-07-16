@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-import { AppError, NotFoundError, ServiceUnavailableError, UnauthorizedError } from "@domain/shared/app-error";
+import { AppError, InternalError, NotFoundError, ServiceUnavailableError, UnauthorizedError } from "@domain/shared/app-error";
 import {
   SupplierAccessForbiddenError,
   SupplierFinanceAccessForbiddenError,
@@ -315,7 +315,7 @@ export const supplierController = {
       const result = sendSupplierDueOtpUseCase.execute(request.body, requestBaseUrl(request));
       response.json({ message: "Supplier confirmation prepared successfully for WhatsApp.", channel: "WHATSAPP", ...result });
     } catch (error) {
-      rethrowOr(error, new ServiceUnavailableError("Failed to send supplier confirmation request."));
+      rethrowOr(error, new InternalError("Failed to send supplier confirmation request."));
     }
   },
 
@@ -324,7 +324,7 @@ export const supplierController = {
       const result = verifySupplierDueOtpUseCase.execute(request.body);
       response.json(result);
     } catch (error) {
-      rethrowOr(error, new ServiceUnavailableError("Failed to verify supplier confirmation request."));
+      rethrowOr(error, new InternalError("Failed to verify supplier confirmation request."));
     }
   },
 };

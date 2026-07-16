@@ -45,8 +45,11 @@ status" below. **Never add new code to `src/routes/*`.**
   `src/adapters/persistence/**` and `src/infrastructure/prisma/**`. A use case
   takes a repository/port interface as a constructor parameter — it never
   imports the client directly. (`src/config/prisma.ts` is a temporary
-  re-export shim for not-yet-migrated `src/routes/*` files; don't add new
-  imports of it — import `@infrastructure/prisma/client` directly instead.)
+  re-export shim, still used by not-yet-migrated legacy primitives —
+  `src/routes/settings.ts` (the only legacy route file left, out of scope for
+  this migration), `src/auth/current-user.ts`, `src/subscription/access.ts`,
+  and the root debug scripts. Don't add new imports of it — import
+  `@infrastructure/prisma/client` directly instead.)
 - **Do not put business logic in a router/controller.** Controllers only:
   (a) read `request.validated`/`request.context`, (b) call exactly one use
   case, (c) pass the result to a presenter, (d) respond. An `if` encoding a
@@ -73,13 +76,17 @@ status" below. **Never add new code to `src/routes/*`.**
 - **Do not let one bounded context's util/service import another context's
   route/controller file.** (History: `utils/reconciliation.ts` imported
   `ensureGeneralInventoryBin` from `routes/purchases.ts` — a backwards,
-  cross-context dependency, not yet fixed as of this writing.) If two
-  contexts need the same helper, it belongs in `domain/shared/` or the owning
-  context's `application/` layer.
+  cross-context dependency. Fixed when `inventory` migrated: both now live in
+  `adapters/persistence/prisma/inventory.repository.ts`, and `purchases`/
+  `customers`/`shop-profile.repository.ts` import the canonical version
+  forward from there.) If two contexts need the same helper, it belongs in
+  `domain/shared/` or the owning context's `application/` layer.
 - **Do not trigger writes/mutations from a GET endpoint's use case as a
   "self-healing" side effect.** (History: `GET /inventory/stock-movements`
-  runs a `$transaction` write via `reconcileProductStockAndBins`, not yet
-  fixed as of this writing.) Reads call read-only use cases. If
+  runs a `$transaction` write via `reconcileProductStockAndBins`. This was
+  deliberately preserved, not fixed, when `inventory` migrated — changing it
+  would alter response timing/behavior clients may depend on; see the
+  `inventory` migration notes below.) Reads call read-only use cases. If
   reconciliation-on-read is a genuine requirement, it must be an explicit,
   separately reviewed decision — not a side effect discovered by reading the
   source.
@@ -93,10 +100,11 @@ status" below. **Never add new code to `src/routes/*`.**
   `toCategoryUpdateDto` for a case where the *original* endpoint shapes
   genuinely differed and were preserved deliberately, not merged). Never
   duplicate a field in both camelCase and snake_case going forward. (History:
-  `routes/purchases.ts` does this extensively — not yet fixed. When it
-  migrates, add a time-boxed `legacyFieldsEnabled` presenter flag rather than
-  silently dropping fields a client may depend on; do not carry the
-  duplication forward into new code.)
+  `routes/purchases.ts` did this extensively; preserved as-is in
+  `purchase.presenter.ts`'s `toPurchaseDto` — every field is kept in both
+  casings permanently, not behind a flag, since at least one client is
+  assumed to depend on one of the two forms. Don't carry this duplication
+  pattern forward into new code outside `purchases`.)
 - **Do not start background jobs (`setInterval`, cron-like loops) as a bare
   side effect of importing `infrastructure/http/app.ts`.** Jobs are started
   explicitly from `infrastructure/http/server.ts` (the process entrypoint),
@@ -154,17 +162,23 @@ module — resolve it once via the auth middleware / controller instead.
 
 ## Migration status
 
+**Migration is complete** — see the "Migration complete" section near the
+end of this file for the full list of migrated modules. This section keeps
+the per-module notes (architectural exceptions, deliberately preserved
+quirks) written during migration, roughly in the order each module migrated.
+
 **Done**: scaffolding, ESLint boundary enforcement, `infrastructure/http`
 (app/server), `infrastructure/prisma/client.ts`, `infrastructure/jobs/otp-renewal.job.ts`,
 the shared adapters (`AppError` incl. `ServiceUnavailableError`/`InternalError`/
 `PaymentRequiredError`, and `details` for extra response fields like
 `subscription`/`salesmanTrial`/`clearAuthCookies` — see `error-handler.middleware.ts`,
 `auth.middleware`, `validate-request.middleware`, `asyncHandler`,
-`PrismaUnitOfWork`, `file-storage.adapter` — used by `brand-logo-storage.adapter.ts`,
-not yet wired into `products`' equivalent upload path), and four modules
-end-to-end: **`categories`**, **`units`**, **`brands`**, **`auth`**. All
-verified via snapshot diff against the pre-migration baseline plus extensive
-manual exercises (see below for `auth` specifically).
+`PrismaUnitOfWork`, `file-storage.adapter` — used by both
+`brand-logo-storage.adapter.ts` and `product-picture-storage.adapter.ts`),
+and the first four modules migrated end-to-end: **`categories`**, **`units`**,
+**`brands`**, **`auth`**. All verified via snapshot diff against the
+pre-migration baseline plus extensive manual exercises (see below for `auth`
+specifically).
 
 **`auth` migration notes** (the largest and highest-risk module migrated so
 far — 2652 lines, 25 endpoints):
@@ -348,8 +362,91 @@ HTML handlers).
   (`/suppliers` and `/add-suppliers`, both pointing at the same
   `supplier.router.ts`) — preserved from the original.
 
-**Not yet migrated** (still `src/routes/*.ts`, unrestricted by boundary
-rules): `customers`, `products`.
+Also done: **`customers`** — the largest migrated module (13 API endpoints
+plus 2 standalone WhatsApp-confirmation HTML handlers), embedding the
+POS/checkout subsystem (FIFO/LIFO batch allocation, shadow master-product
+creation for shop-local products, auto bin creation, store credit).
+
+**`customers` migration notes**:
+- Same "no router-wide `authMiddleware`, bridge to `auth/current-user.ts`
+  per-endpoint" pattern as `suppliers`, for the same reason (dual-mode
+  finance/plain views on `GET /` and `GET /:id`; two fully unauthenticated
+  endpoints, `/send-due-otp` and `/verify-due-otp`). **Differs from
+  suppliers' dual mode**: the "no shopId" fallback view still requires
+  `SUPER_ADMIN`/`ADMIN`/`SHOP_OWNER`/`SALESMAN` (not a platform-admin-only
+  view) — preserved exactly, don't unify the two modules' fallback-auth
+  behavior.
+- A **second, separate** in-memory due-OTP store
+  (`adapters/storage/customer-due-otp.store.ts`, `customerDueOtpStore`) —
+  distinct from the supplier one, with a different record shape (`products`
+  list instead of `paymentAmount`/`paymentMethod`). Do not merge the two;
+  they were independent `Map`s in the original and back independent HTML
+  confirmation flows (`/confirm-due/:token` vs `/confirm-supplier-due/:token`).
+- `POST /sales` (checkout) is the most complex single transaction in the
+  codebase: resolves/creates the customer (explicit id → provided
+  name/phone → "Guest Customer" fallback), links it to the shop via a
+  zero-value ledger entry if not yet linked, promotes shop-local products to
+  a shadow `MasterProduct` on the fly, allocates against `InventoryBinItem`
+  rows in FIFO or LIFO order (per `ShopInventorySetting.stockMethod`,
+  auto-creating a general bin if none exist), then falls back to
+  unallocated/negative-stock sale lines when bins are exhausted (unless
+  `requireBinAssignment` blocks it). The original's `catch` block
+  string-matched specific error-message prefixes
+  (`"Insufficient stock"` / `"Insufficient batch stock"` / `"Product not
+  found"` / `"Paid amount plus store credit"`) to map them to 400 instead of
+  the generic 503 — reproduced here with dedicated `ValidationError`
+  subclasses in `domain/customer/customer.errors.ts` carrying the exact
+  original dynamic message text, so no string-sniffing is needed in the
+  controller.
+- `POST /sales/:saleId/cancel` restores stock, records a `SALE_CANCEL` stock
+  movement, and refunds via money box decrement — *unless*
+  `refundMethod === "LATER_ADJUSTMENT"`, which instead grants the refund
+  amount as customer store credit. Preserved exactly.
+
+Also done: **`products`** — the last of the 14 modules, covering both the
+global product catalog (`SUPER_ADMIN`/`ADMIN`) and each shop's product list
+(`SHOP_OWNER`/`SALESMAN`), including FIFO/LIFO batch-grouping for
+per-shop stock display.
+
+**`products` migration notes**:
+- Same "no router-wide `authMiddleware`, bridge to `auth/current-user.ts`
+  per-endpoint" pattern as `suppliers`/`customers` — here because almost
+  every endpoint (`GET /`, `POST /`, `PUT|PATCH /:id`, `DELETE /:id`)
+  branches on role *within the same handler* between managing the global
+  `MasterProduct` catalog and managing a shop's `ShopProduct` row/local
+  product, which doesn't fit a single `requireRole(...)` gate per route.
+- `PUT /:id` and `PATCH /:id` share one `update` controller method (both
+  registered to it), matching the original's single `handleUpdate` used for
+  both verbs.
+- The base64 data-URL picture-upload logic
+  (`adapters/storage/product-picture-storage.adapter.ts`) now reuses the
+  shared `storeBase64Upload` helper in `file-storage.adapter.ts` — the same
+  helper `brands` already used — finally retiring the note that it was "not
+  yet wired into" `products`.
+- `UpdateShopProductUseCase` blocks manual stock **decreases** (throws
+  `ManualStockDeductionDisabledError`, 400) but allows increases, and records
+  a `MANUAL_ADD`/`MANUAL_REDUCE`/`PRICE_CHANGE` stock movement whenever
+  quantity or price actually changes — preserved exactly, including the
+  quirk that the stock-decrease guard runs **after** the update has already
+  been persisted to `ShopProduct` (the original updates first, then checks
+  `nextStock < previousStock` and returns 400 without rolling back the
+  Prisma write — not wrapped in a transaction). Not "fixed" into a
+  pre-validation check or a transaction, since that would be an intentional
+  behavior change beyond this migration's scope.
+- `PATCH /approval-requests/:id/reject` has no explicit not-found check in
+  the original (a missing id just lets Prisma's update throw, caught by the
+  generic 503 fallback) — reproduced as-is; only `approve` explicitly checks
+  existence first.
+
+## Migration complete
+
+All 14 modules identified for this migration are done: `categories`,
+`units`, `brands`, `auth`, `bank-accounts`, `money-boxes`, `expenses`,
+`notifications`, `product-templates`, `shops`, `staff`, `subscriptions`,
+`inventory`, `reports`, `purchases`, `suppliers`, `customers`, `products`.
+`src/routes/` now contains only `settings.ts`, which was never in scope for
+this migration; migrate it deliberately, following this same rigor, if it
+needs to change.
 
 **Known, not-yet-fixed issues carried over from the legacy code** (do not
 "fix" incidentally while touching unrelated code in these files — decompose

@@ -63,6 +63,69 @@ export function buildCustomerCodeBase(name: string): string {
   return normalized || "CUS";
 }
 
+export function toCustomerSummary(customer: any) {
+  return {
+    id: customer.id,
+    customerCode: customer.customerCode,
+    name: customer.name,
+    companyOrPersonName: customer.name,
+    mobile: customer.mobile,
+    email: customer.email,
+    address: customer.address,
+    shortNote: customer.notes,
+    notes: customer.notes,
+    storeCredit: toMoney(customer.storeCredit),
+    status: customer.status,
+    statusLabel: toDisplayStatus(customer.status),
+    createdAt: customer.createdAt,
+    updatedAt: customer.updatedAt,
+  };
+}
+
+export function toCustomerSaleSummary(sale: any) {
+  const items = Array.isArray(sale.items) ? sale.items : [];
+  const totalQty = items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0);
+
+  return {
+    id: sale.id,
+    shopId: sale.shopId,
+    customerId: sale.customerId,
+    createdByUserId: sale.createdByUserId,
+    salesmanPhone: sale.createdBy?.phone ?? null,
+    salesmanName: sale.createdBy?.name ?? null,
+    customerName: sale.customer?.name ?? null,
+    customerMobile: sale.customer?.mobile ?? null,
+    invoiceNo: sale.invoiceNo,
+    saleDate: sale.saleDate,
+    totalAmount: toMoney(sale.totalAmount),
+    paidAmount: toMoney(sale.paidAmount),
+    dueAmount: toMoney(sale.dueAmount),
+    discountAmount: toMoney(sale.discountAmount ?? 0),
+    taxAmount: toMoney(sale.taxAmount ?? 0),
+    chargeAmount: toMoney(sale.chargeAmount ?? 0),
+    paymentMethod: sale.paymentMethod,
+    status: sale.status ?? "ACTIVE",
+    cancelledAt: sale.cancelledAt ?? null,
+    cancelReason: sale.cancelReason ?? null,
+    refundMethod: sale.refundMethod ?? null,
+    refundAmount: toMoney(sale.refundAmount ?? 0),
+    cancelNotes: sale.cancelNotes ?? null,
+    notes: sale.notes ?? null,
+    itemsCount: items.length,
+    totalQty: Number(totalQty.toFixed(3)),
+    items: items.map((item: any) => ({
+      id: item.id,
+      masterProductId: item.masterProductId,
+      name: item.masterProduct?.name ?? item.productName ?? "",
+      sku: item.masterProduct?.sku ?? "",
+      quantity: toMoney(item.quantity),
+      salePrice: toMoney(item.salePrice),
+      purchasePrice: toMoney(item.purchasePrice || item.salePrice * 0.7),
+      totalAmount: toMoney(item.totalAmount),
+    })),
+  };
+}
+
 export type NormalizedCustomerPayment =
   | { error: string }
   | { paymentMethod: string | null; paymentMeta: Record<string, string | undefined> | null };
