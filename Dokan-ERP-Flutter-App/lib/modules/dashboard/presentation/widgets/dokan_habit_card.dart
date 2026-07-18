@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,11 +36,34 @@ class _DokanHabitCardState extends State<DokanHabitCard> {
   int _bestStreak = 0;
   int _target = 5000;
   bool _loaded = false;
+  Timer? _midnightTimer;
 
   @override
   void initState() {
     super.initState();
     _loadAndRecord();
+    _scheduleMidnightUpdate();
+  }
+
+  @override
+  void dispose() {
+    _midnightTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleMidnightUpdate() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final difference = tomorrow.difference(now);
+    
+    // Add 1 second delay to ensure we are actually past midnight
+    _midnightTimer = Timer(difference + const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {});
+        _scheduleMidnightUpdate();
+      }
+    });
   }
 
   String _dateKey(DateTime date) =>
@@ -135,25 +159,20 @@ class _DokanHabitCardState extends State<DokanHabitCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Streak + best streak
+          // Today's date with calendar icon
           Row(
             children: [
-              const Text('🔥', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
+              _buildDynamicCalendarIcon(DateTime.now()),
+              const SizedBox(width: 12),
               Text(
-                '$_streak দিন ধরে হিসাব রাখছেন',
+                _formatBengaliDate(DateTime.now()),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const Spacer(),
-              if (_bestStreak > _streak)
-                Text('সর্বোচ্চ: $_bestStreak',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 11)),
             ],
           ),
           const SizedBox(height: 14),
@@ -230,5 +249,98 @@ class _DokanHabitCardState extends State<DokanHabitCard> {
         ],
       ),
     );
+  }
+
+  String _toBengaliDigits(String input) {
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    var output = input;
+    for (var i = 0; i < english.length; i++) {
+      output = output.replaceAll(english[i], bengali[i]);
+    }
+    return output;
+  }
+
+  Widget _buildDynamicCalendarIcon(DateTime date) {
+    final dayStr = _toBengaliDigits(date.day.toString());
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Calendar top header (red)
+          Container(
+            height: 10,
+            decoration: const BoxDecoration(
+              color: Color(0xFFD32F2F),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
+              ),
+            ),
+          ),
+          // Day number inside calendar
+          Expanded(
+            child: Center(
+              child: Text(
+                dayStr,
+                style: const TextStyle(
+                  color: Color(0xFF2C3E50),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  height: 1.0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatBengaliDate(DateTime date) {
+    const months = [
+      'জানুয়ারি',
+      'ফেব্রুয়ারি',
+      'মার্চ',
+      'এপ্রিল',
+      'মে',
+      'জুন',
+      'জুলাই',
+      'আগস্ট',
+      'সেপ্টেম্বর',
+      'অক্টোবর',
+      'নভেম্বর',
+      'ডিসেম্বর'
+    ];
+    
+    final dayShort = switch (date.weekday) {
+      DateTime.sunday => 'রবি',
+      DateTime.monday => 'সোম',
+      DateTime.tuesday => 'মঙ্গল',
+      DateTime.wednesday => 'বুধ',
+      DateTime.thursday => 'বৃহস্পতি',
+      DateTime.friday => 'শুক্র',
+      DateTime.saturday => 'শনি',
+      _ => '',
+    };
+
+    final day = _toBengaliDigits(date.day.toString());
+    final monthName = months[date.month - 1];
+    final year = _toBengaliDigits(date.year.toString());
+
+    return '$dayShort, $day $monthName $year';
   }
 }

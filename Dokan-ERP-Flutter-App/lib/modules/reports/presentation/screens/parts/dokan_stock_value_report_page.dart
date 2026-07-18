@@ -177,94 +177,104 @@ class _DokanStockValueReportPageState
               ),
             ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(
-                children: [
-                  _RoundDateNavButton(
-                    icon: Icons.chevron_left_rounded,
-                    onTap: () => _shiftDate(-1),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _pickCustomDate,
-                        borderRadius: BorderRadius.circular(999),
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: const Color(0xFFD9E6E2)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.calendar_month_outlined,
-                                  size: 18, color: Color(0xFF0C8C67)),
-                              const SizedBox(width: 8),
-                              Text(
-                                _dateLabel,
-                                style: const TextStyle(
-                                  color: Color(0xFF111111),
-                                  fontWeight: FontWeight.w800,
+            child: DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 30),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, -10),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                child: Row(
+                  children: [
+                    _RoundDateNavButton(
+                      icon: Icons.chevron_left_rounded,
+                      onTap: () => _shiftDate(-1),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _pickCustomDate,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: const Color(0xFFD9E6E2)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.calendar_month_outlined,
+                                    size: 18, color: Color(0xFF0C8C67)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _dateLabel,
+                                  style: const TextStyle(
+                                    color: Color(0xFF111111),
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  _RoundDateNavButton(
-                    icon: Icons.chevron_right_rounded,
-                    onTap: () => _shiftDate(1),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    _RoundDateNavButton(
+                      icon: Icons.chevron_right_rounded,
+                      onTap: () => _shiftDate(1),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _ReportChip(
-                      label: 'আজ',
-                      selected: _selectedRange == 0,
-                      onTap: () => _selectRange(0),
-                    ),
-                    const SizedBox(width: 10),
-                    _ReportChip(
-                      label: 'এই সপ্তাহ',
-                      selected: _selectedRange == 1,
-                      onTap: () => _selectRange(1),
-                    ),
-                    const SizedBox(width: 10),
-                    _ReportChip(
-                      label: 'এই মাস',
-                      selected: _selectedRange == 2,
-                      onTap: () => _selectRange(2),
-                    ),
-                    const SizedBox(width: 10),
-                    _ReportChip(
-                      label: 'এই বছর',
-                      selected: _selectedRange == 3,
-                      onTap: () => _selectRange(3),
-                    ),
-                    const SizedBox(width: 10),
-                    _ReportChip(
-                      label: 'কাস্টম',
-                      selected: _selectedRange == 4,
-                      onTap: _pickCustomDate,
-                    ),
-                  ],
+            child: DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 70),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, -10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _ReportChip(
+                        label: 'আজ',
+                        selected: _selectedRange == 0,
+                        onTap: () => _selectRange(0),
+                      ),
+                      const SizedBox(width: 10),
+                      _ReportChip(
+                        label: 'এই সপ্তাহ',
+                        selected: _selectedRange == 1,
+                        onTap: () => _selectRange(1),
+                      ),
+                      const SizedBox(width: 10),
+                      _ReportChip(
+                        label: 'এই মাস',
+                        selected: _selectedRange == 2,
+                        onTap: () => _selectRange(2),
+                      ),
+                      const SizedBox(width: 10),
+                      _ReportChip(
+                        label: 'এই বছর',
+                        selected: _selectedRange == 3,
+                        onTap: () => _selectRange(3),
+                      ),
+                      const SizedBox(width: 10),
+                      _ReportChip(
+                        label: 'কাস্টম',
+                        selected: _selectedRange == 4,
+                        onTap: _pickCustomDate,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -274,140 +284,165 @@ class _DokanStockValueReportPageState
             sliver: SliverList(
               delegate: SliverChildListDelegate(
                 [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CompactSummaryCard(
-                          title: 'গ্রস লাভ',
-                          value: _currency(grossProfit),
-                          subtitle:
-                              '${_bnDigits(marginPercent.toString())}% মার্জিন',
-                          background: const Color(0xFFE6F4EE),
-                          foreground: const Color(0xFF0C8C67),
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 120),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 15),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _CompactSummaryCard(
+                            title: 'গ্রস লাভ',
+                            value: _currency(grossProfit),
+                            subtitle:
+                                '${_bnDigits(marginPercent.toString())}% মার্জিন',
+                            background: const Color(0xFFE6F4EE),
+                            foreground: const Color(0xFF0C8C67),
+                          ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _CompactSummaryCard(
+                            title: 'নিট লাভ',
+                            value: _currency(netProfit),
+                            subtitle:
+                                '${_bnDigits(profitRatio.toString())}% প্রফিট',
+                            background: const Color(0xFF0C8C67),
+                            foreground: Colors.white,
+                            isFilled: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 170),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 20),
+                    child: _SectionCard(
+                      title: 'রাজস্ব (Revenue)',
+                      child: Column(
+                        children: [
+                          _ValueLineItem(
+                            label: 'মোট বিক্রয়',
+                            value: _currency(totalSales),
+                            valueColor: const Color(0xFF0C8C67),
+                          ),
+                          const SizedBox(height: 12),
+                          _ValueLineItem(
+                            label: 'রিটার্ন/বাতিল',
+                            value: _currency(returnAmount),
+                            valueColor: const Color(0xFFD43B3B),
+                          ),
+                          const SizedBox(height: 12),
+                          const _DividerLine(),
+                          const SizedBox(height: 12),
+                          _ValueLineItem(
+                            label: 'নিট বিক্রয়',
+                            value: _currency(netSales),
+                            valueColor: const Color(0xFF0C8C67),
+                            emphasize: true,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _CompactSummaryCard(
-                          title: 'নিট লাভ',
-                          value: _currency(netProfit),
-                          subtitle:
-                              '${_bnDigits(profitRatio.toString())}% প্রফিট',
-                          background: const Color(0xFF0C8C67),
-                          foreground: Colors.white,
-                          isFilled: true,
-                        ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 220),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 20),
+                    child: _SectionCard(
+                      title: 'ব্যয় (Cost)',
+                      child: Column(
+                        children: [
+                          _ValueLineItem(
+                            label: 'পণ্যের ক্রয়মূল্য',
+                            value: _currency(totalPurchase),
+                            valueColor: const Color(0xFF111111),
+                          ),
+                          const SizedBox(height: 12),
+                          _ValueLineItem(
+                            label: 'পরিচালন খরচ',
+                            value: _currency(totalExpense),
+                            valueColor: const Color(0xFF111111),
+                          ),
+                          const SizedBox(height: 12),
+                          const _DividerLine(),
+                          const SizedBox(height: 12),
+                          _ValueLineItem(
+                            label: 'মোট ব্যয়',
+                            value: _currency(totalCost),
+                            valueColor: const Color(0xFFD43B3B),
+                            emphasize: true,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _SectionCard(
-                    title: 'রাজস্ব (Revenue)',
-                    child: Column(
-                      children: [
-                        _ValueLineItem(
-                          label: 'মোট বিক্রয়',
-                          value: _currency(totalSales),
-                          valueColor: const Color(0xFF0C8C67),
-                        ),
-                        const SizedBox(height: 12),
-                        _ValueLineItem(
-                          label: 'রিটার্ন/বাতিল',
-                          value: _currency(returnAmount),
-                          valueColor: const Color(0xFFD43B3B),
-                        ),
-                        const SizedBox(height: 12),
-                        const _DividerLine(),
-                        const SizedBox(height: 12),
-                        _ValueLineItem(
-                          label: 'নিট বিক্রয়',
-                          value: _currency(netSales),
-                          valueColor: const Color(0xFF0C8C67),
-                          emphasize: true,
-                        ),
-                      ],
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _SectionCard(
-                    title: 'ব্যয় (Cost)',
-                    child: Column(
-                      children: [
-                        _ValueLineItem(
-                          label: 'পণ্যের ক্রয়মূল্য',
-                          value: _currency(totalPurchase),
-                          valueColor: const Color(0xFF111111),
-                        ),
-                        const SizedBox(height: 12),
-                        _ValueLineItem(
-                          label: 'পরিচালন খরচ',
-                          value: _currency(totalExpense),
-                          valueColor: const Color(0xFF111111),
-                        ),
-                        const SizedBox(height: 12),
-                        const _DividerLine(),
-                        const SizedBox(height: 12),
-                        _ValueLineItem(
-                          label: 'মোট ব্যয়',
-                          value: _currency(totalCost),
-                          valueColor: const Color(0xFFD43B3B),
-                          emphasize: true,
-                        ),
-                      ],
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 270),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 20),
+                    child: _SectionCard(
+                      title: 'ভ্যাট, ট্যাক্স ও চার্জ',
+                      child: Column(
+                        children: [
+                          _ValueLineItem(
+                            label: 'ভ্যাট ও ট্যাক্স',
+                            value: _currency(taxAmount),
+                            valueColor: const Color(0xFF111111),
+                          ),
+                          const SizedBox(height: 12),
+                          _ValueLineItem(
+                            label: 'ডেলিভারি ও অন্যান্য চার্জ',
+                            value: _currency(chargeAmount),
+                            valueColor: const Color(0xFF111111),
+                          ),
+                          const SizedBox(height: 12),
+                          const _DividerLine(),
+                          const SizedBox(height: 12),
+                          _ValueLineItem(
+                            label: 'মোট অন্যান্য',
+                            value: _currency(totalOthers),
+                            valueColor: const Color(0xFF555555),
+                            emphasize: true,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _SectionCard(
-                    title: 'ভ্যাট, ট্যাক্স ও চার্জ',
-                    child: Column(
-                      children: [
-                        _ValueLineItem(
-                          label: 'ভ্যাট ও ট্যাক্স',
-                          value: _currency(taxAmount),
-                          valueColor: const Color(0xFF111111),
-                        ),
-                        const SizedBox(height: 12),
-                        _ValueLineItem(
-                          label: 'ডেলিভারি ও অন্যান্য চার্জ',
-                          value: _currency(chargeAmount),
-                          valueColor: const Color(0xFF111111),
-                        ),
-                        const SizedBox(height: 12),
-                        const _DividerLine(),
-                        const SizedBox(height: 12),
-                        _ValueLineItem(
-                          label: 'মোট অন্যান্য',
-                          value: _currency(totalOthers),
-                          valueColor: const Color(0xFF555555),
-                          emphasize: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _SectionCard(
-                    title: 'আর্থিক অনুপাত বিশ্লেষণ',
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 210,
-                          child: _StockRatioChart(
-                              slices: ratioSlices,
-                              centerLabel:
-                                  netProfit < 0 ? 'নিট লোকসান' : 'নিট লাভ',
-                              centerValue:
-                                  '${_bnDigits(profitRatio.abs().toString())}%'),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            for (final slice in ratioSlices)
-                              _RatioLegendItem(
-                                  label: slice.label, color: slice.color),
-                          ],
-                        ),
-                      ],
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 320),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 20),
+                    child: _SectionCard(
+                      title: 'আর্থিক অনুপাত বিশ্লেষণ',
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 210,
+                            child: _StockRatioChart(
+                                slices: ratioSlices,
+                                centerLabel:
+                                    netProfit < 0 ? 'নিট লোকসান' : 'নিট লাভ',
+                                centerValue:
+                                    '${_bnDigits(profitRatio.abs().toString())}%'),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              for (final slice in ratioSlices)
+                                _RatioLegendItem(
+                                    label: slice.label, color: slice.color),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -621,145 +656,197 @@ List<DateTime> _profitLossBoundsFor(_ProfitLossRequestKey key) {
   return <DateTime>[from, to];
 }
 
-final profitLossReportRemoteProvider = FutureProvider.autoDispose
-    .family<_RemoteProfitLossReportData?, _ProfitLossRequestKey>(
-        (ref, key) async {
-  if (!ref.watch(reportConfiguredProvider)) {
+class ProfitLossReportLocalCache {
+  static const _keyPrefix = 'dokan_profit_loss_report_cache_v2_';
+
+  static String _storageKey(_ProfitLossRequestKey key) {
+    return '$_keyPrefix${key.selectedDate.year}_${key.selectedDate.month}_${key.selectedDate.day}_${key.selectedRange}';
+  }
+
+  static Future<Map<String, dynamic>?> load(_ProfitLossRequestKey key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey(key));
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
     return null;
   }
-  final payload = await ref.watch(reportRepositoryProvider).fetchReport(
-        'profit-loss',
-        filters: _profitLossFiltersFor(key),
-      );
-  if (payload.isEmpty) {
-    return null;
+
+  static Future<void> save(_ProfitLossRequestKey key, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey(key), jsonEncode(data));
+    } catch (_) {}
   }
-  final summary = _mapValue(
-        _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
-      ) ??
-      payload;
-  final revenue = _mapValue(_pickFirstValue(payload, const ['revenue'])) ??
-      const <String, dynamic>{};
-  final cost = _mapValue(_pickFirstValue(payload, const ['cost', 'costs'])) ??
-      const <String, dynamic>{};
-  final totalSales = _intValue(
-    _pickFirstValue(summary, const ['sales', 'revenue', 'totalSales']) ??
-        _pickFirstValue(revenue, const ['totalSales', 'sales', 'grossSales']),
-  );
-  final returnAmount = _intValue(
-    _pickFirstValue(summary, const ['returns', 'returnAmount']) ??
-        _pickFirstValue(revenue, const ['returns', 'returnAmount']),
-  );
-  final netSales = _intValue(
-    _pickFirstValue(summary, const ['netSales']) ??
-        _pickFirstValue(revenue, const ['netSales']),
-  );
-  final totalPurchase = _intValue(
-    _pickFirstValue(
-          summary,
-          const ['purchase', 'purchases', 'cogs', 'totalPurchase'],
-        ) ??
-        _pickFirstValue(cost, const ['purchaseCost', 'cogs', 'totalPurchase']),
-  );
-  final totalExpense = _intValue(
-    _pickFirstValue(summary, const ['expense', 'expenses', 'totalExpense']) ??
-        _pickFirstValue(cost, const ['operatingExpenses', 'expenses']),
-  );
-  final totalCost = _intValue(
-    _pickFirstValue(summary, const ['totalCost', 'cost']) ??
-        _pickFirstValue(cost, const ['totalCost']),
-  );
-  final grossProfit = _intValue(
-    _pickFirstValue(summary, const ['grossProfit', 'gross_profit', 'profit']),
-  );
-  final netProfit = _intValue(
-    _pickFirstValue(summary, const ['netProfit', 'net_profit']),
-  );
-  final marginPercent = _intValue(
-    _pickFirstValue(
-        summary, const ['marginPercent', 'margin_percentage', 'grossMargin']),
-  );
-  final profitRatio = _intValue(
-    _pickFirstValue(
-        summary, const ['profitRatio', 'profit_percentage', 'netMargin']),
-  );
+}
 
-  final ratios =
-      _mapValue(_pickFirstValue(payload, const ['ratios', 'ratioBreakdown'])) ??
-          const <String, dynamic>{};
-  final profitPercent = _intValue(
-    _pickFirstValue(ratios, const ['profitPercent', 'profit']),
-  );
-  final costPercent = _intValue(
-    _pickFirstValue(ratios, const ['costPercent', 'cost']),
-  );
-  final otherPercent = _intValue(
-    _pickFirstValue(ratios, const ['otherPercent', 'other']),
-  );
-
-  final others = _mapValue(_pickFirstValue(payload, const ['others'])) ??
-      const <String, dynamic>{};
-  final taxAmount = _intValue(_pickFirstValue(others, const ['tax', 'taxAmount']));
-  final chargeAmount = _intValue(_pickFirstValue(others, const ['charge', 'chargeAmount']));
-  final totalOthers = _intValue(_pickFirstValue(others, const ['totalOthers', 'others']));
-
-  final safeNetSales =
-      netSales == 0 ? math.max(0, totalSales - returnAmount) : netSales;
-  final safeTotalCost =
-      totalCost == 0 ? totalPurchase + totalExpense : totalCost;
-  final safeGrossProfit =
-      grossProfit == 0 ? safeNetSales - totalPurchase : grossProfit;
-  final safeNetProfit =
-      netProfit == 0 ? safeNetSales - safeTotalCost : netProfit;
-  final safeMargin = marginPercent == 0 && safeNetSales > 0
-      ? ((safeGrossProfit * 100) / safeNetSales).round()
-      : marginPercent;
-  final safeProfitRatio = profitRatio == 0 && safeNetSales > 0
-      ? ((safeNetProfit * 100) / safeNetSales).round()
-      : profitRatio;
-  final int safeProfitPercent;
-  final int safeCostPercent;
-  final int safeOtherPercent;
-
-  if (ratios.isNotEmpty) {
-    safeProfitPercent = profitPercent;
-    safeCostPercent = costPercent;
-    safeOtherPercent = otherPercent;
-  } else {
-    if (safeNetProfit <= 0) {
-      safeProfitPercent = 0;
-      safeCostPercent = 100;
-      safeOtherPercent = 0;
-    } else {
-      final totalRatioSum = safeNetProfit + safeTotalCost;
-      safeProfitPercent = ((safeNetProfit * 100) / totalRatioSum).round();
-      safeCostPercent = ((safeTotalCost * 100) / totalRatioSum).round();
-      safeOtherPercent = 100 - safeProfitPercent - safeCostPercent;
+class ProfitLossReportRemoteNotifier extends AutoDisposeFamilyAsyncNotifier<_RemoteProfitLossReportData?, _ProfitLossRequestKey> {
+  @override
+  Future<_RemoteProfitLossReportData?> build(_ProfitLossRequestKey arg) async {
+    // 1. Try to load from cache
+    final cached = await ProfitLossReportLocalCache.load(arg);
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave(arg);
+      return _parse(cached);
     }
+
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave(arg);
   }
 
-  return _RemoteProfitLossReportData(
-    totalSales: totalSales,
-    returnAmount: returnAmount,
-    netSales: safeNetSales,
-    totalPurchase: totalPurchase,
-    totalExpense: totalExpense,
-    totalCost: safeTotalCost,
-    grossProfit: safeGrossProfit,
-    netProfit: safeNetProfit,
-    marginPercent: safeMargin,
-    profitRatio: safeProfitRatio,
-    profitPercent: safeProfitPercent,
-    costPercent: safeCostPercent,
-    otherPercent: safeOtherPercent.clamp(0, 100),
-    taxAmount: taxAmount,
-    chargeAmount: chargeAmount,
-    totalOthers: totalOthers,
-  );
-});
+  Future<_RemoteProfitLossReportData?> _fetchAndSave(_ProfitLossRequestKey arg) async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final payload = await ref.read(reportRepositoryProvider).fetchReport(
+            'profit-loss',
+            filters: _profitLossFiltersFor(arg),
+          );
+      if (payload.isNotEmpty) {
+        await ProfitLossReportLocalCache.save(arg, payload);
+        final parsed = _parse(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
+    return null;
+  }
 
-class _RemoteExpenseReportData {
-  const _RemoteExpenseReportData({
+  _RemoteProfitLossReportData? _parse(Map<String, dynamic> payload) {
+    final summary = _mapValue(
+          _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
+        ) ??
+        payload;
+    final revenue = _mapValue(_pickFirstValue(payload, const ['revenue'])) ??
+        const <String, dynamic>{};
+    final cost = _mapValue(_pickFirstValue(payload, const ['cost', 'costs'])) ??
+        const <String, dynamic>{};
+    final totalSales = _intValue(
+      _pickFirstValue(summary, const ['sales', 'revenue', 'totalSales']) ??
+          _pickFirstValue(revenue, const ['totalSales', 'sales', 'grossSales']),
+    );
+    final returnAmount = _intValue(
+      _pickFirstValue(summary, const ['returns', 'returnAmount']) ??
+          _pickFirstValue(revenue, const ['returns', 'returnAmount']),
+    );
+    final netSales = _intValue(
+      _pickFirstValue(summary, const ['netSales']) ??
+          _pickFirstValue(revenue, const ['netSales']),
+    );
+    final totalPurchase = _intValue(
+      _pickFirstValue(
+            summary,
+            const ['purchase', 'purchases', 'cogs', 'totalPurchase'],
+          ) ??
+          _pickFirstValue(cost, const ['purchaseCost', 'cogs', 'totalPurchase']),
+    );
+    final totalExpense = _intValue(
+      _pickFirstValue(summary, const ['expense', 'expenses', 'totalExpense']) ??
+          _pickFirstValue(cost, const ['operatingExpenses', 'expenses']),
+    );
+    final totalCost = _intValue(
+      _pickFirstValue(summary, const ['totalCost', 'cost']) ??
+          _pickFirstValue(cost, const ['totalCost']),
+    );
+    final grossProfit = _intValue(
+      _pickFirstValue(summary, const ['grossProfit', 'gross_profit', 'profit']),
+    );
+    final netProfit = _intValue(
+      _pickFirstValue(summary, const ['netProfit', 'net_profit']),
+    );
+    final marginPercent = _intValue(
+      _pickFirstValue(
+          summary, const ['marginPercent', 'margin_percentage', 'grossMargin']),
+    );
+    final profitRatio = _intValue(
+      _pickFirstValue(
+          summary, const ['profitRatio', 'profit_percentage', 'netMargin']),
+    );
+
+    final ratios =
+        _mapValue(_pickFirstValue(payload, const ['ratios', 'ratioBreakdown'])) ??
+            const <String, dynamic>{};
+    final profitPercent = _intValue(
+      _pickFirstValue(ratios, const ['profitPercent', 'profit']),
+    );
+    final costPercent = _intValue(
+      _pickFirstValue(ratios, const ['costPercent', 'cost']),
+    );
+    final otherPercent = _intValue(
+      _pickFirstValue(ratios, const ['otherPercent', 'other']),
+    );
+
+    final others = _mapValue(_pickFirstValue(payload, const ['others'])) ??
+        const <String, dynamic>{};
+    final taxAmount = _intValue(_pickFirstValue(others, const ['tax', 'taxAmount']));
+    final chargeAmount = _intValue(_pickFirstValue(others, const ['charge', 'chargeAmount']));
+    final totalOthers = _intValue(_pickFirstValue(others, const ['totalOthers', 'others']));
+
+    final safeNetSales =
+        netSales == 0 ? math.max(0, totalSales - returnAmount) : netSales;
+    final safeTotalCost =
+        totalCost == 0 ? totalPurchase + totalExpense : totalCost;
+    final safeGrossProfit =
+        grossProfit == 0 ? safeNetSales - totalPurchase : grossProfit;
+    final safeNetProfit =
+        netProfit == 0 ? safeNetSales - safeTotalCost : netProfit;
+    final safeMargin = marginPercent == 0 && safeNetSales > 0
+        ? ((safeGrossProfit * 100) / safeNetSales).round()
+        : marginPercent;
+    final safeProfitRatio = profitRatio == 0 && safeNetSales > 0
+        ? ((safeNetProfit * 100) / safeNetSales).round()
+        : profitRatio;
+    final int safeProfitPercent;
+    final int safeCostPercent;
+    final int safeOtherPercent;
+
+    if (ratios.isNotEmpty) {
+      safeProfitPercent = profitPercent;
+      safeCostPercent = costPercent;
+      safeOtherPercent = otherPercent;
+    } else {
+      if (safeNetProfit <= 0) {
+        safeProfitPercent = 0;
+        safeCostPercent = 100;
+        safeOtherPercent = 0;
+      } else {
+        final totalRatioSum = safeNetProfit + safeTotalCost;
+        safeProfitPercent = ((safeNetProfit * 100) / totalRatioSum).round();
+        safeCostPercent = ((safeTotalCost * 100) / totalRatioSum).round();
+        safeOtherPercent = 100 - safeProfitPercent - safeCostPercent;
+      }
+    }
+
+    return _RemoteProfitLossReportData(
+      totalSales: totalSales,
+      returnAmount: returnAmount,
+      netSales: safeNetSales,
+      totalPurchase: totalPurchase,
+      totalExpense: totalExpense,
+      totalCost: safeTotalCost,
+      grossProfit: safeGrossProfit,
+      netProfit: safeNetProfit,
+      marginPercent: safeMargin,
+      profitRatio: safeProfitRatio,
+      profitPercent: safeProfitPercent,
+      costPercent: safeCostPercent,
+      otherPercent: safeOtherPercent.clamp(0, 100),
+      taxAmount: taxAmount,
+      chargeAmount: chargeAmount,
+      totalOthers: totalOthers,
+    );
+  }
+}
+
+final profitLossReportRemoteProvider = AsyncNotifierProvider.autoDispose
+    .family<ProfitLossReportRemoteNotifier, _RemoteProfitLossReportData?, _ProfitLossRequestKey>(
+  ProfitLossReportRemoteNotifier.new,
+);
+
+class RemoteExpenseReportData {
+  const RemoteExpenseReportData({
     required this.summary,
     required this.categoryStats,
     required this.trendPoints,
@@ -774,174 +861,223 @@ class _RemoteExpenseReportData {
   final List<DokanExpenseRecord> recentExpenses;
 }
 
-final remoteExpenseReportProvider =
-    FutureProvider.autoDispose<_RemoteExpenseReportData?>((ref) async {
-  ref.watch(expenseReportControllerProvider);
-  if (!ref.watch(reportConfiguredProvider)) {
+class ExpenseReportLocalCache {
+  static const _prefPrefix = 'dokan_expense_report_cache_';
+
+  static Future<Map<String, dynamic>?> load(DokanExpenseTimeFilter filter) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_prefPrefix${filter.name}');
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
     return null;
   }
-  final filter = ref.watch(expenseTimeFilterProvider);
-  final payload = await ref.watch(reportRepositoryProvider).fetchReport(
-    'expenses-summary',
-    filters: {
-      ..._reportFiltersFor(
-        switch (filter) {
-          DokanExpenseTimeFilter.today => DokanReportTimeFilter.today,
-          DokanExpenseTimeFilter.thisWeek => DokanReportTimeFilter.thisWeek,
-          DokanExpenseTimeFilter.thisMonth => DokanReportTimeFilter.thisMonth,
-          DokanExpenseTimeFilter.thisYear => DokanReportTimeFilter.thisYear,
-          DokanExpenseTimeFilter.all => DokanReportTimeFilter.all,
+
+  static Future<void> save(DokanExpenseTimeFilter filter, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('$_prefPrefix${filter.name}', jsonEncode(data));
+    } catch (_) {}
+  }
+}
+
+class RemoteExpenseReportNotifier extends AsyncNotifier<RemoteExpenseReportData?> {
+  @override
+  Future<RemoteExpenseReportData?> build() async {
+    ref.watch(expenseReportControllerProvider);
+    final filter = ref.watch(expenseTimeFilterProvider);
+
+    // 1. Try to load from cache
+    final cached = await ExpenseReportLocalCache.load(filter);
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave(filter);
+      return _parse(cached);
+    }
+
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave(filter);
+  }
+
+  Future<RemoteExpenseReportData?> _fetchAndSave(DokanExpenseTimeFilter filter) async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final payload = await ref.read(reportRepositoryProvider).fetchReport(
+        'expenses-summary',
+        filters: {
+          ..._reportFiltersFor(
+            switch (filter) {
+              DokanExpenseTimeFilter.today => DokanReportTimeFilter.today,
+              DokanExpenseTimeFilter.thisWeek => DokanReportTimeFilter.thisWeek,
+              DokanExpenseTimeFilter.thisMonth => DokanReportTimeFilter.thisMonth,
+              DokanExpenseTimeFilter.thisYear => DokanReportTimeFilter.thisYear,
+              DokanExpenseTimeFilter.all => DokanReportTimeFilter.all,
+            },
+          ),
+          'limit': 200,
         },
-      ),
-      'limit': 200,
-    },
-  );
-  if (payload.isEmpty) {
+      );
+      if (payload.isNotEmpty) {
+        await ExpenseReportLocalCache.save(filter, payload);
+        final parsed = _parse(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
     return null;
   }
 
-  final summaryMap = _mapValue(
-        _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
-      ) ??
-      payload;
-  final trendSummaryMap = _mapValue(payload['trendSummary']) ?? const {};
+  RemoteExpenseReportData? _parse(Map<String, dynamic> payload) {
+    final summaryMap = _mapValue(
+          _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
+        ) ??
+        payload;
+    final trendSummaryMap = _mapValue(payload['trendSummary']) ?? const {};
 
-  final totalAmount = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const [
-        'expense',
-        'expenses',
-        'totalExpense',
-        'totalExpenses',
-        'totalAmount'
-      ],
-    ),
-  ).toDouble();
-  final transactionCount = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const ['transactionCount', 'totalTransactions', 'expenseCount', 'count'],
-    ),
-  );
-  final topCategory = _stringValue(
-    _pickFirstValue(summaryMap, const ['topCategory', 'category']),
-    fallback: 'নেই',
-  );
-  final rawTopCategoryAmount = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const ['topCategoryAmount', 'categoryAmount'],
-    ),
-  ).toDouble();
-  final previousAmount = _intValue(
-    _pickFirstValue(summaryMap, const ['previousAmount', 'previousExpense']) ??
-        _pickFirstValue(
-            trendSummaryMap, const ['previousTotal', 'previousAmount']),
-  ).toDouble();
-  final changePercentVal = _pickFirstValue(
-          summaryMap, const ['changePercent', 'change_percentage']) ??
-      _pickFirstValue(trendSummaryMap, const ['changePct', 'changePercent']);
-  final changePercent = (changePercentVal as num?)?.toDouble() ?? 0;
+    final totalAmount = _intValue(
+      _pickFirstValue(
+        summaryMap,
+        const [
+          'expense',
+          'expenses',
+          'totalExpense',
+          'totalExpenses',
+          'totalAmount'
+        ],
+      ),
+    ).toDouble();
+    final transactionCount = _intValue(
+      _pickFirstValue(
+        summaryMap,
+        const ['transactionCount', 'totalTransactions', 'expenseCount', 'count'],
+      ),
+    );
+    final topCategory = _stringValue(
+      _pickFirstValue(summaryMap, const ['topCategory', 'category']),
+      fallback: 'নেই',
+    );
+    final rawTopCategoryAmount = _intValue(
+      _pickFirstValue(
+        summaryMap,
+        const ['topCategoryAmount', 'categoryAmount'],
+      ),
+    ).toDouble();
+    final previousAmount = _intValue(
+      _pickFirstValue(summaryMap, const ['previousAmount', 'previousExpense']) ??
+          _pickFirstValue(
+              trendSummaryMap, const ['previousTotal', 'previousAmount']),
+    ).toDouble();
+    final changePercentVal = _pickFirstValue(
+            summaryMap, const ['changePercent', 'change_percentage']) ??
+        _pickFirstValue(trendSummaryMap, const ['changePct', 'changePercent']);
+    final changePercent = (changePercentVal as num?)?.toDouble() ?? 0;
 
-  final categoryStats = _mapListValue(
-    _pickFirstValue(
-        payload, const ['categories', 'categoryStats', 'breakdown']),
-  )
-      .map(
-        (item) => ExpenseCategoryStat(
-          category: _stringValue(
-            _pickFirstValue(item, const ['category', 'name']),
-            fallback: 'অন্যান্য',
+    final categoryStats = _mapListValue(
+      _pickFirstValue(
+          payload, const ['categories', 'categoryStats', 'breakdown']),
+    )
+        .map(
+          (item) => ExpenseCategoryStat(
+            category: _stringValue(
+              _pickFirstValue(item, const ['category', 'name']),
+              fallback: 'অন্যান্য',
+            ),
+            totalAmount: _intValue(
+              _pickFirstValue(item, const ['amount', 'total', 'value']),
+            ).toDouble(),
+            percentage: (_pickFirstValue(
+                  item,
+                  const ['percentage', 'percent'],
+                ) as num?)
+                    ?.toDouble() ??
+                0,
           ),
-          totalAmount: _intValue(
-            _pickFirstValue(item, const ['amount', 'total', 'value']),
-          ).toDouble(),
-          percentage: (_pickFirstValue(
-                item,
-                const ['percentage', 'percent'],
-              ) as num?)
-                  ?.toDouble() ??
-              0,
-        ),
-      )
-      .toList(growable: false);
-  final matchingTopCategories =
-      categoryStats.where((item) => item.category == topCategory).toList();
-  final topCategoryAmount = rawTopCategoryAmount > 0
-      ? rawTopCategoryAmount
-      : matchingTopCategories.isNotEmpty
-          ? matchingTopCategories.first.totalAmount
-          : 0.0;
+        )
+        .toList(growable: false);
+    final matchingTopCategories =
+        categoryStats.where((item) => item.category == topCategory).toList();
+    final topCategoryAmount = rawTopCategoryAmount > 0
+        ? rawTopCategoryAmount
+        : matchingTopCategories.isNotEmpty
+            ? matchingTopCategories.first.totalAmount
+            : 0.0;
 
-  final trendPoints = _mapListValue(
-    _pickFirstValue(payload, const ['trend', 'timeline', 'series']),
-  )
-      .map(
-        (item) => ExpenseTrendPoint(
-          label: _stringValue(
-            _pickFirstValue(item, const ['label', 'name', 'date']),
-            fallback: '-',
+    final trendPoints = _mapListValue(
+      _pickFirstValue(payload, const ['trend', 'timeline', 'series']),
+    )
+        .map(
+          (item) => ExpenseTrendPoint(
+            label: _stringValue(
+              _pickFirstValue(item, const ['label', 'name', 'date']),
+              fallback: '-',
+            ),
+            amount: _intValue(
+              _pickFirstValue(item, const ['amount', 'value', 'expense']),
+            ).toDouble(),
           ),
-          amount: _intValue(
-            _pickFirstValue(item, const ['amount', 'value', 'expense']),
-          ).toDouble(),
-        ),
-      )
-      .where((item) => item.label != '-')
-      .toList(growable: false);
+        )
+        .where((item) => item.label != '-')
+        .toList(growable: false);
 
-  final paymentMethods = _mapListValue(
-    _pickFirstValue(payload, const ['paymentMethods', 'payment_methods']),
-  )
-      .map(
-        (item) => ExpensePaymentMethodStat(
-          method: _stringValue(
-            _pickFirstValue(item, const ['method']),
-            fallback: 'CASH',
+    final paymentMethods = _mapListValue(
+      _pickFirstValue(payload, const ['paymentMethods', 'payment_methods']),
+    )
+        .map(
+          (item) => ExpensePaymentMethodStat(
+            method: _stringValue(
+              _pickFirstValue(item, const ['method']),
+              fallback: 'CASH',
+            ),
+            label: _stringValue(
+              _pickFirstValue(item, const ['label']),
+              fallback: 'নগদ',
+            ),
+            amount: _intValue(
+              _pickFirstValue(item, const ['amount']),
+            ).toDouble(),
+            percentage: (_pickFirstValue(
+                  item,
+                  const ['percentage', 'percent'],
+                ) as num?)
+                    ?.toDouble() ??
+                0,
           ),
-          label: _stringValue(
-            _pickFirstValue(item, const ['label']),
-            fallback: 'নগদ',
-          ),
-          amount: _intValue(
-            _pickFirstValue(item, const ['amount']),
-          ).toDouble(),
-          percentage: (_pickFirstValue(
-                item,
-                const ['percentage', 'percent'],
-              ) as num?)
-                  ?.toDouble() ??
-              0,
-        ),
-      )
-      .toList(growable: false);
+        )
+        .toList(growable: false);
 
-  final recentExpenses = _mapListValue(
-    _pickFirstValue(
-      payload,
-      const ['expenses', 'transactions', 'items', 'recentExpenses'],
-    ),
-  )
-      .map(_expenseRecordFromRemoteItem)
-      .whereType<DokanExpenseRecord>()
-      .toList(growable: false);
+    final recentExpenses = _mapListValue(
+      _pickFirstValue(
+        payload,
+        const ['expenses', 'transactions', 'items', 'recentExpenses'],
+      ),
+    )
+        .map(_expenseRecordFromRemoteItem)
+        .whereType<DokanExpenseRecord>()
+        .toList(growable: false);
 
-  return _RemoteExpenseReportData(
-    summary: ExpenseSummary(
-      totalAmount: totalAmount,
-      transactionCount: transactionCount,
-      topCategory: topCategory,
-      topCategoryAmount: topCategoryAmount,
-      previousAmount: previousAmount,
-      changePercent: changePercent,
-    ),
-    categoryStats: categoryStats,
-    trendPoints: trendPoints,
-    paymentMethods: paymentMethods,
-    recentExpenses: recentExpenses,
-  );
-});
+    return RemoteExpenseReportData(
+      summary: ExpenseSummary(
+        totalAmount: totalAmount,
+        transactionCount: transactionCount,
+        topCategory: topCategory,
+        topCategoryAmount: topCategoryAmount,
+        previousAmount: previousAmount,
+        changePercent: changePercent,
+      ),
+      categoryStats: categoryStats,
+      trendPoints: trendPoints,
+      paymentMethods: paymentMethods,
+      recentExpenses: recentExpenses,
+    );
+  }
+}
+
+final remoteExpenseReportProvider =
+    AsyncNotifierProvider<RemoteExpenseReportNotifier, RemoteExpenseReportData?>(
+  RemoteExpenseReportNotifier.new,
+);
 
 DokanExpenseRecord? _expenseRecordFromRemoteItem(Map<String, dynamic> item) {
   final id = _stringValue(

@@ -121,131 +121,151 @@ class _DokanInventorySettingsScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildSectionCard(
-                          title:
-                              tr('সতর্কতা ও থ্রেশহোল্ড', 'Alerts & Thresholds'),
-                          icon: Icons.notifications_active_rounded,
-                          subtitle: tr(
-                              'লো-স্টক ও ক্রিটিক্যাল সীমা এক জায়গায় ঠিক করুন।',
-                              'Manage low-stock and critical limits in one place.'),
-                          children: [
-                            _StoreTextField(
-                              label: tr('কম স্টক সীমা', 'Low Stock Limit'),
-                              controller: _lowStockLimitCtrl,
-                              onChanged: (_) => setState(() {}),
-                              keyboardType: TextInputType.number,
-                              inputFormatters:
-                                  NumericInputFormatters.wholeNumber,
-                            ),
-                            const SizedBox(height: 8),
-                            _StoreTextField(
-                              label:
-                                  tr('জরুরি স্টক সীমা', 'Critical Stock Limit'),
-                              controller: _criticalStockLimitCtrl,
-                              onChanged: (_) => setState(() {}),
-                              keyboardType: TextInputType.number,
-                              inputFormatters:
-                                  NumericInputFormatters.wholeNumber,
-                            ),
-                            const SizedBox(height: 8),
-                            _buildSwitchTile(
-                              label: tr('স্বয়ংক্রিয় কম স্টক সতর্কতা',
-                                  'Automatic Low Stock Alert'),
-                              description: tr('ড্যাশবোর্ডে সতর্কবার্তা দেখাবে',
-                                  'Displays alerts on dashboard'),
-                              value: _autoLowStockAlert,
-                              onChanged: (v) =>
-                                  setState(() => _autoLowStockAlert = v),
-                            ),
-                          ],
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 30),
+                          duration: const Duration(milliseconds: 500),
+                          slideOffset: const Offset(0, 15),
+                          child: _buildSectionCard(
+                            title:
+                                tr('সতর্কতা ও থ্রেশহোল্ড', 'Alerts & Thresholds'),
+                            icon: Icons.notifications_active_rounded,
+                            subtitle: tr(
+                                'লো-স্টক ও ক্রিটিক্যাল সীমা এক জায়গায় ঠিক করুন।',
+                                'Manage low-stock and critical limits in one place.'),
+                            children: [
+                              _StoreTextField(
+                                label: tr('কম স্টক সীমা', 'Low Stock Limit'),
+                                controller: _lowStockLimitCtrl,
+                                onChanged: (_) => setState(() {}),
+                                keyboardType: TextInputType.number,
+                                inputFormatters:
+                                    NumericInputFormatters.wholeNumber,
+                              ),
+                              const SizedBox(height: 8),
+                              _StoreTextField(
+                                label:
+                                    tr('জরুরি স্টক সীমা', 'Critical Stock Limit'),
+                                controller: _criticalStockLimitCtrl,
+                                onChanged: (_) => setState(() {}),
+                                keyboardType: TextInputType.number,
+                                inputFormatters:
+                                    NumericInputFormatters.wholeNumber,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildSwitchTile(
+                                label: tr('স্বয়ংক্রিয় কম স্টক সতর্কতা',
+                                    'Automatic Low Stock Alert'),
+                                description: tr('ড্যাশবোর্ডে সতর্কবার্তা দেখাবে',
+                                    'Displays alerts on dashboard'),
+                                value: _autoLowStockAlert,
+                                onChanged: (v) =>
+                                    setState(() => _autoLowStockAlert = v),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 14),
-                        _buildSectionCard(
-                          title: tr('স্টক আচরণ', 'Stock Behavior'),
-                          icon: Icons.rule_rounded,
-                          subtitle: tr(
-                              'স্টক কমানো, নেগেটিভ ব্যালেন্স এবং লোকেশন ট্র্যাকিং নিয়ন্ত্রণ করুন।',
-                              'Control stock deduction, negative balance, and location tracking.'),
-                          children: [
-                            _buildSwitchTile(
-                              label: tr('বিক্রয়ে স্বয়ংক্রিয় স্টক কমানো',
-                                  'Auto Deduct Stock on Sale'),
-                              description: tr('বিক্রির সাথে সাথে স্টক কমবে',
-                                  'Deducts stock automatically upon sale'),
-                              value: _autoDeductOnSale,
-                              onChanged: (v) =>
-                                  setState(() => _autoDeductOnSale = v),
-                            ),
-                            _buildDivider(),
-                            _buildSwitchTile(
-                              label: tr('নেগেটিভ স্টক অনুমোদন',
-                                  'Allow Negative Stock'),
-                              description: tr('স্টক শূন্যের নিচে যেতে দেবে',
-                                  'Allows stock count to drop below zero'),
-                              value: _allowNegativeStock,
-                              onChanged: (v) =>
-                                  setState(() => _allowNegativeStock = v),
-                            ),
-                            _buildDivider(),
-                            _buildSwitchTile(
-                              label: tr('বিন অ্যাসাইনমেন্ট আবশ্যক',
-                                  'Bin Assignment Required'),
-                              description: tr('পণ্য যোগে বিন না দিলে সতর্কতা',
-                                  'Warns if no bin is assigned on product creation'),
-                              value: _binAssignmentRequired,
-                              onChanged: (v) =>
-                                  setState(() => _binAssignmentRequired = v),
-                            ),
-                            _buildDivider(),
-                            _buildSwitchTile(
-                              label: tr('বিক্রয়ে বিন লোকেশন দেখান',
-                                  'Show Bin Location on Sale'),
-                              description: tr('কোথা থেকে নিতে হবে দেখাবে',
-                                  'Shows where to retrieve product from'),
-                              value: _showBinOnSale,
-                              onChanged: (v) =>
-                                  setState(() => _showBinOnSale = v),
-                            ),
-                            _buildDivider(),
-                            _buildSwitchTile(
-                              label: tr(
-                                  'মেয়াদ ট্র্যাক করুন', 'Track Expiry Date'),
-                              description: tr(
-                                  'পণ্যের মেয়াদ উত্তীর্ণের তারিখ রাখুন',
-                                  'Keep product expiration dates'),
-                              value: _trackExpiry,
-                              onChanged: (v) =>
-                                  setState(() => _trackExpiry = v),
-                            ),
-                          ],
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 70),
+                          duration: const Duration(milliseconds: 500),
+                          slideOffset: const Offset(0, 15),
+                          child: _buildSectionCard(
+                            title: tr('স্টক আচরণ', 'Stock Behavior'),
+                            icon: Icons.rule_rounded,
+                            subtitle: tr(
+                                'স্টক কমানো, নেগেティブ ব্যালেন্স এবং লোকেশন ট্র্যাকিং নিয়ন্ত্রণ করুন।',
+                                'Control stock deduction, negative balance, and location tracking.'),
+                            children: [
+                              _buildSwitchTile(
+                                label: tr('বিক্রয়ে স্বয়ংক্রিয় স্টক কমানো',
+                                    'Auto Deduct Stock on Sale'),
+                                description: tr('বিক্রির সাথে সাথে স্টক কমবে',
+                                    'Deducts stock automatically upon sale'),
+                                value: _autoDeductOnSale,
+                                onChanged: (v) =>
+                                    setState(() => _autoDeductOnSale = v),
+                              ),
+                              _buildDivider(),
+                              _buildSwitchTile(
+                                label: tr('নেগেティブ স্টক অনুমোদন',
+                                    'Allow Negative Stock'),
+                                description: tr('স্টক শূন্যের নিচে যেতে দেবে',
+                                    'Allows stock count to drop below zero'),
+                                value: _allowNegativeStock,
+                                onChanged: (v) =>
+                                    setState(() => _allowNegativeStock = v),
+                              ),
+                              _buildDivider(),
+                              _buildSwitchTile(
+                                label: tr('বিন অ্যাসাইনমেন্ট আবশ্যক',
+                                    'Bin Assignment Required'),
+                                description: tr('পণ্য যোগে বিন না দিলে সতর্কতা',
+                                    'Warns if no bin is assigned on product creation'),
+                                value: _binAssignmentRequired,
+                                onChanged: (v) =>
+                                    setState(() => _binAssignmentRequired = v),
+                              ),
+                              _buildDivider(),
+                              _buildSwitchTile(
+                                label: tr('বিক্রয়ে বিন লোকেশন দেখান',
+                                    'Show Bin Location on Sale'),
+                                description: tr('কোথা থেকে নিতে হবে দেখাবে',
+                                    'Shows where to retrieve product from'),
+                                value: _showBinOnSale,
+                                onChanged: (v) =>
+                                    setState(() => _showBinOnSale = v),
+                              ),
+                              _buildDivider(),
+                              _buildSwitchTile(
+                                label: tr(
+                                    'মেয়াদ ট্র্যাক করুন', 'Track Expiry Date'),
+                                description: tr(
+                                    'পণ্যের মেয়াদ উত্তীর্ণের তারিখ রাখুন',
+                                    'Keep product expiration dates'),
+                                value: _trackExpiry,
+                                onChanged: (v) =>
+                                    setState(() => _trackExpiry = v),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 14),
-                        _buildSectionCard(
-                          title: tr('স্টক গণনা পদ্ধতি', 'Stock Costing Method'),
-                          icon: Icons.calculate_rounded,
-                          subtitle: tr(
-                              'সেলস কস্ট বের করার জন্য FIFO বা LIFO বেছে নিন।',
-                              'Select FIFO or LIFO to compute cost of goods sold.'),
-                          children: [
-                            _buildMethodBadge(),
-                            const SizedBox(height: 12),
-                            _buildRadioTile(
-                              label: 'FIFO',
-                              description:
-                                  tr('আগে আসলে আগে যাবে', 'First In First Out'),
-                              value: 'FIFO',
-                            ),
-                            _buildDivider(),
-                            _buildRadioTile(
-                              label: 'LIFO',
-                              description:
-                                  tr('পরে আসলে আগে যাবে', 'Last In First Out'),
-                              value: 'LIFO',
-                            ),
-                          ],
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 110),
+                          duration: const Duration(milliseconds: 500),
+                          slideOffset: const Offset(0, 15),
+                          child: _buildSectionCard(
+                            title: tr('স্টক গণনা পদ্ধতি', 'Stock Costing Method'),
+                            icon: Icons.calculate_rounded,
+                            subtitle: tr(
+                                'সেলস কস্ট বের করার জন্য FIFO বা LIFO বেছে নিন।',
+                                'Select FIFO or LIFO to compute cost of goods sold.'),
+                            children: [
+                              _buildMethodBadge(),
+                              const SizedBox(height: 12),
+                              _buildRadioTile(
+                                label: 'FIFO',
+                                description:
+                                    tr('আগে আসলে আগে যাবে', 'First In First Out'),
+                                value: 'FIFO',
+                              ),
+                              _buildDivider(),
+                              _buildRadioTile(
+                                label: 'LIFO',
+                                description:
+                                    tr('পরে আসলে আগে যাবে', 'Last In First Out'),
+                                value: 'LIFO',
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 14),
-                        _buildNoticeCard(),
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 150),
+                          duration: const Duration(milliseconds: 500),
+                          slideOffset: const Offset(0, 15),
+                          child: _buildNoticeCard(),
+                        ),
                       ],
                     ),
                   ),

@@ -213,244 +213,287 @@ class _SubscriptionCheckoutScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _CheckoutSectionCard(
-                        title: 'নির্বাচিত প্ল্যান',
-                        child: _CheckoutPlanCard(plan: widget.plan),
-                      ),
-                      const SizedBox(height: 14),
-                      _CheckoutSectionCard(
-                        title: 'মূল্য সারাংশ',
-                        child: Column(
-                          children: [
-                            _PlanSummaryRow(
-                                label: 'প্ল্যান', value: widget.plan.name),
-                            const SizedBox(height: 10),
-                            _PlanSummaryRow(label: 'মূল্য', value: amountText),
-                            const SizedBox(height: 10),
-                            _PlanSummaryRow(
-                              label: 'পরবর্তী বিল',
-                              value: nextBillText,
-                            ),
-                          ],
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 30),
+                        duration: const Duration(milliseconds: 500),
+                        slideOffset: const Offset(0, 15),
+                        child: _CheckoutSectionCard(
+                          title: 'নির্বাচিত প্ল্যান',
+                          child: _CheckoutPlanCard(plan: widget.plan),
                         ),
                       ),
                       const SizedBox(height: 14),
-                      _CheckoutSectionCard(
-                        title: 'পেমেন্ট পদ্ধতি',
-                        child: Column(
-                          children: [
-                            _PaymentMethodChoice(
-                              label: 'বিকাশ',
-                              selected: _method == 'বিকাশ',
-                              icon: Icons.phone_android_rounded,
-                              onTap: () => setState(() => _method = 'বিকাশ'),
-                            ),
-                            const SizedBox(height: 10),
-                            _PaymentMethodChoice(
-                              label: 'নগদ',
-                              selected: _method == 'নগদ',
-                              icon: Icons.account_balance_wallet_rounded,
-                              onTap: () => setState(() => _method = 'নগদ'),
-                            ),
-                            const SizedBox(height: 10),
-                            _PaymentMethodChoice(
-                              label: 'ডেবিট / ক্রেডিট কার্ড',
-                              selected: _method == 'ডেবিট / ক্রেডিট কার্ড',
-                              icon: Icons.credit_card_rounded,
-                              onTap: () => setState(
-                                  () => _method = 'ডেবিট / ক্রেডিট কার্ড'),
-                            ),
-                          ],
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 70),
+                        duration: const Duration(milliseconds: 500),
+                        slideOffset: const Offset(0, 15),
+                        child: _CheckoutSectionCard(
+                          title: 'মূল্য সারাংশ',
+                          child: Column(
+                            children: [
+                              _PlanSummaryRow(
+                                  label: 'প্ল্যান', value: widget.plan.name),
+                              const SizedBox(height: 10),
+                              _PlanSummaryRow(label: 'মূল্য', value: amountText),
+                              const SizedBox(height: 10),
+                              _PlanSummaryRow(
+                                label: 'পরবর্তী বিল',
+                                value: nextBillText,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 110),
+                        duration: const Duration(milliseconds: 500),
+                        slideOffset: const Offset(0, 15),
+                        child: _CheckoutSectionCard(
+                          title: 'পেমেন্ট পদ্ধতি',
+                          child: Column(
+                            children: [
+                              _PaymentMethodChoice(
+                                label: 'বিকাশ',
+                                selected: _method == 'বিকাশ',
+                                icon: Icons.phone_android_rounded,
+                                onTap: () => setState(() => _method = 'বিকাশ'),
+                              ),
+                              const SizedBox(height: 10),
+                              _PaymentMethodChoice(
+                                label: 'নগদ',
+                                selected: _method == 'নগদ',
+                                icon: Icons.account_balance_wallet_rounded,
+                                onTap: () => setState(() => _method = 'নগদ'),
+                              ),
+                              const SizedBox(height: 10),
+                              _PaymentMethodChoice(
+                                label: 'ডেবিট / ক্রেডিট কার্ড',
+                                selected: _method == 'ডেবিট / ক্রেডিট কার্ড',
+                                icon: Icons.credit_card_rounded,
+                                onTap: () => setState(
+                                    () => _method = 'ডেবিট / ক্রেডিট কার্ড'),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
                       if (_method == 'বিকাশ') ...[
-                        _CheckoutSectionCard(
-                          title: 'বিকাশ তথ্য',
-                          child: Column(
-                            children: [
-                              _CheckoutField(
-                                label: 'বিকাশ নম্বর *',
-                                controller: _bkashNumberController,
-                                keyboardType: TextInputType.phone,
-                                errorText: _bkashNumberError,
-                                hintText: '01XXXXXXXXX',
-                                onChanged: (_) =>
-                                    _clearError(() => _bkashNumberError = null),
-                              ),
-                              const SizedBox(height: 12),
-                              _CheckoutField(
-                                label: 'ট্রানজেকশন আইডি *',
-                                controller: _bkashTransactionController,
-                                errorText: _bkashTransactionError,
-                                hintText: 'ট্রানজেকশন আইডি দিন',
-                                onChanged: (_) => _clearError(
-                                    () => _bkashTransactionError = null),
-                              ),
-                            ],
+                        DokanFadeSlideIn(
+                          key: const ValueKey('bkash_inputs'),
+                          delay: const Duration(milliseconds: 30),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 10),
+                          child: _CheckoutSectionCard(
+                            title: 'বিকাশ তথ্য',
+                            child: Column(
+                              children: [
+                                _CheckoutField(
+                                  label: 'বিকাশ নম্বর *',
+                                  controller: _bkashNumberController,
+                                  keyboardType: TextInputType.phone,
+                                  errorText: _bkashNumberError,
+                                  hintText: '01XXXXXXXXX',
+                                  onChanged: (_) =>
+                                      _clearError(() => _bkashNumberError = null),
+                                ),
+                                const SizedBox(height: 12),
+                                _CheckoutField(
+                                  label: 'ট্রানজেকশন আইডি *',
+                                  controller: _bkashTransactionController,
+                                  errorText: _bkashTransactionError,
+                                  hintText: 'ট্রানজেকশন আইডি দিন',
+                                  onChanged: (_) => _clearError(
+                                      () => _bkashTransactionError = null),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 14),
                       ],
                       if (_method == 'নগদ') ...[
-                        _CheckoutSectionCard(
-                          title: 'নগদ তথ্য',
-                          child: Column(
-                            children: [
-                              _CheckoutField(
-                                label: 'নগদ নম্বর *',
-                                controller: _nagadNumberController,
-                                keyboardType: TextInputType.phone,
-                                errorText: _nagadNumberError,
-                                hintText: '01XXXXXXXXX',
-                                onChanged: (_) =>
-                                    _clearError(() => _nagadNumberError = null),
-                              ),
-                              const SizedBox(height: 12),
-                              _CheckoutField(
-                                label: 'ট্রানজেকশন আইডি *',
-                                controller: _nagadTransactionController,
-                                errorText: _nagadTransactionError,
-                                hintText: 'ট্রানজেকশন আইডি দিন',
-                                onChanged: (_) => _clearError(
-                                    () => _nagadTransactionError = null),
-                              ),
-                            ],
+                        DokanFadeSlideIn(
+                          key: const ValueKey('nagad_inputs'),
+                          delay: const Duration(milliseconds: 30),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 10),
+                          child: _CheckoutSectionCard(
+                            title: 'নগদ তথ্য',
+                            child: Column(
+                              children: [
+                                _CheckoutField(
+                                  label: 'নগদ নম্বর *',
+                                  controller: _nagadNumberController,
+                                  keyboardType: TextInputType.phone,
+                                  errorText: _nagadNumberError,
+                                  hintText: '01XXXXXXXXX',
+                                  onChanged: (_) =>
+                                      _clearError(() => _nagadNumberError = null),
+                                ),
+                                const SizedBox(height: 12),
+                                _CheckoutField(
+                                  label: 'ট্রানজেকশন আইডি *',
+                                  controller: _nagadTransactionController,
+                                  errorText: _nagadTransactionError,
+                                  hintText: 'ট্রানজেকশন আইডি দিন',
+                                  onChanged: (_) => _clearError(
+                                      () => _nagadTransactionError = null),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 14),
                       ],
                       if (_method == 'ডেবিট / ক্রেডিট কার্ড') ...[
-                        _CheckoutSectionCard(
-                          title: 'কার্ড তথ্য',
-                          child: Column(
-                            children: [
-                              _CheckoutField(
-                                label: 'কার্ডধারীর নাম *',
-                                controller: _cardHolderController,
-                                errorText: _cardHolderError,
-                                hintText: 'নাম লিখুন',
-                                onChanged: (_) =>
-                                    _clearError(() => _cardHolderError = null),
-                              ),
-                              const SizedBox(height: 12),
-                              _CheckoutField(
-                                label: 'কার্ড নম্বর *',
-                                controller: _cardNumberController,
-                                keyboardType: TextInputType.number,
-                                errorText: _cardNumberError,
-                                hintText: '১৬ ডিজিট কার্ড নম্বর',
-                                onChanged: (_) =>
-                                    _clearError(() => _cardNumberError = null),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _CheckoutField(
-                                      label: 'মেয়াদ শেষের তারিখ *',
-                                      controller: _cardExpiryController,
-                                      errorText: _cardExpiryError,
-                                      hintText: 'MM/YY',
-                                      onChanged: (_) => _clearError(
-                                          () => _cardExpiryError = null),
+                        DokanFadeSlideIn(
+                          key: const ValueKey('card_inputs'),
+                          delay: const Duration(milliseconds: 30),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 10),
+                          child: _CheckoutSectionCard(
+                            title: 'কার্ড তথ্য',
+                            child: Column(
+                              children: [
+                                _CheckoutField(
+                                  label: 'কার্ডধারীর নাম *',
+                                  controller: _cardHolderController,
+                                  errorText: _cardHolderError,
+                                  hintText: 'নাম লিখুন',
+                                  onChanged: (_) =>
+                                      _clearError(() => _cardHolderError = null),
+                                ),
+                                const SizedBox(height: 12),
+                                _CheckoutField(
+                                  label: 'কার্ড নম্বর *',
+                                  controller: _cardNumberController,
+                                  keyboardType: TextInputType.number,
+                                  errorText: _cardNumberError,
+                                  hintText: '১৬ ডিজিট কার্ড নম্বর',
+                                  onChanged: (_) =>
+                                      _clearError(() => _cardNumberError = null),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _CheckoutField(
+                                        label: 'মেয়াদ শেষের তারিখ *',
+                                        controller: _cardExpiryController,
+                                        errorText: _cardExpiryError,
+                                        hintText: 'MM/YY',
+                                        onChanged: (_) => _clearError(
+                                            () => _cardExpiryError = null),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _CheckoutField(
-                                      label: 'CVV *',
-                                      controller: _cardCvvController,
-                                      keyboardType: TextInputType.number,
-                                      obscureText: true,
-                                      errorText: _cardCvvError,
-                                      hintText: '৩ বা ৪ সংখ্যা',
-                                      onChanged: (_) => _clearError(
-                                          () => _cardCvvError = null),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _CheckoutField(
+                                        label: 'CVV *',
+                                        controller: _cardCvvController,
+                                        keyboardType: TextInputType.number,
+                                        obscureText: true,
+                                        errorText: _cardCvvError,
+                                        hintText: '৩ বা ৪ সংখ্যা',
+                                        onChanged: (_) => _clearError(
+                                            () => _cardCvvError = null),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 14),
                       ],
-                      _CheckoutSectionCard(
-                        title: 'নিশ্চিতকরণ',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _PlanSummaryRow(
-                                label: 'প্ল্যান', value: widget.plan.name),
-                            const SizedBox(height: 10),
-                            _PlanSummaryRow(
-                                label: 'মূল্য', value: widget.plan.price),
-                            const SizedBox(height: 10),
-                            _PlanSummaryRow(
-                                label: 'পেমেন্ট পদ্ধতি', value: _method),
-                            if (_confirmationError != null) ...[
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 150),
+                        duration: const Duration(milliseconds: 500),
+                        slideOffset: const Offset(0, 15),
+                        child: _CheckoutSectionCard(
+                          title: 'নিশ্চিতকরণ',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _PlanSummaryRow(
+                                  label: 'প্ল্যান', value: widget.plan.name),
+                              const SizedBox(height: 10),
+                              _PlanSummaryRow(
+                                  label: 'মূল্য', value: widget.plan.price),
+                              const SizedBox(height: 10),
+                              _PlanSummaryRow(
+                                  label: 'পেমেন্ট পদ্ধতি', value: _method),
+                              if (_confirmationError != null) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  _confirmationError!,
+                                  style: const TextStyle(
+                                    color: Color(0xFFE15241),
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 12),
-                              Text(
-                                _confirmationError!,
-                                style: const TextStyle(
-                                  color: Color(0xFFE15241),
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
+                              InkWell(
+                                onTap: _processing
+                                    ? null
+                                    : () => setState(() {
+                                          _confirmed = !_confirmed;
+                                          _confirmationError = null;
+                                        }),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Row(
+                                  children: [
+                                    Checkbox(
+                                      value: _confirmed,
+                                      onChanged: _processing
+                                          ? null
+                                          : (value) => setState(() {
+                                                _confirmed = value ?? false;
+                                                _confirmationError = null;
+                                              }),
+                                      activeColor: const Color(0xFF0E8F5F),
+                                    ),
+                                    const Expanded(
+                                      child: Text(
+                                        'আমি প্রদত্ত তথ্য সঠিক বলে নিশ্চিত করছি',
+                                        style: TextStyle(
+                                          color: Color(0xFF16302E),
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 12),
-                            InkWell(
-                              onTap: _processing
-                                  ? null
-                                  : () => setState(() {
-                                        _confirmed = !_confirmed;
-                                        _confirmationError = null;
-                                      }),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Row(
-                                children: [
-                                  Checkbox(
-                                    value: _confirmed,
-                                    onChanged: _processing
-                                        ? null
-                                        : (value) => setState(() {
-                                              _confirmed = value ?? false;
-                                              _confirmationError = null;
-                                            }),
-                                    activeColor: const Color(0xFF0E8F5F),
-                                  ),
-                                  const Expanded(
-                                    child: Text(
-                                      'আমি প্রদত্ত তথ্য সঠিক বলে নিশ্চিত করছি',
-                                      style: TextStyle(
-                                        color: Color(0xFF16302E),
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.25,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 18),
-                      SizedBox(
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _processing ? null : _submitPayment,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0E8F5F),
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: const Color(0xFFB9C7C5),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            elevation: 0,
-                          ),
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 190),
+                        duration: const Duration(milliseconds: 500),
+                        slideOffset: const Offset(0, 15),
+                        child: SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: _processing ? null : _submitPayment,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0E8F5F),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(0xFFB9C7C5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 0,
+                            ),
                           child: Text(
                             _processing
                                 ? 'পেমেন্ট যাচাই করা হচ্ছে...'
@@ -460,6 +503,7 @@ class _SubscriptionCheckoutScreenState
                           ),
                         ),
                       ),
+                    ),
                     ],
                   ),
                 ),

@@ -135,192 +135,290 @@ class _DokanNewSupplierAddScreenState
               parent: ClampingScrollPhysics()),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            Row(
-              children: [
-                _HeaderButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: () => Navigator.of(context).maybePop(),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'নতুন সরবরাহকারী',
-                        style: TextStyle(
-                          color: Color(0xFF163732),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'সহজ ফর্ম, পরিষ্কার যাচাই',
-                        style: TextStyle(
-                          color: Color(0xFF6B7B79),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD9E5E1)),
-              ),
-              child: Column(
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 50),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, -15),
+              child: Row(
                 children: [
-                  TextField(
-                    controller: _nameController,
-                    onChanged: (_) => _validate(),
-                    style: const TextStyle(color: Color(0xFF111111)),
-                    decoration: InputDecoration(
-                      labelText: 'নাম *',
-                      hintText: 'সরবরাহকারীর নাম',
-                      errorText: _nameError,
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFD9E5E1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF0C8C67), width: 1.4),
-                      ),
-                    ),
+                  _HeaderButton(
+                    icon: Icons.arrow_back_rounded,
+                    onTap: () => Navigator.of(context).maybePop(),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
-                    ],
-                    onChanged: (_) => _validate(),
-                    style: const TextStyle(color: Color(0xFF111111)),
-                    decoration: InputDecoration(
-                      labelText: 'মোবাইল *',
-                      hintText: '+8801XXXXXXXXX / 01XXXXXXXXX',
-                      errorText: _phoneError,
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFD9E5E1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF0C8C67), width: 1.4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _addressController,
-                    style: const TextStyle(color: Color(0xFF111111)),
-                    decoration: InputDecoration(
-                      labelText: 'ঠিকানা',
-                      hintText: 'ঐচ্ছিক',
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFD9E5E1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF0C8C67), width: 1.4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _productTypeController,
-                    style: const TextStyle(color: Color(0xFF111111)),
-                    decoration: InputDecoration(
-                      labelText: 'পণ্যের ধরন',
-                      hintText: 'ঐচ্ছিক',
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFD9E5E1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF0C8C67), width: 1.4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _creditLimitController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: NumericInputFormatters.wholeNumber,
-                    onChanged: (_) => _validate(),
-                    style: const TextStyle(color: Color(0xFF111111)),
-                    decoration: InputDecoration(
-                      labelText: 'ক্রেডিট লিমিট',
-                      hintText: 'ঐচ্ছিক',
-                      errorText: _creditLimitError,
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFD9E5E1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF0C8C67), width: 1.4),
-                      ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'নতুন সরবরাহকারী',
+                          style: TextStyle(
+                            color: Color(0xFF163732),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'সহজ ফর্ম, পরিষ্কার যাচাই',
+                          style: TextStyle(
+                            color: Color(0xFF6B7B79),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                onPressed: canSubmit && !_isSubmitting ? _save : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF0C8C67),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+            const SizedBox(height: 14),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 120),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, 20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFD9E5E1)),
                 ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.4, color: Colors.white),
-                      )
-                    : const Text('সংরক্ষণ'),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _nameController,
+                      onChanged: (_) => _validate(),
+                      style: const TextStyle(color: Color(0xFF111111)),
+                      decoration: InputDecoration(
+                        labelText: 'নাম *',
+                        labelStyle: const TextStyle(
+                          color: Color(0xFF5D6B69),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        floatingLabelStyle: const TextStyle(
+                          color: Color(0xFF0C8C67),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: 'সরবরাহকারীর নাম',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF8B9B99),
+                          fontSize: 13,
+                        ),
+                        errorText: _nameError,
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAF9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFC0D3CF), width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF0C8C67), width: 1.5),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+                      ],
+                      onChanged: (_) => _validate(),
+                      style: const TextStyle(color: Color(0xFF111111)),
+                      decoration: InputDecoration(
+                        labelText: 'মোবাইল *',
+                        labelStyle: const TextStyle(
+                          color: Color(0xFF5D6B69),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        floatingLabelStyle: const TextStyle(
+                          color: Color(0xFF0C8C67),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: '+8801XXXXXXXXX / 01XXXXXXXXX',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF8B9B99),
+                          fontSize: 13,
+                        ),
+                        errorText: _phoneError,
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAF9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFC0D3CF), width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF0C8C67), width: 1.5),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _addressController,
+                      style: const TextStyle(color: Color(0xFF111111)),
+                      decoration: InputDecoration(
+                        labelText: 'ঠিকানা',
+                        labelStyle: const TextStyle(
+                          color: Color(0xFF5D6B69),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        floatingLabelStyle: const TextStyle(
+                          color: Color(0xFF0C8C67),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: 'ঐচ্ছিক',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF8B9B99),
+                          fontSize: 13,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAF9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFC0D3CF), width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF0C8C67), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _productTypeController,
+                      style: const TextStyle(color: Color(0xFF111111)),
+                      decoration: InputDecoration(
+                        labelText: 'পণ্যের ধরন',
+                        labelStyle: const TextStyle(
+                          color: Color(0xFF5D6B69),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        floatingLabelStyle: const TextStyle(
+                          color: Color(0xFF0C8C67),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: 'ঐচ্ছিক',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF8B9B99),
+                          fontSize: 13,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAF9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFC0D3CF), width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF0C8C67), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _creditLimitController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: NumericInputFormatters.wholeNumber,
+                      onChanged: (_) => _validate(),
+                      style: const TextStyle(color: Color(0xFF111111)),
+                      decoration: InputDecoration(
+                        labelText: 'ক্রেডিট লিমিট',
+                        labelStyle: const TextStyle(
+                          color: Color(0xFF5D6B69),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        floatingLabelStyle: const TextStyle(
+                          color: Color(0xFF0C8C67),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintText: 'ঐচ্ছিক',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF8B9B99),
+                          fontSize: 13,
+                        ),
+                        errorText: _creditLimitError,
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAF9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFC0D3CF), width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF0C8C67), width: 1.5),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 180),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, 15),
+              child: DokanButton(
+                onPressed: canSubmit && !_isSubmitting ? _save : null,
+                text: 'সংরক্ষণ',
+                isLoading: _isSubmitting,
+                backgroundColor: const Color(0xFF0C8C67),
+                foregroundColor: Colors.white,
+                borderRadius: 16,
+                width: double.infinity,
               ),
             ),
           ],

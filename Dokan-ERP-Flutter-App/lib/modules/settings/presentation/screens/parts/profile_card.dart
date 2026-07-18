@@ -318,203 +318,252 @@ class _DokanAppConfigurationScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _StoreSettingsCard(
-                              title:
-                                  tr('স্টোর ম্যানেজমেন্ট', 'Store Management'),
-                              child: _StoreActionButton(
-                                label: tr(
-                                    'স্টোর ম্যানেজমেন্ট', 'Store Management'),
-                                icon: Icons.warehouse_rounded,
-                                onPressed: () =>
-                                    _showStoreManagementSheet(context),
+                            DokanFadeSlideIn(
+                              delay: const Duration(milliseconds: 30),
+                              duration: const Duration(milliseconds: 500),
+                              slideOffset: const Offset(0, 15),
+                              child: _StoreSettingsCard(
+                                title:
+                                    tr('স্টোর ম্যানেজমেন্ট', 'Store Management'),
+                                child: _StoreActionButton(
+                                  label: tr(
+                                      'স্টোর ম্যানেজমেন্ট', 'Store Management'),
+                                  icon: Icons.warehouse_rounded,
+                                  onPressed: () =>
+                                      _showStoreManagementSheet(context),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 14),
-                            _StoreSettingsCard(
-                              title: tr('ইনভেন্টরি ম্যানেজমেন্ট',
-                                  'Inventory Management'),
-                              child: Column(
-                                children: [
-                                  _SelectableStoreInfoRow(
-                                    label: tr('ইনভেন্টরি সেটিংস',
-                                        'Inventory Settings'),
-                                    value: tr('স্টক রুলস ও থ্রেশহোল্ড',
-                                        'Stock Rules & Thresholds'),
-                                    icon: Icons.inventory_2_rounded,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const DokanInventorySettingsScreen(),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _SelectableStoreInfoRow(
-                                    label: tr('ইনভেন্টরি ব্যবস্থাপনা',
-                                        'Inventory Management'),
-                                    value: tr('ইউনিট ও ক্যাটাগরি',
-                                        'Units & Categories'),
-                                    icon: Icons.category_outlined,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const DokanUnitCategoryScreen(),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _SelectableStoreInfoRow(
-                                    label:
-                                        tr('ট্যাক্স ও চার্জ', 'Tax & Charges'),
-                                    value: tr(_taxCharge, 'VAT 15%'),
-                                    icon: Icons.receipt_long_rounded,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const DokanTaxChargesManagementScreen(),
+                            DokanFadeSlideIn(
+                              delay: const Duration(milliseconds: 70),
+                              duration: const Duration(milliseconds: 500),
+                              slideOffset: const Offset(0, 15),
+                              child: _StoreSettingsCard(
+                                title: tr('ইনভেন্টরি ম্যানেজমেন্ট',
+                                    'Inventory Management'),
+                                child: Column(
+                                  children: [
+                                    _SelectableStoreInfoRow(
+                                      label: tr('ইনভেন্টরি সেটিংস',
+                                          'Inventory Settings'),
+                                      value: tr('স্টক রুলস ও থ্রেশহোল্ড',
+                                          'Stock Rules & Thresholds'),
+                                      icon: Icons.inventory_2_rounded,
+                                      onTap: () => Navigator.of(context).push(
+                                        PageRouteBuilder(
+                                          pageBuilder: (context, animation, secondaryAnimation) =>
+                                              const DokanInventorySettingsScreen(),
+                                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                            const begin = Offset(0.0, 1.0);
+                                            const end = Offset.zero;
+                                            const curve = Curves.easeInOut;
+                                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                            return SlideTransition(
+                                              position: animation.drive(tween),
+                                              child: child,
+                                            );
+                                          },
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _StoreSettingsCard(
-                              title: tr('অ্যাপ পছন্দসমূহ', 'App Preferences'),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _SelectableStoreInfoRow(
-                                    label:
-                                        tr('সাধারণ সেটিংস', 'General Settings'),
-                                    value: _generalSetting,
-                                    icon: Icons.settings_suggest_rounded,
-                                    onTap: () => _showChoiceSheet(
-                                      context: context,
-                                      title: tr(
-                                          'সাধারণ সেটিংস', 'General Settings'),
-                                      description: tr(
-                                          'অ্যাপের সাধারণ আচরণ ও উপস্থাপন নির্বাচন করুন।',
-                                          'Select general app behavior and presentation.'),
-                                      selected: _generalSetting,
-                                      options: const [
-                                        'বাংলা, কমপ্যাক্ট ভিউ',
-                                        'বাংলা, স্ট্যান্ডার্ড ভিউ',
-                                        'English, Standard View'
-                                      ],
-                                      onSelected: (value) {
-                                        setState(() => _generalSetting = value);
-                                        if (value.contains('English')) {
-                                          ref
-                                              .read(languageProvider.notifier)
-                                              .setLanguage(AppLanguage.english);
-                                        } else {
-                                          ref
-                                              .read(languageProvider.notifier)
-                                              .setLanguage(AppLanguage.bangla);
-                                        }
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _SelectableStoreInfoRow(
+                                      label: tr('ইনভেন্টরি ব্যবস্থাপনা',
+                                          'Inventory Management'),
+                                      value: tr('ইউনিট ও ক্যাটাগরি',
+                                          'Units & Categories'),
+                                      icon: Icons.category_outlined,
+                                      onTap: () => Navigator.of(context).push(
+                                        PageRouteBuilder(
+                                          pageBuilder: (context, animation, secondaryAnimation) =>
+                                              const DokanUnitCategoryScreen(),
+                                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                            const begin = Offset(0.0, 1.0);
+                                            const end = Offset.zero;
+                                            const curve = Curves.easeInOut;
+                                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                            return SlideTransition(
+                                              position: animation.drive(tween),
+                                              child: child,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _SelectableStoreInfoRow(
+                                      label:
+                                          tr('ট্যাক্স ও চার্জ', 'Tax & Charges'),
+                                      value: tr(_taxCharge, 'VAT 15%'),
+                                      icon: Icons.receipt_long_rounded,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          PageRouteBuilder(
+                                            pageBuilder: (context, animation, secondaryAnimation) =>
+                                                const DokanTaxChargesManagementScreen(),
+                                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                              const begin = Offset(0.0, 1.0);
+                                              const end = Offset.zero;
+                                              const curve = Curves.easeInOut;
+                                              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                              return SlideTransition(
+                                                position: animation.drive(tween),
+                                                child: child,
+                                              );
+                                            },
+                                          ),
+                                        );
                                       },
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    tr('ব্যবহারিক আচরণ', 'App Behavior'),
-                                    style: const TextStyle(
-                                      color: _muted,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _StoreToggleTile(
-                                    label: tr(
-                                        'লো-স্টক সতর্কতা', 'Low-Stock Alert'),
-                                    value: _lowStockAlert,
-                                    onChanged: _updateLowStockAlert,
-                                  ),
-                                  _StoreToggleTile(
-                                    label: tr('বারকোড বাধ্যতামূলক',
-                                        'Barcode Required'),
-                                    value: ref
-                                        .watch(appPreferencesProvider)
-                                        .barcodeRequired,
-                                    onChanged: (val) {
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .setBarcodeRequired(val);
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .triggerFeedback();
-                                    },
-                                  ),
-                                  _StoreToggleTile(
-                                    label: tr('অফলাইন ক্যাশ', 'Offline Cache'),
-                                    value: ref
-                                        .watch(appPreferencesProvider)
-                                        .offlineCache,
-                                    onChanged: (val) {
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .setOfflineCache(val);
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .triggerFeedback();
-                                    },
-                                  ),
-                                  _StoreToggleTile(
-                                    label: tr('সাউন্ড নোটিফিকেশন',
-                                        'Sound Notification'),
-                                    value: ref
-                                        .watch(appPreferencesProvider)
-                                        .soundEnabled,
-                                    onChanged: (val) {
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .setSoundEnabled(val);
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .triggerFeedback();
-                                    },
-                                  ),
-                                  _StoreToggleTile(
-                                    label: tr('ভাইব্রেশন', 'Vibration'),
-                                    value: ref
-                                        .watch(appPreferencesProvider)
-                                        .vibrationEnabled,
-                                    onChanged: (val) {
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .setVibrationEnabled(val);
-                                      ref
-                                          .read(appPreferencesProvider.notifier)
-                                          .triggerFeedback();
-                                    },
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(height: 14),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border:
-                                    Border.all(color: const Color(0xFFE3EBE8)),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x0C21413C),
-                                    blurRadius: 18,
-                                    offset: Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
+                            DokanFadeSlideIn(
+                              delay: const Duration(milliseconds: 110),
+                              duration: const Duration(milliseconds: 500),
+                              slideOffset: const Offset(0, 15),
+                              child: _StoreSettingsCard(
+                                title: tr('অ্যাপ পছন্দসমূহ', 'App Preferences'),
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    _SelectableStoreInfoRow(
+                                      label:
+                                          tr('সাধারণ সেটিংস', 'General Settings'),
+                                      value: _generalSetting,
+                                      icon: Icons.settings_suggest_rounded,
+                                      onTap: () => _showChoiceSheet(
+                                        context: context,
+                                        title: tr(
+                                            'সাধারণ সেটিংস', 'General Settings'),
+                                        description: tr(
+                                            'অ্যাপের সাধারণ আচরণ ও উপস্থাপন নির্বাচন করুন।',
+                                            'Select general app behavior and presentation.'),
+                                        selected: _generalSetting,
+                                        options: const [
+                                          'বাংলা, কমপ্যাক্ট ভিউ',
+                                          'বাংলা, স্ট্যান্ডার্ড ভিউ',
+                                          'English, Standard View'
+                                        ],
+                                        onSelected: (value) {
+                                          setState(() => _generalSetting = value);
+                                          if (value.contains('English')) {
+                                            ref
+                                                .read(languageProvider.notifier)
+                                                .setLanguage(AppLanguage.english);
+                                          } else {
+                                            ref
+                                                .read(languageProvider.notifier)
+                                                .setLanguage(AppLanguage.bangla);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      tr('ব্যবহারিক আচরণ', 'App Behavior'),
+                                      style: const TextStyle(
+                                        color: _muted,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _StoreToggleTile(
+                                      label: tr(
+                                          'লো-স্টক সতর্কতা', 'Low-Stock Alert'),
+                                      value: _lowStockAlert,
+                                      onChanged: _updateLowStockAlert,
+                                    ),
+                                    _StoreToggleTile(
+                                      label: tr('বারকোড বাধ্যতামুলক',
+                                          'Barcode Required'),
+                                      value: ref
+                                          .watch(appPreferencesProvider)
+                                          .barcodeRequired,
+                                      onChanged: (val) {
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .setBarcodeRequired(val);
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .triggerFeedback();
+                                      },
+                                    ),
+                                    _StoreToggleTile(
+                                      label: tr('অফলাইন ক্যাশ', 'Offline Cache'),
+                                      value: ref
+                                          .watch(appPreferencesProvider)
+                                          .offlineCache,
+                                      onChanged: (val) {
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .setOfflineCache(val);
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .triggerFeedback();
+                                      },
+                                    ),
+                                    _StoreToggleTile(
+                                      label: tr('সাউন্ড নোটিফিকেশন',
+                                          'Sound Notification'),
+                                      value: ref
+                                          .watch(appPreferencesProvider)
+                                          .soundEnabled,
+                                      onChanged: (val) {
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .setSoundEnabled(val);
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .triggerFeedback();
+                                      },
+                                    ),
+                                    _StoreToggleTile(
+                                      label: tr('ভাইব্রেশন', 'Vibration'),
+                                      value: ref
+                                          .watch(appPreferencesProvider)
+                                          .vibrationEnabled,
+                                      onChanged: (val) {
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .setVibrationEnabled(val);
+                                        ref
+                                            .read(appPreferencesProvider.notifier)
+                                            .triggerFeedback();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            DokanFadeSlideIn(
+                              delay: const Duration(milliseconds: 150),
+                              duration: const Duration(milliseconds: 500),
+                              slideOffset: const Offset(0, 15),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border:
+                                      Border.all(color: const Color(0xFFE3EBE8)),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x0C21413C),
+                                      blurRadius: 18,
+                                      offset: Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                     Container(
                                       width: 52,
                                       height: 52,
@@ -575,6 +624,7 @@ class _DokanAppConfigurationScreenState
                                 ),
                               ),
                             ),
+                          ),
                           ],
                         ),
                       ),

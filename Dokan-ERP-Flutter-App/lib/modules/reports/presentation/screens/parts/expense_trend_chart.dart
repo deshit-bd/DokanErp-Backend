@@ -264,187 +264,233 @@ IconData _stockValueIconForCategory(String category) {
   return Icons.inventory_2_outlined;
 }
 
-final remoteStockValueReportProvider =
-    FutureProvider.autoDispose<_RemoteStockValueReportData?>((ref) async {
-  if (!ref.watch(reportConfiguredProvider)) {
+class StockValueReportLocalCache {
+  static const _storageKey = 'dokan_stock_value_report_cache_v2';
+
+  static Future<Map<String, dynamic>?> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey);
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
     return null;
   }
 
-  final payload =
-      await ref.watch(reportRepositoryProvider).fetchReport('stock-value');
-  if (payload.isEmpty) {
+  static Future<void> save(Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey, jsonEncode(data));
+    } catch (_) {}
+  }
+}
+
+class RemoteStockValueReportNotifier extends AutoDisposeAsyncNotifier<_RemoteStockValueReportData?> {
+  @override
+  Future<_RemoteStockValueReportData?> build() async {
+    // 1. Try to load from cache
+    final cached = await StockValueReportLocalCache.load();
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave();
+      return _parse(cached);
+    }
+
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave();
+  }
+
+  Future<_RemoteStockValueReportData?> _fetchAndSave() async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final payload = await ref.read(reportRepositoryProvider).fetchReport('stock-value');
+      if (payload.isNotEmpty) {
+        await StockValueReportLocalCache.save(payload);
+        final parsed = _parse(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
     return null;
   }
 
-  final summaryMap = _mapValue(
-        _pickFirstValue(
-            payload, const ['summary', 'overview', 'totals', 'kpi']),
-      ) ??
-      payload;
-  final totalStockValue = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const [
-        'totalStockValue',
-        'stockValue',
-        'totalValue',
-        'valuation',
-        'inventoryValue',
-      ],
-    ),
-  );
-  final totalProducts = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const [
-        'totalProducts',
-        'productCount',
-        'productsCount',
-        'skuCount',
-        'itemsCount',
-      ],
-    ),
-  );
-  final lowStockCount = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const ['lowStockCount', 'lowStock', 'lowStockProducts'],
-    ),
-  );
-  final outOfStockCount = _intValue(
-    _pickFirstValue(
-      summaryMap,
-      const [
-        'outOfStockCount',
-        'outOfStock',
-        'stockOutCount',
-        'zeroStockCount'
-      ],
-    ),
-  );
-
-  final categoryItems = _mapListValue(
-    _pickFirstValue(
-      payload,
-      const [
-        'categories',
-        'categoryValues',
-        'categoryStats',
-        'categoryBreakdown',
-        'breakdown',
-      ],
-    ),
-  );
-  final categories = categoryItems.indexed.map((entry) {
-    final index = entry.$1;
-    final item = entry.$2;
-    final totalValue = _intValue(
+  _RemoteStockValueReportData? _parse(Map<String, dynamic> payload) {
+    final summaryMap = _mapValue(
+          _pickFirstValue(
+              payload, const ['summary', 'overview', 'totals', 'kpi']),
+        ) ??
+        payload;
+    final totalStockValue = _intValue(
       _pickFirstValue(
-        item,
-        const ['totalValue', 'value', 'amount', 'stockValue'],
+        summaryMap,
+        const [
+          'totalStockValue',
+          'stockValue',
+          'totalValue',
+          'valuation',
+          'inventoryValue',
+        ],
       ),
     );
-    final percent =
-        (_pickFirstValue(item, const ['percentage', 'percent']) as num?)
-                ?.round() ??
-            (totalStockValue > 0
-                ? ((totalValue * 100) / totalStockValue).round()
-                : 0);
+    final totalProducts = _intValue(
+      _pickFirstValue(
+        summaryMap,
+        const [
+          'totalProducts',
+          'productCount',
+          'productsCount',
+          'skuCount',
+          'itemsCount',
+        ],
+      ),
+    );
+    final lowStockCount = _intValue(
+      _pickFirstValue(
+        summaryMap,
+        const ['lowStockCount', 'lowStock', 'lowStockProducts'],
+      ),
+    );
+    final outOfStockCount = _intValue(
+      _pickFirstValue(
+        summaryMap,
+        const [
+          'outOfStockCount',
+          'outOfStock',
+          'stockOutCount',
+          'zeroStockCount'
+        ],
+      ),
+    );
 
-    return _StockCategoryValue(
-      name: _stringValue(
-        _pickFirstValue(item, const ['category', 'name', 'label']),
-        fallback: 'অন্যান্য',
+    final categoryItems = _mapListValue(
+      _pickFirstValue(
+        payload,
+        const [
+          'categories',
+          'categoryValues',
+          'categoryStats',
+          'categoryBreakdown',
+          'breakdown',
+        ],
       ),
-      percent: percent.clamp(0, 100),
-      totalValue: totalValue,
-      color: _stockValueColorForIndex(index),
     );
-  }).toList(growable: false);
-
-  final topProductItems = _mapListValue(
-    _pickFirstValue(
-      payload,
-      const [
-        'topProducts',
-        'top_products',
-        'products',
-        'topValueProducts',
-        'items',
-      ],
-    ),
-  );
-  final topProducts = topProductItems.indexed.map((entry) {
-    final index = entry.$1;
-    final item = entry.$2;
-    final rankValue = _intValue(
-      _pickFirstValue(item, const ['rank', 'position', 'serial']),
-    );
-    final category = _stringValue(
-      _pickFirstValue(item, const ['category', 'categoryName']),
-      fallback: 'স্টক',
-    );
-    return _StockValueProduct(
-      rank: rankValue > 0 ? rankValue : index + 1,
-      name: _stringValue(
-        _pickFirstValue(item, const ['name', 'productName', 'title']),
-        fallback: 'Unnamed product',
-      ),
-      value: _intValue(
+    final categories = categoryItems.indexed.map((entry) {
+      final index = entry.$1;
+      final item = entry.$2;
+      final totalValue = _intValue(
         _pickFirstValue(
           item,
-          const ['value', 'totalValue', 'amount', 'stockValue'],
+          const ['totalValue', 'value', 'amount', 'stockValue'],
         ),
-      ),
-      quantity: _intValue(
-        _pickFirstValue(item, const ['quantity', 'qty', 'stock', 'onHand']),
-      ),
-      category: category,
-      icon: _stockValueIconForCategory(category),
-      color: _stockValueColorForIndex(index),
-    );
-  }).toList(growable: false);
+      );
+      final percent =
+          (_pickFirstValue(item, const ['percentage', 'percent']) as num?)
+                  ?.round() ??
+              (totalStockValue > 0
+                  ? ((totalValue * 100) / totalStockValue).round()
+                  : 0);
 
-  final deadStockItems = _mapListValue(
-    _pickFirstValue(
-      payload,
-      const [
-        'deadStocks',
-        'deadStock',
-        'dead_stock',
-        'slowMoving',
-        'inactiveProducts',
-      ],
-    ),
-  );
-  final deadStocks = deadStockItems
-      .map(
-        (item) => _DeadStockEntry(
-          name: _stringValue(
-            _pickFirstValue(item, const ['name', 'productName', 'title']),
-            fallback: 'Unnamed product',
+      return _StockCategoryValue(
+        name: _stringValue(
+          _pickFirstValue(item, const ['category', 'name', 'label']),
+          fallback: 'অন্যান্য',
+        ),
+        percent: percent.clamp(0, 100),
+        totalValue: totalValue,
+        color: _stockValueColorForIndex(index),
+      );
+    }).toList(growable: false);
+
+    final topProductItems = _mapListValue(
+      _pickFirstValue(
+        payload,
+        const [
+          'topProducts',
+          'top_products',
+          'products',
+          'topValueProducts',
+          'items',
+        ],
+      ),
+    );
+    final topProducts = topProductItems.indexed.map((entry) {
+      final index = entry.$1;
+      final item = entry.$2;
+      final rankValue = _intValue(
+        _pickFirstValue(item, const ['rank', 'position', 'serial']),
+      );
+      final category = _stringValue(
+        _pickFirstValue(item, const ['category', 'categoryName']),
+        fallback: 'স্টক',
+      );
+      return _StockValueProduct(
+        rank: rankValue > 0 ? rankValue : index + 1,
+        name: _stringValue(
+          _pickFirstValue(item, const ['name', 'productName', 'title']),
+          fallback: 'Unnamed product',
+        ),
+        value: _intValue(
+          _pickFirstValue(
+            item,
+            const ['value', 'totalValue', 'amount', 'stockValue'],
           ),
-          daysSinceSale: _intValue(
-            _pickFirstValue(
-              item,
-              const ['daysSinceSale', 'daysWithoutSale', 'idleDays', 'days'],
+        ),
+        quantity: _intValue(
+          _pickFirstValue(item, const ['quantity', 'qty', 'stock', 'onHand']),
+        ),
+        category: category,
+        icon: _stockValueIconForCategory(category),
+        color: _stockValueColorForIndex(index),
+      );
+    }).toList(growable: false);
+
+    final deadStockItems = _mapListValue(
+      _pickFirstValue(
+        payload,
+        const [
+          'deadStocks',
+          'deadStock',
+          'dead_stock',
+          'slowMoving',
+          'inactiveProducts',
+        ],
+      ),
+    );
+    final deadStocks = deadStockItems
+        .map(
+          (item) => _DeadStockEntry(
+            name: _stringValue(
+              _pickFirstValue(item, const ['name', 'productName', 'title']),
+              fallback: 'Unnamed product',
+            ),
+            daysSinceSale: _intValue(
+              _pickFirstValue(
+                item,
+                const ['daysSinceSale', 'daysWithoutSale', 'idleDays', 'days'],
+              ),
             ),
           ),
-        ),
-      )
-      .where((item) => item.name.trim().isNotEmpty)
-      .toList(growable: false);
+        )
+        .where((item) => item.name.trim().isNotEmpty)
+        .toList(growable: false);
 
-  return _RemoteStockValueReportData(
-    totalStockValue: totalStockValue,
-    totalProducts: totalProducts,
-    lowStockCount: lowStockCount,
-    outOfStockCount: outOfStockCount,
-    categories: categories,
-    topProducts: topProducts,
-    deadStocks: deadStocks,
-  );
-});
+    return _RemoteStockValueReportData(
+      totalStockValue: totalStockValue,
+      totalProducts: totalProducts,
+      lowStockCount: lowStockCount,
+      outOfStockCount: outOfStockCount,
+      categories: categories,
+      topProducts: topProducts,
+      deadStocks: deadStocks,
+    );
+  }
+}
+
+final remoteStockValueReportProvider = AsyncNotifierProvider.autoDispose<
+    RemoteStockValueReportNotifier, _RemoteStockValueReportData?>(
+  RemoteStockValueReportNotifier.new,
+);
 
 class _DokanInventoryStockReportPage extends ConsumerWidget {
   const _DokanInventoryStockReportPage();

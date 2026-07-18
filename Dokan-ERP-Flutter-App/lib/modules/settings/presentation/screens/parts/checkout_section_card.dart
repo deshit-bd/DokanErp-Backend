@@ -440,130 +440,160 @@ class _DokanShopSettingsScreenState
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _StoreInfoSummaryCard(
-                                  borderColor: _border,
-                                  accent: _accent,
-                                  textColor: _text,
-                                  mutedColor: _muted,
-                                  storeName: details.storeName,
-                                  storeType: details.storeType,
-                                  logoUrl: details.logoUrl,
-                                  onViewDetails: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const DokanStoreDetailsScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 14),
-                                _StoreSettingsCard(
-                                  title: 'রিসিট সেটিংস',
-                                  child: Column(
-                                    children: [
-                                      _StoreToggleTile(
-                                        label: 'রিসিটে দোকানের নাম',
-                                        value: _receiptShopName,
-                                        onChanged: (value) => _updateSetting(
-                                            receiptShopName: value),
-                                      ),
-                                      _StoreToggleTile(
-                                        label: 'রিসিটে মোবাইল নম্বর',
-                                        value: _receiptMobile,
-                                        onChanged: (value) => _updateSetting(
-                                            receiptMobile: value),
-                                      ),
-                                      _StoreToggleTile(
-                                        label: 'রিসিটে ঠিকানা',
-                                        value: _receiptAddress,
-                                        onChanged: (value) => _updateSetting(
-                                            receiptAddress: value),
-                                      ),
-                                      _StoreToggleTile(
-                                        label: 'রিসিটে লোগো',
-                                        value: _receiptLogo,
-                                        onChanged: (value) =>
-                                            _updateSetting(receiptLogo: value),
-                                      ),
-                                    ],
+                                DokanFadeSlideIn(
+                                  delay: const Duration(milliseconds: 30),
+                                  duration: const Duration(milliseconds: 500),
+                                  slideOffset: const Offset(0, 15),
+                                  child: _StoreInfoSummaryCard(
+                                    borderColor: _border,
+                                    accent: _accent,
+                                    textColor: _text,
+                                    mutedColor: _muted,
+                                    storeName: details.storeName,
+                                    storeType: details.storeType,
+                                    logoUrl: details.logoUrl,
+                                    onViewDetails: () {
+                                      Navigator.of(context).push(
+                                        PageRouteBuilder(
+                                          pageBuilder: (context, animation, secondaryAnimation) =>
+                                              const DokanStoreDetailsScreen(),
+                                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                            const begin = Offset(0.0, 1.0);
+                                            const end = Offset.zero;
+                                            const curve = Curves.easeInOut;
+                                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                            return SlideTransition(
+                                              position: animation.drive(tween),
+                                              child: child,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                _StoreSettingsCard(
-                                  title: 'অ্যাপ সেটিংস',
-                                  child: Column(
-                                    children: [
-                                      _SelectableStoreInfoRow(
-                                        label: 'ভাষা',
-                                        value: _language,
-                                        icon: Icons.language_rounded,
-                                        onTap: () => _showOptionSheet(
-                                          context: context,
-                                          title: 'ভাষা নির্বাচন করুন',
-                                          options: const ['বাংলা', 'English'],
-                                          selected: _language,
-                                          onSelected: (value) =>
-                                              setState(() => _language = value),
+                                DokanFadeSlideIn(
+                                  delay: const Duration(milliseconds: 70),
+                                  duration: const Duration(milliseconds: 500),
+                                  slideOffset: const Offset(0, 15),
+                                  child: _StoreSettingsCard(
+                                    title: 'রিসিট সেটিংস',
+                                    child: Column(
+                                      children: [
+                                        _StoreToggleTile(
+                                          label: 'রিসিটে দোকানের নাম',
+                                          value: _receiptShopName,
+                                          onChanged: (value) => _updateSetting(
+                                              receiptShopName: value),
                                         ),
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _SelectableStoreInfoRow(
-                                        label: 'থিম',
-                                        value: _theme,
-                                        icon: Icons.light_mode_rounded,
-                                        onTap: () => _showOptionSheet(
-                                          context: context,
-                                          title: 'থিম নির্বাচন করুন',
-                                          options: const [
-                                            'লাইট মোড',
-                                            'ডার্ক মোড'
-                                          ],
-                                          selected: _theme,
-                                          onSelected: (value) =>
-                                              setState(() => _theme = value),
+                                        _StoreToggleTile(
+                                          label: 'রিসিটে মোবাইল নম্বর',
+                                          value: _receiptMobile,
+                                          onChanged: (value) => _updateSetting(
+                                              receiptMobile: value),
                                         ),
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _SelectableStoreInfoRow(
-                                        label: 'কারেন্সি',
-                                        value: _currency,
-                                        icon: Icons.payments_rounded,
-                                        onTap: () => _showOptionSheet(
-                                          context: context,
-                                          title: 'কারেন্সি নির্বাচন করুন',
-                                          options: const [
-                                            '৳ বাংলাদেশি টাকা',
-                                            '\$ মার্কিন ডলার'
-                                          ],
-                                          selected: _currency,
-                                          onSelected: (value) =>
-                                              setState(() => _currency = value),
+                                        _StoreToggleTile(
+                                          label: 'রিসিটে ঠিকানা',
+                                          value: _receiptAddress,
+                                          onChanged: (value) => _updateSetting(
+                                              receiptAddress: value),
                                         ),
-                                      ),
-                                    ],
+                                        _StoreToggleTile(
+                                          label: 'রিসিটে লোগো',
+                                          value: _receiptLogo,
+                                          onChanged: (value) =>
+                                              _updateSetting(receiptLogo: value),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                _StoreSettingsCard(
-                                  title: 'ডেটা ম্যানেজমেন্ট',
-                                  child: Column(
-                                    children: [
-                                      _StoreActionButton(
-                                        label: 'ডেটা ব্যাকআপ করুন',
-                                        icon: Icons.cloud_upload_outlined,
-                                        onPressed: () => _showInfoSnack(context,
-                                            'ডেটা ব্যাকআপ শুরু করা হয়েছে'),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _StoreActionButton(
-                                        label: 'ডেটা রিস্টোর করুন',
-                                        icon: Icons.cloud_download_outlined,
-                                        onPressed: () => _showInfoSnack(
-                                            context, 'ডেটা রিস্টোর প্রস্তুত'),
-                                        outlined: true,
-                                      ),
-                                    ],
+                                DokanFadeSlideIn(
+                                  delay: const Duration(milliseconds: 110),
+                                  duration: const Duration(milliseconds: 500),
+                                  slideOffset: const Offset(0, 15),
+                                  child: _StoreSettingsCard(
+                                    title: 'অ্যাপ সেটিংস',
+                                    child: Column(
+                                      children: [
+                                        _SelectableStoreInfoRow(
+                                          label: 'ভাষা',
+                                          value: _language,
+                                          icon: Icons.language_rounded,
+                                          onTap: () => _showOptionSheet(
+                                            context: context,
+                                            title: 'ভাষা নির্বাচন করুন',
+                                            options: const ['বাংলা', 'English'],
+                                            selected: _language,
+                                            onSelected: (value) =>
+                                                setState(() => _language = value),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        _SelectableStoreInfoRow(
+                                          label: 'থিম',
+                                          value: _theme,
+                                          icon: Icons.light_mode_rounded,
+                                          onTap: () => _showOptionSheet(
+                                            context: context,
+                                            title: 'থিম নির্বাচন করুন',
+                                            options: const [
+                                              'লাইট মোড',
+                                              'ডার্ক মোড'
+                                            ],
+                                            selected: _theme,
+                                            onSelected: (value) =>
+                                                setState(() => _theme = value),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        _SelectableStoreInfoRow(
+                                          label: 'কারেন্সি',
+                                          value: _currency,
+                                          icon: Icons.payments_rounded,
+                                          onTap: () => _showOptionSheet(
+                                            context: context,
+                                            title: 'কারেন্সি নির্বাচন করুন',
+                                            options: const [
+                                              '৳ বাংলাদেশি টাকা',
+                                              '\$ মার্কিন ডলার'
+                                            ],
+                                            selected: _currency,
+                                            onSelected: (value) =>
+                                                setState(() => _currency = value),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                DokanFadeSlideIn(
+                                  delay: const Duration(milliseconds: 150),
+                                  duration: const Duration(milliseconds: 500),
+                                  slideOffset: const Offset(0, 15),
+                                  child: _StoreSettingsCard(
+                                    title: 'ডেটা ম্যানেজমেন্ট',
+                                    child: Column(
+                                      children: [
+                                        _StoreActionButton(
+                                          label: 'ডেটা ব্যাকআপ করুন',
+                                          icon: Icons.cloud_upload_outlined,
+                                          onPressed: () => _showInfoSnack(context,
+                                              'ডেটা ব্যাকআপ শুরু করা হয়েছে'),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _StoreActionButton(
+                                          label: 'ডেটা রিস্টোর করুন',
+                                          icon: Icons.cloud_download_outlined,
+                                          onPressed: () => _showInfoSnack(
+                                              context, 'ডেটা রিস্টোর প্রস্তুত'),
+                                          outlined: true,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],

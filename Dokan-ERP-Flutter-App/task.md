@@ -1,0 +1,76 @@
+- [x] Refactor all reports modules to be offline-first using SharedPreferences and AsyncNotifierProvider
+  - [x] Daily Sales Report cache-first notifier (`dailySalesReportRemoteProvider`)
+  - [x] Profit and Loss Report cache-first notifier (`profitLossReportRemoteProvider`)
+  - [x] Daily Purchase Report cache-first notifier (`dailyPurchaseReportRemoteProvider`)
+  - [x] Stock/Inventory Report cache-first notifier (`stockReportRemoteProvider`)
+  - [x] Stock Value Report cache-first notifier (`remoteStockValueReportProvider`)
+  - [x] Reports Dashboard Summary cache-first notifier (`reportDashboardRemoteProvider`)
+- [x] Premium styling and visibility optimization for the New Supplier form fields
+  - [x] Enhanced TextField outlines, label contrast, and focus states
+  - [x] Replaced faint disabled default FilledButton with premium DokanButton
+- [x] Integrated fade & slide staggered entrance animations using DokanFadeSlideIn
+- [x] Staggered cascading load animations for product selection bottom sheet items
+- [x] Staggered entrance slide & fade animations for Add Expense Screen sections
+- [x] Cache-first offline loading for Expense Report list to remove navigation lag
+- [x] Staggered entrance slide & fade animations for Profit & Loss (Lav-Khoti) Report components
+- [x] Staggered entrance slide & fade animations for Sales History (Bicroy Etihash) Screen components
+  - [x] Animated search & filter inline panels collapse/expansion using AnimatedCrossFade
+  - [x] Staggered cascading loading for individual sales cards inside order lists
+- [x] Staggered entrance slide & fade animations for Sales Search (Bicroy Khoj) Screen components
+  - [x] Staggered cascading loading for search guidelines, search fields, filter chips, and search result cards
+- [x] Staggered slide & fade animations and custom transition for Sales Filter Screen
+  - [x] Staggered cascading loading for title, filters description, time selector card, status card, range selector, and reset/submit buttons
+  - [x] Smooth slide-up transition builder using PageRouteBuilder on route pushes
+- [x] Staggered slide & fade animations and custom transition for Plan & Payment page
+  - [x] Staggered cascading loading for Current Plan summary card, plan selector chips, subscription plan cards, payment history header & tiles, and support/help cards
+  - [x] Smooth slide-up custom page transition to Checkout screen via PageRouteBuilder
+  - [x] Staggered cascading animations for selected plan summary card, price details, payment method selector, confirmation details, and submit button on Checkout screen
+  - [x] Responsive key-based animations for mobile banking inputs cards (bKash/Nagad/Credit Card) to animate beautifully upon selection
+  - [x] Premium custom animated sliding switch toggle for daily ('প্রতিদিনের') and monthly ('মাসিক') views
+  - [x] Custom AnimatedSwitcher fade/slide transitions when switching pricing plan lists
+- [x] Staggered slide & fade animations for Store Details (দোকানের বিস্তারিত তথ্য) page
+  - [x] Cascading entrance animations for Store logo card, details settings form card, and submit save button
+- [x] Staggered slide & fade animations and custom transition for Store Settings (দোকানের তথ্য) page
+  - [x] Cascading entrance animations for Store info summary card, receipt settings card, app settings card, and data management settings card
+  - [x] Smooth slide-up route navigation to Store Details page via PageRouteBuilder
+- [x] Staggered slide & fade animations and custom transition for Notification Center/Settings (নোটিফিকেশন সেটিংস) page
+  - [x] Cascading entrance animations for Filter chips bar, notification lists groups, update promo card, and notification preferences toggles card
+  - [x] Smooth AnimatedSwitcher fade/slide transitions when switching notification filter types
+  - [x] Smooth slide-up route navigation to Notification Center/Settings page via PageRouteBuilder
+- [x] Staggered slide & fade animations and custom transitions for App Configuration (অ্যাপ কনফিগারেশন) page
+  - [x] Cascading entrance animations for Store Management, Inventory Management, App Preferences settings cards, and the bottom ERP promo card
+  - [x] Smooth slide-up route transitions via PageRouteBuilder for sub-settings screens (Inventory Settings, Units & Categories, and Tax & Charges)
+- [x] Staggered slide & fade entrance animations inside sub-settings screens opened from Inventory Management
+  - [x] Staggered cascading animations for alerts thresholds, stock behavior, costing method, and warning notice cards inside Inventory Settings page
+  - [x] Staggered cascading animations for categories and units header summary cards and list tab items inside Units & Categories page
+  - [x] Staggered cascading animations for taxes and additional charges list item cards inside Tax & Charges page
+- [x] Cache-First offline data loading for Tax & Charges (ট্যাক্স ও চার্জ) page to bypass blocking spinner
+  - [x] Implemented SharedPreferences-backed `TaxesChargesLocalCache` to persist tax & charge records
+  - [x] Instantly yields cached items on screen load while fetching remote sync in background, eliminating entrance delay
+- [x] Staggered slide & fade animations and premium field/dialog styling for Voice Synonyms (ভয়েস প্রতিশব্দ) page
+  - [x] Wrapped synonyms guidelines, custom list view items, delete buttons, and system read-only cards in staggered `DokanFadeSlideIn`
+  - [x] Redesigned custom synonyms creation input dialog fields with rounded borders, filled background backgrounds, and active green focuses
+  - [x] Updated Cancel & Add action buttons with premium styling matching our POS design guidelines
+  - [x] Replaced generic instant pop alert dialog builder with a premium, bouncy scale transition via `showGeneralDialog` and `Curves.easeOutBack`
+- [x] Staggered slide & fade entrance animations inside Stock Alert Threshold Setting (স্টক সতর্কতা সীমা নির্ধারণ করুন) page
+  - [x] Wrapped Global Threshold Card, Product-wise Threshold Card, and the bottom "Save" button in cascading staggered `DokanFadeSlideIn` animations
+  - [x] Applied sequential list transitions for individual product items to slide-in from bottom sequentially
+- [x] Staggered slide & fade entrance animations inside Guide & Support (গাইড ও সাপোর্ট) pages
+  - [x] Applied staggered `DokanFadeSlideIn` transitions on Guide Option Cards, FAQ expanders, Contact Support rows, and System Metadata panels
+  - [x] Wrapped guide detail screen steps container inside a sequential fade/slide-up transition
+- [x] Bouncy scale-up dialog animations for Logout Confirmation (লগআউট কনফার্মেশন) popups
+  - [x] Converted standard showDialog in `DokanResponsivePage` (Drawer logout action) to general dialog with scale transition
+  - [x] Converted pop scope back click showDialog in `DokanHomeDashboardScreen` (Home exit popup) to animated scale dialog
+  - [x] Converted both back press and profile triggers in `SalesmanDashboardScreen` (Salesman logout actions) to animated scale dialogs
+  - [x] Configured `Curves.easeOutBack` for a bouncy spring zoom-in transition on trigger
+  - [x] Configured remote logout to run asynchronously in the background so slow API connection does not block UI logout execution
+  - [x] Added `popUntil((route) => route.isFirst)` stack clear triggers on "Yes" selection to guarantee clean transition back to Login screen
+- [x] Staggered entrance animations inside Add New Product (নতুন পণ্য যোগ করুন) screen
+  - [x] Wrapped header title bar, image capture panel, and warning banners in staggered `DokanFadeSlideIn` animators
+  - [x] Cascaded all primary text fields (name, category, brand, unit, barcode, prices, stock limits) with progressive delays
+  - [x] Animated the live preview panel and the final "Add Product" action button to slide-up smoothly on screen load
+- [x] Staggered entrance animations inside POS main workbench (dokan_pos_main_screen.dart)
+  - [x] Wrapped top action bar, sync error alert, and salesman alert banners in cascading `DokanFadeSlideIn` animators
+  - [x] Animated search row, categories selector chips, section header title and bottom cart dock to slide/fade up progressively
+- [x] Run `flutter analyze` to check for compilation correctness
+- [x] Update walkthrough.md to document the changes

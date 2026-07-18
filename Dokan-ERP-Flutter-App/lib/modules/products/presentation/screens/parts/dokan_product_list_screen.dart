@@ -157,7 +157,7 @@ class _DokanProductListScreenState
               ),
             ),
             const SizedBox(height: 14),
-            ScrollReveal(
+            DokanFadeSlideIn(
               child: DokanSearchField(
                 controller: _searchController,
                 hintText: tr('পণ্যের নাম বা বারকোড লিখুন...',
@@ -174,7 +174,7 @@ class _DokanProductListScreenState
               ),
             ),
             const SizedBox(height: 12),
-            ScrollReveal(
+            DokanFadeSlideIn(
               delay: const Duration(milliseconds: 80),
               child: Row(
                 children: [
@@ -192,7 +192,7 @@ class _DokanProductListScreenState
               ),
             ),
             const SizedBox(height: 16),
-            ScrollReveal(
+            DokanFadeSlideIn(
               delay: const Duration(milliseconds: 140),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -202,7 +202,7 @@ class _DokanProductListScreenState
               ),
             ),
             const SizedBox(height: 14),
-            ScrollReveal(
+            DokanFadeSlideIn(
               delay: const Duration(milliseconds: 200),
               child: Row(
                 children: [
@@ -337,7 +337,7 @@ class _DokanProductListScreenState
                     const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final product = visibleProducts[index];
-                  return ScrollReveal(
+                  return DokanFadeSlideIn(
                     key: ValueKey('list-prod-$_selectedCategory-${product.masterProductId}-${product.barcode}-${product.name}'),
                     delay: Duration(milliseconds: (index % 5) * 60),
                     child: _productCard(product, threshold),

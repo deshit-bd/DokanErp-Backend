@@ -1,5 +1,7 @@
 part of '../product_screens.dart';
 
+final Set<String> _failedProductImageUrls = {};
+
 extension _DokanProductListActions on _DokanProductListScreenState {
   List<DokanCatalogProduct> _visibleProducts(
       List<DokanCatalogProduct> catalogProducts, List<String> categories) {
@@ -563,7 +565,7 @@ extension _DokanProductListActions on _DokanProductListScreenState {
 
   Widget _productThumbnail(DokanCatalogProduct product) {
     final imageUrl = product.imageLabel.trim();
-    if (imageUrl.isNotEmpty) {
+    if (imageUrl.isNotEmpty && !_failedProductImageUrls.contains(imageUrl)) {
       return ClipOval(
         child: Container(
           width: 62,
@@ -572,9 +574,12 @@ extension _DokanProductListActions on _DokanProductListScreenState {
           child: Image.network(
             imageUrl,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Center(
-              child: Text(product.emoji, style: const TextStyle(fontSize: 30)),
-            ),
+            errorBuilder: (_, __, ___) {
+              _failedProductImageUrls.add(imageUrl);
+              return Center(
+                child: Text(product.emoji, style: const TextStyle(fontSize: 30)),
+              );
+            },
           ),
         ),
       );

@@ -12,6 +12,8 @@ class AuthRemoteDataSource {
   final ApiClient _client;
   final ApiSessionStore _sessionStore;
 
+  static String? lastDemoOtp;
+
   Future<Map<String, dynamic>> login({
     required String phone,
     required String password,
@@ -100,7 +102,11 @@ class AuthRemoteDataSource {
       body: body,
       authenticated: authenticated,
     );
-    return response.data;
+    final data = response.data;
+    if (data.containsKey('demoOtp')) {
+      lastDemoOtp = data['demoOtp']?.toString();
+    }
+    return data;
   }
 
   Map<String, dynamic> _decodePayload(String body) {

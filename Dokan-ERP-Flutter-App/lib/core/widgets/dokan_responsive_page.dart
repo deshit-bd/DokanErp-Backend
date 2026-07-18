@@ -197,16 +197,25 @@ class DokanResponsivePage extends ConsumerWidget {
   }
 
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (dialogContext, anim1, anim2) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(tr('লগ আউট', 'Log Out')),
+        title: Text(tr('লগ আউট', 'Log Out'),
+            style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF16302E))),
         content: Text(tr('আপনি কি সত্যিই এই অ্যাকাউন্ট থেকে লগ আউট করতে চান?',
-            'Are you sure you want to log out from this account?')),
+            'Are you sure you want to log out from this account?'),
+            style: const TextStyle(color: Color(0xFF5F6A66))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF6F8280)),
             child: Text(tr('বাতিল', 'Cancel')),
           ),
           ElevatedButton(
@@ -216,14 +225,26 @@ class DokanResponsivePage extends ConsumerWidget {
               if (!context.mounted) return;
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE15241),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             child: Text(
               tr('লগ আউট', 'Log Out'),
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ],
       ),
+      transitionBuilder: (dialogContext, anim1, anim2, child) {
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return ScaleTransition(
+          scale: curve,
+          child: child,
+        );
+      },
     );
   }
 }

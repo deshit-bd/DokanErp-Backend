@@ -73,36 +73,56 @@ class _DokanSalesmanDashboardScreenState
           setState(() => _tab = 0);
           return;
         }
-        final shouldLogout = await showDialog<bool>(
+        showGeneralDialog(
           context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) {
+          barrierDismissible: true,
+          barrierLabel: '',
+          barrierColor: Colors.black54,
+          transitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (dialogContext, anim1, anim2) {
             return AlertDialog(
-              title: const Text('Logout from salesman?'),
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Text('Logout from salesman?',
+                  style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF16302E))),
               content: const Text(
                 'Press Yes to log out and return to the salesman login screen.',
+                style: TextStyle(color: Color(0xFF5F6A66)),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  style: TextButton.styleFrom(foregroundColor: const Color(0xFF6F8280)),
                   child: const Text('No'),
                 ),
-                FilledButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('Yes'),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    if (context.mounted) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
+                    await ref.read(dokanAppFlowProvider.notifier).logout();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0E8F5F),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Yes', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             );
           },
+          transitionBuilder: (dialogContext, anim1, anim2, child) {
+            final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+            return ScaleTransition(
+              scale: curve,
+              child: child,
+            );
+          },
         );
-        if (shouldLogout != true) {
-          return;
-        }
-        await ref.read(dokanAppFlowProvider.notifier).logout();
-        if (!context.mounted) {
-          return;
-        }
-        Navigator.of(context).popUntil((route) => route.isFirst);
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -285,36 +305,56 @@ class _DokanSalesmanDashboardScreenState
   }
 
   Future<void> _triggerLogout(BuildContext context) async {
-    final shouldLogout = await showDialog<bool>(
+    showGeneralDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (dialogContext, anim1, anim2) {
         return AlertDialog(
-          title: const Text('Logout from salesman?'),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Logout from salesman?',
+              style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF16302E))),
           content: const Text(
             'Press Yes to log out and return to the salesman login screen.',
+            style: TextStyle(color: Color(0xFF5F6A66)),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF6F8280)),
               child: const Text('No'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Yes'),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+                await ref.read(dokanAppFlowProvider.notifier).logout();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0E8F5F),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Yes', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
       },
+      transitionBuilder: (dialogContext, anim1, anim2, child) {
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return ScaleTransition(
+          scale: curve,
+          child: child,
+        );
+      },
     );
-    if (shouldLogout != true) {
-      return;
-    }
-    await ref.read(dokanAppFlowProvider.notifier).logout();
-    if (!context.mounted) {
-      return;
-    }
-    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 }
 

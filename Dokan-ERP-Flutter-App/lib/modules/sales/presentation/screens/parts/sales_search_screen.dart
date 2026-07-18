@@ -156,236 +156,281 @@ class _SalesSearchScreenState extends ConsumerState<_SalesSearchScreen> {
           ),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  _HistoryIconButton(
-                    icon: Icons.arrow_back,
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'বিক্রয় খোঁজ',
-                      style: TextStyle(
-                        color: Color(0xFF00694C),
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  _HistoryIconButton(
-                    icon: Icons.tune,
-                    onTap: () async {
-                      final result = await Navigator.of(context)
-                          .push<_HistoryFilterSelection>(
-                        MaterialPageRoute(
-                          builder: (_) => _SalesFilterScreen(
-                            initialTime: _activeFilter?.timeIndex ?? 0,
-                            initialStatus: _activeFilter?.statusIndex ?? 0,
-                            initialRange: _activeFilter?.rangeIndex ?? 0,
-                          ),
-                        ),
-                      );
-                      if (result != null) {
-                        setState(() {
-                          _activeFilter = result;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1D9E75), Color(0xFF00694C)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 30),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, -10),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
                   children: [
-                    Text(
-                      'দ্রুত বিক্রয় খুঁজুন',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
+                    _HistoryIconButton(
+                      icon: Icons.arrow_back,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'বিক্রয় খোঁজ',
+                        style: TextStyle(
+                          color: Color(0xFF00694C),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                    SizedBox(height: 6),
-                    Text(
-                      'নাম, রেফারেন্স, সময়, বা পরিশোধ অবস্থা দিয়ে খোঁজ করুন।',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    _HistoryIconButton(
+                      icon: Icons.tune,
+                      onTap: () async {
+                        final result = await Navigator.of(context)
+                            .push<_HistoryFilterSelection>(
+                          PageRouteBuilder(
+                            pageBuilder: (context, animation, secondaryAnimation) => _SalesFilterScreen(
+                              initialTime: _activeFilter?.timeIndex ?? 0,
+                              initialStatus: _activeFilter?.statusIndex ?? 0,
+                              initialRange: _activeFilter?.rangeIndex ?? 0,
+                            ),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              const begin = Offset(0.0, 1.0);
+                              const end = Offset.zero;
+                              const curve = Curves.easeInOut;
+                              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                              return SlideTransition(
+                                position: animation.drive(tween),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _activeFilter = result;
+                          });
+                        }
+                      },
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DokanSearchField(
-                controller: _searchController,
-                hintText: 'নাম, রেফারেন্স, বা পণ্য লিখুন',
-                height: 58,
-                borderRadius: 18,
-                onChanged: (_) => setState(() {}),
-                showClear: _searchController.text.trim().isNotEmpty,
-                onClear: () {
-                  _searchController.clear();
-                  setState(() {});
-                },
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 46,
-              child: ListView.separated(
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 70),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, 10),
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                itemCount: _modes.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final selected = _selectedMode == index;
-                  return _FilterChipButton(
-                    label: _modes[index],
-                    selected: selected,
-                    onTap: () {
-                      setState(() {
-                        _selectedMode = index;
-                      });
-                    },
-                  );
-                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1D9E75), Color(0xFF00694C)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'দ্রুত বিক্রয় খুঁজুন',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'নাম, রেফারেন্স, সময়, বা পরিশোধ অবস্থা দিয়ে খোঁজ করুন।',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 14),
-            ...filteredOrders.map((order) {
-              final timeText = _formatBanglaTime(order.createdAt);
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  child: InkWell(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const _DokanSalesHistoryScreen(),
-                      ),
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 110),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, 10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DokanSearchField(
+                  controller: _searchController,
+                  hintText: 'নাম, রেফারেন্স, বা পণ্য লিখুন',
+                  height: 58,
+                  borderRadius: 18,
+                  onChanged: (_) => setState(() {}),
+                  showClear: _searchController.text.trim().isNotEmpty,
+                  onClear: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, 10),
+              child: SizedBox(
+                height: 46,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _modes.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final selected = _selectedMode == index;
+                    return _FilterChipButton(
+                      label: _modes[index],
+                      selected: selected,
+                      onTap: () {
+                        setState(() {
+                          _selectedMode = index;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            ...(() {
+              int cardIndex = 0;
+              return filteredOrders.map((order) {
+                final timeText = _formatBanglaTime(order.createdAt);
+                final cardDelay = Duration(milliseconds: math.min(300, 200 + cardIndex * 40));
+                cardIndex++;
+                return DokanFadeSlideIn(
+                  delay: cardDelay,
+                  duration: const Duration(milliseconds: 400),
+                  slideOffset: const Offset(0, 15),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const _DokanSalesHistoryScreen(),
+                          ),
+                        ),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFD9E6E2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 54,
-                            height: 54,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFEAF2F0),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.receipt_long_outlined,
-                              color: Color(0xFF0C8C67),
-                            ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFD9E6E2)),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  order.customerName,
-                                  style: const TextStyle(
-                                    color: Color(0xFF141F22),
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  order.summary,
-                                  style: const TextStyle(
-                                    color: Color(0xFF3D4943),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${order.customerNumber} • $timeText • ${dokanPosPaymentMethodLabel(order.paymentMethod)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF6F7D78),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                          child: Row(
                             children: [
-                              Text(
-                                _formatCurrency(order.totalAmount),
-                                style: const TextStyle(
-                                  color: Color(0xFF141F22),
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
+                              Container(
+                                width: 54,
+                                height: 54,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEAF2F0),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.receipt_long_outlined,
+                                  color: Color(0xFF0C8C67),
                                 ),
                               ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      order.customerName,
+                                      style: const TextStyle(
+                                        color: Color(0xFF141F22),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      order.summary,
+                                      style: const TextStyle(
+                                        color: Color(0xFF3D4943),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      '${order.customerNumber} • $timeText • ${dokanPosPaymentMethodLabel(order.paymentMethod)}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF6F7D78),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                decoration: BoxDecoration(
-                                  color: _statusBackground(order.status),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  _statusLabel(order.status),
-                                  style: TextStyle(
-                                    color: _statusTextColor(order.status),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    _formatCurrency(order.totalAmount),
+                                    style: const TextStyle(
+                                      color: Color(0xFF141F22),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _statusBackground(order.status),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      _statusLabel(order.status),
+                                      style: TextStyle(
+                                        color: _statusTextColor(order.status),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              });
+            })(),
             if (filteredOrders.isEmpty)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: _SalesEmptyState(),
+              const DokanFadeSlideIn(
+                delay: Duration(milliseconds: 200),
+                duration: Duration(milliseconds: 400),
+                slideOffset: Offset(0, 10),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: _SalesEmptyState(),
+                ),
               ),
           ],
         ),

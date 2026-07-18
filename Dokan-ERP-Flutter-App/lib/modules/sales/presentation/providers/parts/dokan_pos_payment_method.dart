@@ -665,6 +665,7 @@ class DokanPosState {
     this.hiddenStaffKeys = const <String>{},
     this.paymentConfirmed = false,
     this.confirmationMessage,
+    this.submitting = false,
   });
 
   final Map<String, int> cartQuantities;
@@ -699,6 +700,7 @@ class DokanPosState {
   final Set<String> hiddenStaffKeys;
   final bool paymentConfirmed;
   final String? confirmationMessage;
+  final bool submitting;
 
   DokanPosState copyWith({
     Map<String, int>? cartQuantities,
@@ -733,6 +735,7 @@ class DokanPosState {
     Set<String>? hiddenStaffKeys,
     bool? paymentConfirmed,
     String? confirmationMessage,
+    bool? submitting,
   }) {
     return DokanPosState(
       cartQuantities: cartQuantities ?? this.cartQuantities,
@@ -768,6 +771,7 @@ class DokanPosState {
       hiddenStaffKeys: hiddenStaffKeys ?? this.hiddenStaffKeys,
       paymentConfirmed: paymentConfirmed ?? this.paymentConfirmed,
       confirmationMessage: confirmationMessage ?? this.confirmationMessage,
+      submitting: submitting ?? this.submitting,
     );
   }
 

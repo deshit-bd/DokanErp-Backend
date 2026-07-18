@@ -353,127 +353,148 @@ class _DokanSalesHistoryScreenState
             ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: _SalesHeaderBar(
-                  onBack: () {
-                    if (Navigator.of(context).canPop()) {
-                      Navigator.of(context).pop();
-                    } else {
-                      Navigator.of(context)
-                          .pushReplacementNamed(AppRoutes.sales);
-                    }
-                  },
-                  onSearch: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const _SalesSearchScreen(),
-                      ),
-                    );
-                  },
-                  onFilter: () async {
-                    final selection = await Navigator.of(context)
-                        .push<_HistoryFilterSelection>(
-                      MaterialPageRoute(
-                        builder: (_) => _SalesFilterScreen(
-                          initialTime: _selectedFilterIndex,
-                          initialStatus: _selectedStatusIndex,
-                          initialRange: _selectedAmountIndex,
-                        ),
-                      ),
-                    );
-                    if (!mounted || selection == null) {
-                      return;
-                    }
-                    setState(() {
-                      _selectedFilterIndex = selection.timeIndex;
-                      _selectedStatusIndex = selection.statusIndex;
-                      _selectedAmountIndex = selection.rangeIndex;
-                      _selectedCustomDate = null;
-                      _showSearchPanel = false;
-                      _showFilterPanel = false;
-                    });
-                  },
-                  onCalendar: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: _selectedCustomDate ?? DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                      builder: (context, child) {
-                        return Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.light(
-                              primary: Color(0xFF006B53),
-                              onPrimary: Colors.white,
-                              onSurface: Color(0xFF141F22),
-                            ),
-                          ),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (pickedDate != null) {
-                      setState(() {
-                        _selectedCustomDate = pickedDate;
-                        _selectedFilterIndex = -1;
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ordersAsync.when(
-                  data: (orders) {
-                    final visibleOrders = _visibleOrdersFrom(orders);
-                    try {
-                      final logFile = File(
-                          '/Users/macbookair/Desktop/dokan_erp/flutter_debug.log');
-                      logFile.writeAsStringSync(
-                          '${DateTime.now().toIso8601String()} - [_DokanSalesHistoryScreen] orders size: ${orders.length}, visible: ${visibleOrders.length}\n',
-                          mode: FileMode.append);
-                      for (var i = 0;
-                          i < math.min(visibleOrders.length, 10);
-                          i++) {
-                        final o = visibleOrders[i];
-                        logFile.writeAsStringSync(
-                            '  - Order[$i] ID: ${o.id}, customer: ${o.customerName}, total: ${o.totalAmount}, linesCount: ${o.lines.length}\n',
-                            mode: FileMode.append);
+              DokanFadeSlideIn(
+                delay: const Duration(milliseconds: 30),
+                duration: const Duration(milliseconds: 500),
+                slideOffset: const Offset(0, -10),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _SalesHeaderBar(
+                    onBack: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        Navigator.of(context)
+                            .pushReplacementNamed(AppRoutes.sales);
                       }
-                    } catch (_) {}
-                    final totalSalesAmount = visibleOrders.fold<int>(
-                      0,
-                      (sum, order) => sum + order.totalAmount,
-                    );
-                    final totalDueAmount = visibleOrders.fold<int>(
-                      0,
-                      (sum, order) => sum + order.dueAmount,
-                    );
-                    return _SalesSummaryStrip(
-                      totalSalesAmount: _formatCurrency(totalSalesAmount),
-                      totalOrderCount:
-                          '${_banglaDigits(visibleOrders.length.toString())}টি',
-                      totalDueAmount: _formatCurrency(totalDueAmount),
-                    );
-                  },
-                  loading: () => const _SalesSummaryStrip(
-                    totalSalesAmount: '৳০',
-                    totalOrderCount: '০টি',
-                    totalDueAmount: '৳০',
-                  ),
-                  error: (_, __) => const _SalesSummaryStrip(
-                    totalSalesAmount: '৳০',
-                    totalOrderCount: '০টি',
-                    totalDueAmount: '৳০',
+                    },
+                    onSearch: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const _SalesSearchScreen(),
+                        ),
+                      );
+                    },
+                    onFilter: () async {
+                      final selection = await Navigator.of(context)
+                          .push<_HistoryFilterSelection>(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => _SalesFilterScreen(
+                            initialTime: _selectedFilterIndex,
+                            initialStatus: _selectedStatusIndex,
+                            initialRange: _selectedAmountIndex,
+                          ),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                      if (!mounted || selection == null) {
+                        return;
+                      }
+                      setState(() {
+                        _selectedFilterIndex = selection.timeIndex;
+                        _selectedStatusIndex = selection.statusIndex;
+                        _selectedAmountIndex = selection.rangeIndex;
+                        _selectedCustomDate = null;
+                        _showSearchPanel = false;
+                        _showFilterPanel = false;
+                      });
+                    },
+                    onCalendar: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: _selectedCustomDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.light(
+                                primary: Color(0xFF006B53),
+                                onPrimary: Colors.white,
+                                onSurface: Color(0xFF141F22),
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (pickedDate != null) {
+                        setState(() {
+                          _selectedCustomDate = pickedDate;
+                          _selectedFilterIndex = -1;
+                        });
+                      }
+                    },
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              if (_showSearchPanel)
-                Padding(
+              DokanFadeSlideIn(
+                delay: const Duration(milliseconds: 70),
+                duration: const Duration(milliseconds: 500),
+                slideOffset: const Offset(0, 15),
+                child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ordersAsync.when(
+                    data: (orders) {
+                      final visibleOrders = _visibleOrdersFrom(orders);
+                      try {
+                        final logFile = File(
+                            '/Users/macbookair/Desktop/dokan_erp/flutter_debug.log');
+                        logFile.writeAsStringSync(
+                            '${DateTime.now().toIso8601String()} - [_DokanSalesHistoryScreen] orders size: ${orders.length}, visible: ${visibleOrders.length}\n',
+                            mode: FileMode.append);
+                        for (var i = 0;
+                            i < math.min(visibleOrders.length, 10);
+                            i++) {
+                          final o = visibleOrders[i];
+                          logFile.writeAsStringSync(
+                              '  - Order[$i] ID: ${o.id}, customer: ${o.customerName}, total: ${o.totalAmount}, linesCount: ${o.lines.length}\n',
+                              mode: FileMode.append);
+                        }
+                      } catch (_) {}
+                      final totalSalesAmount = visibleOrders.fold<int>(
+                        0,
+                        (sum, order) => sum + order.totalAmount,
+                      );
+                      final totalDueAmount = visibleOrders.fold<int>(
+                        0,
+                        (sum, order) => sum + order.dueAmount,
+                      );
+                      return _SalesSummaryStrip(
+                        totalSalesAmount: _formatCurrency(totalSalesAmount),
+                        totalOrderCount:
+                            '${_banglaDigits(visibleOrders.length.toString())}টি',
+                        totalDueAmount: _formatCurrency(totalDueAmount),
+                      );
+                    },
+                    loading: () => const _SalesSummaryStrip(
+                      totalSalesAmount: '৳০',
+                      totalOrderCount: '০টি',
+                      totalDueAmount: '৳০',
+                    ),
+                    error: (_, __) => const _SalesSummaryStrip(
+                      totalSalesAmount: '৳০',
+                      totalOrderCount: '০টি',
+                      totalDueAmount: '৳০',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
                   child: _SalesSearchInlinePanel(
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
@@ -484,10 +505,15 @@ class _DokanSalesHistoryScreenState
                     },
                   ),
                 ),
-              if (_showSearchPanel) const SizedBox(height: 12),
-              if (_showFilterPanel)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                crossFadeState: _showSearchPanel
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 250),
+              ),
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
                   child: _SalesFilterInlinePanel(
                     selectedStatusIndex: _selectedStatusIndex,
                     selectedAmountIndex: _selectedAmountIndex,
@@ -512,28 +538,37 @@ class _DokanSalesHistoryScreenState
                     },
                   ),
                 ),
-              if (_showFilterPanel) const SizedBox(height: 12),
-              SizedBox(
-                height: 48,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _filters.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final selected = _selectedFilterIndex == index;
-                    return _FilterChipButton(
-                      label: _filters[index].label,
-                      selected: selected,
-                      onTap: () {
-                        setState(() {
-                          _selectedFilterIndex = index;
-                          _selectedCustomDate = null;
-                        });
-                      },
-                    );
-                  },
+                crossFadeState: _showFilterPanel
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 250),
+              ),
+              DokanFadeSlideIn(
+                delay: const Duration(milliseconds: 110),
+                duration: const Duration(milliseconds: 500),
+                slideOffset: const Offset(0, 10),
+                child: SizedBox(
+                  height: 48,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _filters.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final selected = _selectedFilterIndex == index;
+                      return _FilterChipButton(
+                        label: _filters[index].label,
+                        selected: selected,
+                        onTap: () {
+                          setState(() {
+                            _selectedFilterIndex = index;
+                            _selectedCustomDate = null;
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
               if (_hasActiveFilters)
@@ -577,12 +612,22 @@ class _DokanSalesHistoryScreenState
                       ),
                     ];
                   }
+                  int groupIndex = 0;
                   return filteredGroups
                       .map(
-                        (group) => Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                          child: _SalesGroupSection(group: group),
-                        ),
+                        (group) {
+                          final itemDelay = Duration(milliseconds: math.min(300, 150 + groupIndex * 40));
+                          groupIndex++;
+                          return DokanFadeSlideIn(
+                            delay: itemDelay,
+                            duration: const Duration(milliseconds: 400),
+                            slideOffset: const Offset(0, 15),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                              child: _SalesGroupSection(group: group),
+                            ),
+                          );
+                        },
                       )
                       .toList(growable: false);
                 },

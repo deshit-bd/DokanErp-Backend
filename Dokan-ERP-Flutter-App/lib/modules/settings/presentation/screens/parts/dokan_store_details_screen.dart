@@ -176,161 +176,176 @@ class _DokanStoreDetailsScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _StoreLogoCard(
-                                onTap: _pickLogo,
-                                logoBytes: _logoBytes,
-                                fileName: _logoFileName,
-                                logoUrl: _logoUrl,
+                              DokanFadeSlideIn(
+                                delay: const Duration(milliseconds: 30),
+                                duration: const Duration(milliseconds: 500),
+                                slideOffset: const Offset(0, 15),
+                                child: _StoreLogoCard(
+                                  onTap: _pickLogo,
+                                  logoBytes: _logoBytes,
+                                  fileName: _logoFileName,
+                                  logoUrl: _logoUrl,
+                                ),
                               ),
                               const SizedBox(height: 14),
-                              _StoreSettingsCard(
-                                title: 'দোকানের তথ্য',
-                                child: Column(
-                                  children: [
-                                    _StoreTextField(
-                                      label: 'দোকানের নাম',
-                                      controller: _storeNameController,
-                                      errorText: _storeNameError,
-                                      onChanged: (_) => setState(
-                                          () => _storeNameError = null),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreDropdownField(
-                                      label: 'দোকানের ধরন',
-                                      value: _storeType,
-                                      items: _storeTypes,
-                                      onChanged: (value) => setState(() =>
-                                          _storeType = value ?? _storeType),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreTextField(
-                                      label: 'মালিকের নাম',
-                                      controller: _ownerNameController,
-                                      errorText: _ownerNameError,
-                                      onChanged: (_) => setState(
-                                          () => _ownerNameError = null),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreTextField(
-                                      label: 'মোবাইল নম্বর',
-                                      controller: _mobileController,
-                                      keyboardType: TextInputType.phone,
-                                      errorText: _mobileError,
-                                      onChanged: (_) =>
-                                          setState(() => _mobileError = null),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreTextField(
-                                      label: 'ঠিকানা',
-                                      controller: _addressController,
-                                      maxLines: 3,
-                                      errorText: _addressError,
-                                      onChanged: (_) =>
-                                          setState(() => _addressError = null),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreDocumentField(
-                                      label: 'ট্রেড লাইসেন্স ডকুমেন্ট (ঐচ্ছিক)',
-                                      value: _tradeLicenseController.text,
-                                      onTap: () => _pickDocument(
-                                          _tradeLicenseController),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreDocumentField(
-                                      label: 'TIN ডকুমেন্ট (ঐচ্ছিক)',
-                                      value: _tinController.text,
-                                      onTap: () =>
-                                          _pickDocument(_tinController),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreDocumentField(
-                                      label: 'BIN ডকুমেন্ট (ঐচ্ছিক)',
-                                      value: _binController.text,
-                                      onTap: () =>
-                                          _pickDocument(_binController),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _StoreTextField(
-                                      label: 'লাইভ লোকেশন',
-                                      controller: _liveLocationController,
-                                      maxLines: 2,
-                                      onChanged: (val) {
-                                        setState(() {});
-                                        _tryParseLocation(val);
-                                      },
-                                    ),
-                                    if (_latitude != null &&
-                                        _longitude != null) ...[
+                              DokanFadeSlideIn(
+                                delay: const Duration(milliseconds: 70),
+                                duration: const Duration(milliseconds: 500),
+                                slideOffset: const Offset(0, 15),
+                                child: _StoreSettingsCard(
+                                  title: 'দোকানের তথ্য',
+                                  child: Column(
+                                    children: [
+                                      _StoreTextField(
+                                        label: 'দোকানের নাম',
+                                        controller: _storeNameController,
+                                        errorText: _storeNameError,
+                                        onChanged: (_) => setState(
+                                            () => _storeNameError = null),
+                                      ),
                                       const SizedBox(height: 12),
-                                      Container(
-                                        height: 180,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          border: Border.all(
-                                              color: const Color(0xFFD9E6E2)),
+                                      _StoreDropdownField(
+                                        label: 'দোকানের ধরন',
+                                        value: _storeType,
+                                        items: _storeTypes,
+                                        onChanged: (value) => setState(() =>
+                                            _storeType = value ?? _storeType),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreTextField(
+                                        label: 'মালিকের নাম',
+                                        controller: _ownerNameController,
+                                        errorText: _ownerNameError,
+                                        onChanged: (_) => setState(
+                                            () => _ownerNameError = null),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreTextField(
+                                        label: 'মোবাইল নম্বর',
+                                        controller: _mobileController,
+                                        keyboardType: TextInputType.phone,
+                                        errorText: _mobileError,
+                                        onChanged: (_) =>
+                                            setState(() => _mobileError = null),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreTextField(
+                                        label: 'ঠিকানা',
+                                        controller: _addressController,
+                                        maxLines: 3,
+                                        errorText: _addressError,
+                                        onChanged: (_) =>
+                                            setState(() => _addressError = null),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreDocumentField(
+                                        label: 'ট্রেড লাইসেন্স ডকুমেন্ট (ঐচ্ছিক)',
+                                        value: _tradeLicenseController.text,
+                                        onTap: () => _pickDocument(
+                                            _tradeLicenseController),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreDocumentField(
+                                        label: 'TIN ডকুমেন্ট (ঐচ্ছিক)',
+                                        value: _tinController.text,
+                                        onTap: () =>
+                                            _pickDocument(_tinController),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreDocumentField(
+                                        label: 'BIN ডকুমেন্ট (ঐচ্ছিক)',
+                                        value: _binController.text,
+                                        onTap: () =>
+                                            _pickDocument(_binController),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _StoreTextField(
+                                        label: 'লাইভ লোকেশন',
+                                        controller: _liveLocationController,
+                                        maxLines: 2,
+                                        onChanged: (val) {
+                                          setState(() {});
+                                          _tryParseLocation(val);
+                                        },
+                                      ),
+                                      if (_latitude != null &&
+                                          _longitude != null) ...[
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          height: 180,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                                color: const Color(0xFFD9E6E2)),
+                                          ),
+                                          child: LocationPreviewMap(
+                                            latitude: _latitude!,
+                                            longitude: _longitude!,
+                                          ),
                                         ),
-                                        child: LocationPreviewMap(
-                                          latitude: _latitude!,
-                                          longitude: _longitude!,
+                                      ],
+                                      const SizedBox(height: 12),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: OutlinedButton.icon(
+                                          onPressed: _capturingLocation
+                                              ? null
+                                              : _captureCurrentLocation,
+                                          icon: Icon(
+                                            _capturingLocation
+                                                ? Icons.hourglass_top_rounded
+                                                : Icons.my_location_rounded,
+                                          ),
+                                          label: Text(
+                                            _capturingLocation
+                                                ? 'লোকেশন আনা হচ্ছে...'
+                                                : 'বর্তমান লাইভ লোকেশন নিন',
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor:
+                                                const Color(0xFF0E8F5F),
+                                            side: const BorderSide(
+                                              color: Color(0xFF0E8F5F),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(height: 12),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: OutlinedButton.icon(
-                                        onPressed: _capturingLocation
-                                            ? null
-                                            : _captureCurrentLocation,
-                                        icon: Icon(
-                                          _capturingLocation
-                                              ? Icons.hourglass_top_rounded
-                                              : Icons.my_location_rounded,
-                                        ),
-                                        label: Text(
-                                          _capturingLocation
-                                              ? 'লোকেশন আনা হচ্ছে...'
-                                              : 'বর্তমান লাইভ লোকেশন নিন',
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor:
-                                              const Color(0xFF0E8F5F),
-                                          side: const BorderSide(
-                                            color: Color(0xFF0E8F5F),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(14),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 18),
-                              SizedBox(
-                                height: 52,
-                                child: ElevatedButton(
-                                  onPressed: _saving ? null : _saveStoreDetails,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0E8F5F),
-                                    foregroundColor: Colors.white,
-                                    disabledBackgroundColor:
-                                        const Color(0xFFB9C7C5),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(14)),
-                                    elevation: 0,
-                                  ),
-                                  child: Text(
-                                    _saving
-                                        ? 'সংরক্ষণ করা হচ্ছে...'
-                                        : 'সংরক্ষণ',
-                                    style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800),
+                              DokanFadeSlideIn(
+                                delay: const Duration(milliseconds: 110),
+                                duration: const Duration(milliseconds: 500),
+                                slideOffset: const Offset(0, 15),
+                                child: SizedBox(
+                                  height: 52,
+                                  child: ElevatedButton(
+                                    onPressed: _saving ? null : _saveStoreDetails,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF0E8F5F),
+                                      foregroundColor: Colors.white,
+                                      disabledBackgroundColor:
+                                          const Color(0xFFB9C7C5),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14)),
+                                      elevation: 0,
+                                    ),
+                                    child: Text(
+                                      _saving
+                                          ? 'সংরক্ষণ করা হচ্ছে...'
+                                          : 'সংরক্ষণ',
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800),
+                                    ),
                                   ),
                                 ),
                               ),

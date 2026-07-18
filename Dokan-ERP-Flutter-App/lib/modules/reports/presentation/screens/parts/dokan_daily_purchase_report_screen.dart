@@ -21,38 +21,82 @@ class _RemoteDailyPurchaseReportData {
   final List<_PurchaseRankStat> topItems;
   final List<_PaymentSlice> paymentSlices;
 }
+class DailyPurchaseReportLocalCache {
+  static const _keyPrefix = 'dokan_daily_purchase_report_cache_v2_';
 
-final dailyPurchaseReportRemoteProvider = FutureProvider.autoDispose
-    .family<_RemoteDailyPurchaseReportData?, DateTime>(
-  (ref, selectedDate) async {
-    if (!ref.watch(reportConfiguredProvider)) {
-      return null;
-    }
-    final from = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-    );
-    final to = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      23,
-      59,
-      59,
-      999,
-    );
-    final payload = await ref.watch(reportRepositoryProvider).fetchReport(
-      'purchases-summary',
-      filters: {
-        'from': from.toIso8601String(),
-        'to': to.toIso8601String(),
-      },
-    );
-    if (payload.isEmpty) {
-      return null;
+  static String _storageKey(DateTime date) {
+    return '$_keyPrefix${date.year}_${date.month}_${date.day}';
+  }
+
+  static Future<Map<String, dynamic>?> load(DateTime date) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey(date));
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<void> save(DateTime date, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey(date), jsonEncode(data));
+    } catch (_) {}
+  }
+}
+
+class DailyPurchaseReportRemoteNotifier extends AutoDisposeFamilyAsyncNotifier<_RemoteDailyPurchaseReportData?, DateTime> {
+  @override
+  Future<_RemoteDailyPurchaseReportData?> build(DateTime arg) async {
+    // 1. Try to load from cache
+    final cached = await DailyPurchaseReportLocalCache.load(arg);
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave(arg);
+      return _parse(cached);
     }
 
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave(arg);
+  }
+
+  Future<_RemoteDailyPurchaseReportData?> _fetchAndSave(DateTime arg) async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final from = DateTime(
+        arg.year,
+        arg.month,
+        arg.day,
+      );
+      final to = DateTime(
+        arg.year,
+        arg.month,
+        arg.day,
+        23,
+        59,
+        59,
+        999,
+      );
+      final payload = await ref.read(reportRepositoryProvider).fetchReport(
+            'purchases-summary',
+            filters: {
+              'from': from.toIso8601String(),
+              'to': to.toIso8601String(),
+            },
+          );
+      if (payload.isNotEmpty) {
+        await DailyPurchaseReportLocalCache.save(arg, payload);
+        final parsed = _parse(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  _RemoteDailyPurchaseReportData? _parse(Map<String, dynamic> payload) {
     final summary = _mapValue(
           _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
         ) ??
@@ -161,9 +205,13 @@ final dailyPurchaseReportRemoteProvider = FutureProvider.autoDispose
       topItems: topItems,
       paymentSlices: _remotePaymentsFromPayload(payload),
     );
-  },
-);
+  }
+}
 
+final dailyPurchaseReportRemoteProvider = AsyncNotifierProvider.autoDispose
+    .family<DailyPurchaseReportRemoteNotifier, _RemoteDailyPurchaseReportData?, DateTime>(
+  DailyPurchaseReportRemoteNotifier.new,
+);
 class DokanDailyPurchaseReportScreen extends StatelessWidget {
   const DokanDailyPurchaseReportScreen({super.key});
 

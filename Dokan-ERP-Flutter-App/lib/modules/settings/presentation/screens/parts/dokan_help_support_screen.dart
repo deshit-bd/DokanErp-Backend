@@ -75,94 +75,124 @@ class _DokanHelpSupportScreenState
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'অ্যাপ ব্যবহার নির্দেশিকা ও সহায়তা নিন',
-              style: TextStyle(
-                color: Colors.black54,
-                fontSize: 14,
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 30),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: const Text(
+                'অ্যাপ ব্যবহার নির্দেশিকা ও সহায়তা নিন',
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            _guideCard(
-              Icons.menu_book_outlined,
-              'অ্যাপ ব্যবহার নির্দেশিকা',
-              'How to use inventory system',
-              () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const DokanGuideDetailScreen(
-                    title: 'অ্যাপ ব্যবহার নির্দেশিকা',
-                    steps: [
-                      'হোম স্ক্রিন বা সাইডবার থেকে আপনার কাঙ্ক্ষিত অপশন সিলেক্ট করুন।',
-                      'ড্যাশবোর্ডের প্রধান ফিচারগুলো যেমন ক্যাশ বাক্স, ইনভেন্টরি, সেলস এবং কাস্টমার ডাটাবেস লক্ষ্য করুন।',
-                      'কুইক অ্যাকশন মেনু বা নোটিফিকেশন বার ব্যবহার করে গুরুত্বপূর্ণ সংকেত বা নোটিফিকেশন চেক করুন।',
-                    ],
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 60),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _guideCard(
+                Icons.menu_book_outlined,
+                'অ্যাপ ব্যবহার নির্দেশিকা',
+                'How to use inventory system',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DokanGuideDetailScreen(
+                      title: 'অ্যাপ ব্যবহার নির্দেশিকা',
+                      steps: [
+                        'হোম স্ক্রিন বা সাইডবার থেকে আপনার কাঙ্ক্ষিত অপশন সিলেক্ট করুন।',
+                        'ড্যাশবোর্ডের প্রধান ফিচারগুলো যেমন ক্যাশ বাক্স, ইনভেন্টরি, সেলস এবং কাস্টমার ডাটাবেস লক্ষ্য করুন।',
+                        'কুইক অ্যাকশন মেনু বা নোটিফিকেশন বার ব্যবহার করে গুরুত্বপূর্ণ সংকেত বা নোটিফিকেশন চেক করুন।',
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-            _guideCard(
-              Icons.point_of_sale_outlined,
-              'বিক্রয় শুরু করুন',
-              'Sales flow guide',
-              () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const DokanGuideDetailScreen(
-                    title: 'বিক্রয় শুরু করুন',
-                    steps: [
-                      'হোম স্ক্রিন থেকে বা সাইডবার মেনু থেকে "বিক্রয়" (POS) সেকশনে প্রবেশ করুন।',
-                      'প্রোডাক্ট ক্যাটাগরি বা সার্চ বার ব্যবহার করে আপনার পণ্যগুলো নির্বাচন করে কার্টে যুক্ত করুন।',
-                      'প্রয়োজন সাপেক্ষে কাস্টমার সিলেক্ট করুন বা ভ্যাট/ডিসকাউন্ট/চার্জ অ্যাপ্লাই করুন।',
-                      'পেমেন্ট মেথড (যেমন: ক্যাশ, কার্ড, মোবাইল ব্যাংকিং বা বাকি) সিলেক্ট করুন।',
-                      '"বিক্রয় নিশ্চিত করুন" বাটনে ক্লিক করে ইনভয়েস সফলভাবে জেনারেট করুন।',
-                    ],
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 90),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _guideCard(
+                Icons.point_of_sale_outlined,
+                'বিক্রয় শুরু করুন',
+                'Sales flow guide',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DokanGuideDetailScreen(
+                      title: 'বিক্রয় শুরু করুন',
+                      steps: [
+                        'হোম স্ক্রিন থেকে বা সাইডবার মেনু থেকে "বিক্রয়" (POS) সেকশনে প্রবেশ করুন।',
+                        'প্রোডাক্ট ক্যাটাগরি বা সার্চ বার ব্যবহার করে আপনার পণ্যগুলো নির্বাচন করে কার্টে যুক্ত করুন।',
+                        'প্রয়োজন সাপেক্ষে কাস্টমার সিলেক্ট করুন বা ভ্যাট/ডিসকাউন্ট/চার্জ অ্যাপ্লাই করুন।',
+                        'পেমেন্ট মেথড (যেমন: ক্যাশ, কার্ড, mobile ব্যাংকিং বা বাকি) সিলেক্ট করুন।',
+                        '"বিক্রয় নিশ্চিত করুন" বাটনে ক্লিক করে ইনভয়েস সফলভাবে জেনারেট করুন।',
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-            _guideCard(
-              Icons.inventory_2_outlined,
-              'পণ্য যোগ করুন',
-              'Product management guide',
-              () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const DokanGuideDetailScreen(
-                    title: 'পণ্য যোগ করুন',
-                    steps: [
-                      'অ্যাপের মূল নেভিগেশন বার থেকে "ইনভেন্টরি" বা "পণ্য" অপশনে ক্লিক করুন।',
-                      '"নতুন পণ্য যোগ করুন" বাটনে ক্লিক করে পণ্য এন্ট্রি ফর্ম ওপেন করুন।',
-                      'পণ্যের নাম, ছবি, ক্যাটাগরি, ইউনিট এবং বারকোড (যদি থাকে) ইনপুট দিন।',
-                      'পণ্যের কেনা দাম (ক্রয় মূল্য) এবং বিক্রয় মূল্য নির্ধারণ করুন।',
-                      'স্টক কাউন্ট এবং লো-স্টক নোটিফিকেশন পেতে কাঙ্ক্ষিত সতর্কতা সীমা দিয়ে পণ্যটি সেভ করুন।',
-                    ],
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 120),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _guideCard(
+                Icons.inventory_2_outlined,
+                'পণ্য যোগ করুন',
+                'Product management guide',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DokanGuideDetailScreen(
+                      title: 'পণ্য যোগ করুন',
+                      steps: [
+                        'অ্যাপের মূল নেভিগেশন বার থেকে "ইনভেন্টরি" বা "পণ্য" অপশনে ক্লিক করুন।',
+                        '"নতুন পণ্য যোগ করুন" বাটনে ক্লিক করে পণ্য এন্ট্রি ফর্ম ওপেন করুন।',
+                        'পণ্যের নাম, ছবি, ক্যাটাগরি, ইউনিট এবং বারকোড (যদি থাকে) ইনপুট দিন।',
+                        'পণ্যের কেনা দাম (ক্রয় মূল্য) এবং বিক্রয় মূল্য নির্ধারণ করুন।',
+                        'স্টক কাউন্ট এবং লো-স্টক নোটিফিকেশন পেতে কাঙ্ক্ষিত সতর্কতা সীমা দিয়ে পণ্যটি সেভ করুন।',
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-            _guideCard(
-              Icons.bar_chart_outlined,
-              'রিপোর্ট দেখুন',
-              'Reports explanation',
-              () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const DokanGuideDetailScreen(
-                    title: 'রিপোর্ট দেখুন',
-                    steps: [
-                      'নেভিগেশন প্যানেল বা প্রোফাইল মেনু থেকে "রিপোর্ট ও অ্যানালিটিক্স" সেকশনে প্রবেশ করুন।',
-                      'নির্দিষ্ট তারিখ বা সময়সীমা সিলেক্ট করে বিক্রয় ও লাভের ডাটা ফিল্টার করুন।',
-                      'ব্যবসার মোট ক্রয়, বিক্রয়, লাভ এবং বকেয়া বাকির হিসাব সংক্ষেপে গ্রাফ বা চার্টের মাধ্যমে পর্যালোচনা করুন।',
-                      'প্রয়োজনবোধে কাস্টমার ও সাপ্লায়ার লেজার রিপোর্ট আলাদাভাবে এক্সপোর্ট বা ভিউ করুন।',
-                    ],
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _guideCard(
+                Icons.bar_chart_outlined,
+                'রিপোর্ট দেখুন',
+                'Reports explanation',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DokanGuideDetailScreen(
+                      title: 'রিপোর্ট দেখুন',
+                      steps: [
+                        'নেভিগেশন প্যানেল বা প্রোফাইল মেনু থেকে "রিপোর্ট ও অ্যানালিটিক্স" সেকশনে প্রবেশ করুন।',
+                        'নির্দিষ্ট তারিখ বা সময়সীমা সিলেক্ট করে বিক্রয় ও লাভের ডাটা ফিল্টার করুন।',
+                        'ব্যবসার মোট ক্রয়, বিক্রয়, লাভ এবং বকেয়া বাকির হিসাব সংক্ষেপে গ্রাফ বা চার্টের মাধ্যমে পর্যালোচনা করুন।',
+                        'প্রয়োজনবোধে কাস্টমার ও সাপ্লায়ার লেজার রিপোর্ট আলাদাভাবে এক্সপোর্ট বা ভিউ করুন।',
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'সাধারণ প্রশ্ন',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 180),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: const Text(
+                'সাধারণ প্রশ্ন',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -170,8 +200,12 @@ class _DokanHelpSupportScreenState
               final item = faqs[index];
               final expanded = _expandedFaq == index;
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
+              return DokanFadeSlideIn(
+                delay: Duration(milliseconds: 210 + index * 30),
+                duration: const Duration(milliseconds: 400),
+                slideOffset: const Offset(0, 12),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(
@@ -233,68 +267,94 @@ class _DokanHelpSupportScreenState
                     ),
                   ],
                 ),
+              ),
               );
             }),
             const SizedBox(height: 24),
-            const Text(
-              'সাপোর্টের সাথে যোগাযোগ করুন',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 330),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: const Text(
+                'সাপোর্টের সাথে যোগাযোগ করুন',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(height: 12),
-            _supportButton(
-              'WhatsApp Support',
-              Icons.chat_outlined,
-              () => _launch('https://wa.me/$_whatsapp'),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 360),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _supportButton(
+                'WhatsApp Support',
+                Icons.chat_outlined,
+                () => _launch('https://wa.me/$_whatsapp'),
+              ),
             ),
             const SizedBox(height: 10),
-            _supportButton(
-              'Email Support',
-              Icons.email_outlined,
-              () => _launch('mailto:$_email?subject=Dokan%20ERP%20Support'),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 390),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _supportButton(
+                'Email Support',
+                Icons.email_outlined,
+                () => _launch('mailto:$_email?subject=Dokan%20ERP%20Support'),
+              ),
             ),
             const SizedBox(height: 10),
-            _supportButton(
-              'Call Support',
-              Icons.call_outlined,
-              () => _launch('tel:$_phone'),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 420),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: _supportButton(
+                'Call Support',
+                Icons.call_outlined,
+                () => _launch('tel:$_phone'),
+              ),
             ),
             const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: const Color(0xFFE5E7EB),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 450),
+              duration: const Duration(milliseconds: 400),
+              slideOffset: const Offset(0, 15),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: const Color(0xFFE5E7EB),
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'System Info',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w800,
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'System Info',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'App Version: 1.0.0',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                  Text(
-                    'Build Number: 100',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                  Text(
-                    'Last Update: June 2026',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                ],
+                    SizedBox(height: 8),
+                    Text(
+                      'App Version: 1.0.0',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                    Text(
+                      'Build Number: 100',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                    Text(
+                      'Last Update: June 2026',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -429,20 +489,24 @@ class DokanGuideDetailScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE3EBE8)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0C21413C),
-                    blurRadius: 16,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 30),
+              duration: const Duration(milliseconds: 450),
+              slideOffset: const Offset(0, 18),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE3EBE8)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0C21413C),
+                      blurRadius: 16,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -507,6 +571,7 @@ class DokanGuideDetailScreen extends StatelessWidget {
                   }),
                 ],
               ),
+            ),
             ),
           ],
         ),
@@ -745,154 +810,267 @@ class _DokanNotificationSubscriptionSettingsScreenState
                                       CrossAxisAlignment.stretch,
                                   children: [
                                     if (widget.lockedMode && !info.allowed) ...[
-                                      Container(
-                                        margin:
-                                            const EdgeInsets.only(bottom: 18),
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFDECEC),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: const Color(0xFFF2C8C2),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'পেমেন্ট না করা পর্যন্ত অন্য কোনো পেজে যাওয়া যাবে না।',
-                                              style: TextStyle(
-                                                color: _danger,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              info.message ??
-                                                  'সাবস্ক্রিপশন চালু করতে নিচের বকেয়া পরিশোধ করুন।',
-                                              style: const TextStyle(
-                                                color: _text,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    _CurrentPlanSummaryCard(
-                                      info: info,
-                                      accent: _accent,
-                                      accentDeep: _accentDeep,
-                                      borderColor: _border,
-                                      textColor: _text,
-                                      mutedColor: _muted,
-                                      onPrimaryAction: () => _openPlanDetails(
-                                          context, plans.first),
-                                      onUpgrade: () => _openCheckout(
-                                          context, plans.last, ref),
-                                    ),
-                                    const SizedBox(height: 18),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const _SubscriptionSectionLabel(
-                                            title: 'উপলব্ধ প্ল্যান'),
-                                        Container(
-                                          padding: const EdgeInsets.all(3),
+                                      DokanFadeSlideIn(
+                                        delay: const Duration(milliseconds: 30),
+                                        duration: const Duration(milliseconds: 500),
+                                        slideOffset: const Offset(0, 10),
+                                        child: Container(
+                                          margin:
+                                              const EdgeInsets.only(bottom: 18),
+                                          padding: const EdgeInsets.all(16),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFFE3EBE8),
+                                            color: const Color(0xFFFDECEC),
                                             borderRadius:
-                                                BorderRadius.circular(10),
+                                                BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: const Color(0xFFF2C8C2),
+                                            ),
                                           ),
-                                          child: Row(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              _BillingPeriodButton(
-                                                label: 'প্রতিদিনের',
-                                                selected: !_isMonthly,
-                                                onTap: () => setState(
-                                                    () => _isMonthly = false),
-                                                accentColor: _accent,
+                                              const Text(
+                                                'পেমেন্ট না করা পর্যন্ত অন্য কোনো পেজে যাওয়া যাবে না।',
+                                                style: TextStyle(
+                                                  color: _danger,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
                                               ),
-                                              _BillingPeriodButton(
-                                                label: 'মাসিক',
-                                                selected: _isMonthly,
-                                                onTap: () => setState(
-                                                    () => _isMonthly = true),
-                                                accentColor: _accent,
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                info.message ??
+                                                    'সাবস্ক্রিপশন চালু করতে নিচের বকেয়া পরিশোধ করুন।',
+                                                style: const TextStyle(
+                                                  color: _text,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ],
+                                      ),
+                                    ],
+                                    DokanFadeSlideIn(
+                                      delay: const Duration(milliseconds: 70),
+                                      duration: const Duration(milliseconds: 500),
+                                      slideOffset: const Offset(0, 15),
+                                      child: _CurrentPlanSummaryCard(
+                                        info: info,
+                                        accent: _accent,
+                                        accentDeep: _accentDeep,
+                                        borderColor: _border,
+                                        textColor: _text,
+                                        mutedColor: _muted,
+                                        onPrimaryAction: () => _openPlanDetails(
+                                            context, plans.first),
+                                        onUpgrade: () => _openCheckout(
+                                            context, plans.last, ref),
+                                      ),
                                     ),
-                                    const SizedBox(height: 10),
-                                    LayoutBuilder(
-                                      builder: (context, planConstraints) {
-                                        final cardWidth =
-                                            planConstraints.maxWidth > 620
-                                                ? (planConstraints.maxWidth -
-                                                        12) /
-                                                    2
-                                                : planConstraints.maxWidth;
-                                        return Wrap(
-                                          spacing: 12,
-                                          runSpacing: 12,
-                                          children: plans
-                                              .map(
-                                                (plan) => SizedBox(
-                                                  width: cardWidth,
-                                                  child: _SubscriptionPlanCard(
-                                                    data: plan,
-                                                    accent: _accent,
-                                                    borderColor: _border,
-                                                    textColor: _text,
-                                                    mutedColor: _muted,
-                                                    onViewPlan: () =>
-                                                        _openPlanDetails(
-                                                            context, plan),
-                                                    onUpgrade: () =>
-                                                        _openCheckout(
-                                                            context, plan, ref),
+                                    const SizedBox(height: 18),
+                                    DokanFadeSlideIn(
+                                      delay: const Duration(milliseconds: 110),
+                                      duration: const Duration(milliseconds: 500),
+                                      slideOffset: const Offset(0, 10),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const _SubscriptionSectionLabel(
+                                              title: 'উপলব্ধ প্ল্যান'),
+                                          Container(
+                                            width: 170,
+                                            height: 38,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFE3EBE8),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Stack(
+                                              children: [
+                                                AnimatedAlign(
+                                                  duration: const Duration(milliseconds: 250),
+                                                  curve: Curves.easeInOut,
+                                                  alignment: _isMonthly
+                                                      ? Alignment.centerRight
+                                                      : Alignment.centerLeft,
+                                                  child: FractionallySizedBox(
+                                                    widthFactor: 0.5,
+                                                    child: Container(
+                                                      margin: const EdgeInsets.all(3),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.white,
+                                                        borderRadius: BorderRadius.circular(9),
+                                                        boxShadow: const [
+                                                          BoxShadow(
+                                                            color: Color(0x12000000),
+                                                            blurRadius: 4,
+                                                            offset: Offset(0, 2),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
-                                              )
-                                              .toList(growable: false),
-                                        );
-                                      },
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        behavior: HitTestBehavior.opaque,
+                                                        onTap: () => setState(() => _isMonthly = false),
+                                                        child: Center(
+                                                          child: AnimatedDefaultTextStyle(
+                                                            duration: const Duration(milliseconds: 200),
+                                                            style: TextStyle(
+                                                              color: !_isMonthly
+                                                                  ? _accent
+                                                                  : const Color(0xFF6F8280),
+                                                              fontSize: 13,
+                                                              fontWeight: FontWeight.w800,
+                                                            ),
+                                                            child: const Text('প্রতিদিনের'),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        behavior: HitTestBehavior.opaque,
+                                                        onTap: () => setState(() => _isMonthly = true),
+                                                        child: Center(
+                                                          child: AnimatedDefaultTextStyle(
+                                                            duration: const Duration(milliseconds: 200),
+                                                            style: TextStyle(
+                                                              color: _isMonthly
+                                                                  ? _accent
+                                                                  : const Color(0xFF6F8280),
+                                                              fontSize: 13,
+                                                              fontWeight: FontWeight.w800,
+                                                            ),
+                                                            child: const Text('মাসিক'),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    DokanFadeSlideIn(
+                                      delay: const Duration(milliseconds: 150),
+                                      duration: const Duration(milliseconds: 500),
+                                      slideOffset: const Offset(0, 15),
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 300),
+                                        transitionBuilder: (Widget child, Animation<double> animation) {
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: SlideTransition(
+                                              position: Tween<Offset>(
+                                                begin: const Offset(0.0, 0.05),
+                                                end: Offset.zero,
+                                              ).animate(animation),
+                                              child: child,
+                                            ),
+                                          );
+                                        },
+                                        child: LayoutBuilder(
+                                          key: ValueKey<bool>(_isMonthly),
+                                          builder: (context, planConstraints) {
+                                            final cardWidth =
+                                                planConstraints.maxWidth > 620
+                                                    ? (planConstraints.maxWidth -
+                                                            12) /
+                                                        2
+                                                    : planConstraints.maxWidth;
+                                            return Wrap(
+                                              spacing: 12,
+                                              runSpacing: 12,
+                                              children: plans
+                                                  .map(
+                                                    (plan) => SizedBox(
+                                                      width: cardWidth,
+                                                      child: _SubscriptionPlanCard(
+                                                        data: plan,
+                                                        accent: _accent,
+                                                        borderColor: _border,
+                                                        textColor: _text,
+                                                        mutedColor: _muted,
+                                                        onViewPlan: () =>
+                                                            _openPlanDetails(
+                                                                context, plan),
+                                                        onUpgrade: () =>
+                                                            _openCheckout(
+                                                                context, plan, ref),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(growable: false),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(height: 18),
                                     if (paymentHistory.isNotEmpty) ...[
-                                      const _SubscriptionSectionLabel(
-                                          title: 'পেমেন্ট ইতিহাস'),
-                                      const SizedBox(height: 10),
-                                      ...paymentHistory.map(
-                                        (item) => Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 12),
-                                          child: _SubscriptionHistoryCard(
-                                            data: item,
-                                            textColor: _text,
-                                            mutedColor: _muted,
-                                            borderColor: _border,
-                                          ),
-                                        ),
+                                      const DokanFadeSlideIn(
+                                        delay: Duration(milliseconds: 190),
+                                        duration: Duration(milliseconds: 500),
+                                        slideOffset: Offset(0, 10),
+                                        child: _SubscriptionSectionLabel(
+                                            title: 'পেমেন্ট ইতিহাস'),
                                       ),
+                                      const SizedBox(height: 10),
+                                      ...List.generate(paymentHistory.length, (index) {
+                                        final item = paymentHistory[index];
+                                        return DokanFadeSlideIn(
+                                          delay: Duration(milliseconds: 190 + (index * 40)),
+                                          duration: const Duration(milliseconds: 500),
+                                          slideOffset: const Offset(0, 15),
+                                          child: Padding(
+                                            padding:
+                                                const EdgeInsets.only(bottom: 12),
+                                            child: _SubscriptionHistoryCard(
+                                              data: item,
+                                              textColor: _text,
+                                              mutedColor: _muted,
+                                              borderColor: _border,
+                                            ),
+                                          ),
+                                        );
+                                      }),
                                       const SizedBox(height: 6),
                                     ],
-                                    const _SubscriptionSectionLabel(
-                                        title: 'সাহায্য ও সাপোর্ট'),
-                                    const SizedBox(height: 10),
-                                    const _SubscriptionSupportCard(
-                                      accent: _accent,
-                                      accentDeep: _accentDeep,
-                                      borderColor: _border,
-                                      textColor: _text,
-                                      mutedColor: _muted,
+                                    DokanFadeSlideIn(
+                                      delay: Duration(
+                                          milliseconds: 190 +
+                                              (paymentHistory.isNotEmpty
+                                                  ? paymentHistory.length * 40 + 20
+                                                  : 40)),
+                                      duration: const Duration(milliseconds: 500),
+                                      slideOffset: const Offset(0, 15),
+                                      child: const Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          _SubscriptionSectionLabel(
+                                              title: 'সাহায্য ও সাপোর্ট'),
+                                          SizedBox(height: 10),
+                                          _SubscriptionSupportCard(
+                                            accent: _accent,
+                                            accentDeep: _accentDeep,
+                                            borderColor: _border,
+                                            textColor: _text,
+                                            mutedColor: _muted,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -925,8 +1103,19 @@ class _DokanNotificationSubscriptionSettingsScreenState
       BuildContext context, _SubscriptionPlanData plan, WidgetRef ref) {
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (_) => _SubscriptionCheckoutScreen(plan: plan),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            _SubscriptionCheckoutScreen(plan: plan),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
       ),
     )
         .then((_) {
@@ -935,48 +1124,4 @@ class _DokanNotificationSubscriptionSettingsScreenState
   }
 }
 
-class _BillingPeriodButton extends StatelessWidget {
-  const _BillingPeriodButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    required this.accentColor,
-  });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: selected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x12000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? accentColor : const Color(0xFF6F8280),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}

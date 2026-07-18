@@ -155,21 +155,25 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.10),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: statusColor.withOpacity(0.25),
+                          DokanFadeSlideIn(
+                            delay: const Duration(milliseconds: 30),
+                            duration: const Duration(milliseconds: 350),
+                            slideOffset: const Offset(0, 10),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
                               ),
-                            ),
-                            child: Row(
-                              children: [
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: statusColor.withOpacity(0.25),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
                                 Icon(
                                   checkoutStatus == DokanPosOrderStatus.paid
                                       ? Icons.check_circle_outline
@@ -193,15 +197,16 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                                   ),
                                 ),
                                 if (dueAmount > 0)
-                                  Text(
-                                    'বাকি ${_formatCurrency(dueAmount)}',
-                                    style: TextStyle(
-                                      color: statusColor,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w900,
+                                    Text(
+                                      'বাকি ${_formatCurrency(dueAmount)}',
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -736,11 +741,15 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () async {
+                          DokanFadeSlideIn(
+                            delay: const Duration(milliseconds: 240),
+                            duration: const Duration(milliseconds: 400),
+                            slideOffset: const Offset(0, 15),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () async {
                                     ref
                                         .read(dokanPosProvider.notifier)
                                         .cancelCheckout();
@@ -778,9 +787,8 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                                         DokanPosPaymentMethod.cash) {
                                       final result = await Navigator.of(context)
                                           .push<CheckoutCompletionResult>(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const DokanCashPaymentScreen(),
+                                        DokanPageRoute(
+                                          child: const DokanCashPaymentScreen(),
                                         ),
                                       );
                                       if (!context.mounted || result == null) {
@@ -819,10 +827,9 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                                     if (currentState.paymentMethod ==
                                         DokanPosPaymentMethod.card) {
                                       final result = await Navigator.of(context)
-                                          .push<CheckoutCompletionResult>(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const DokanCardPaymentScreen(),
+                                           .push<CheckoutCompletionResult>(
+                                        DokanPageRoute(
+                                          child: const DokanCardPaymentScreen(),
                                         ),
                                       );
                                       if (!context.mounted || result == null) {
@@ -859,10 +866,9 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                                         currentState.paymentMethod ==
                                             DokanPosPaymentMethod.rocket) {
                                       final result = await Navigator.of(context)
-                                          .push<CheckoutCompletionResult>(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const DokanMfsPaymentScreen(),
+                                           .push<CheckoutCompletionResult>(
+                                        DokanPageRoute(
+                                          child: const DokanMfsPaymentScreen(),
                                         ),
                                       );
                                       if (!context.mounted || result == null) {
@@ -1054,7 +1060,8 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                                   ),
                                 ),
                               ),
-                            ],
+                                                        ],
+                          ),
                           ),
                         ],
                       ),
@@ -1485,7 +1492,7 @@ class DokanCashPaymentScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    AnimatedNumberString(
                       _formatCurrency(total),
                       style: const TextStyle(
                         color: Color(0xFF0C8C67),
@@ -1505,7 +1512,7 @@ class DokanCashPaymentScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              AnimatedNumberString(
                 _formatCurrency(received),
                 style: const TextStyle(
                   color: Color(0xFF0F172A),
@@ -1554,12 +1561,14 @@ class DokanCashPaymentScreen extends ConsumerWidget {
                     _CashSummaryLine(
                       label: 'নিয়ে দিলেন',
                       value: _formatCurrency(received),
+                      animate: true,
                     ),
                     const SizedBox(height: 8),
                     _CashSummaryLine(
                       label: 'ফেরত দিন',
                       value: _formatCurrency(change),
                       valueColor: const Color(0xFFF97316),
+                      animate: true,
                     ),
                     if (due > 0) ...[
                       const SizedBox(height: 8),
@@ -1567,6 +1576,7 @@ class DokanCashPaymentScreen extends ConsumerWidget {
                         label: 'বাকি থাকবে',
                         value: _formatCurrency(due),
                         valueColor: const Color(0xFFDC2626),
+                        animate: true,
                       ),
                     ],
                   ],
@@ -1705,11 +1715,13 @@ class _CashSummaryLine extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueColor = const Color(0xFF0F172A),
+    this.animate = false,
   });
 
   final String label;
   final String value;
   final Color valueColor;
+  final bool animate;
 
   @override
   Widget build(BuildContext context) {
@@ -1724,14 +1736,23 @@ class _CashSummaryLine extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
-        ),
+        animate
+            ? AnimatedNumberString(
+                value,
+                style: TextStyle(
+                  color: valueColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              )
+            : Text(
+                value,
+                style: TextStyle(
+                  color: valueColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
       ],
     );
   }
@@ -3147,15 +3168,25 @@ class _CheckoutSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD6E4E0)),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
+    final delay = switch (title) {
+      String t when t.contains('১') => const Duration(milliseconds: 60),
+      String t when t.contains('২') => const Duration(milliseconds: 120),
+      String t when t.contains('৩') => const Duration(milliseconds: 180),
+      _ => Duration.zero,
+    };
+    return DokanFadeSlideIn(
+      delay: delay,
+      duration: const Duration(milliseconds: 400),
+      slideOffset: const Offset(0, 15),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFD6E4E0)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -3175,10 +3206,11 @@ class _CheckoutSectionCard extends StatelessWidget {
               color: Color(0xFF5F6A66),
             ),
           ),
-          const SizedBox(height: 14),
+                    const SizedBox(height: 14),
           child,
         ],
       ),
+    ),
     );
   }
 }
@@ -3929,4 +3961,26 @@ class _CustomerSearchPickerState extends State<_CustomerSearchPicker> {
       ),
     );
   }
+}
+
+class DokanPageRoute<T> extends PageRouteBuilder<T> {
+  DokanPageRoute({required Widget child})
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(0.0, 0.08);
+            const end = Offset.zero;
+            const curve = Curves.easeOutCubic;
+            final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            final offsetAnimation = animation.drive(tween);
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: offsetAnimation,
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 320),
+        );
 }

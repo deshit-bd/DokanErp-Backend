@@ -20,7 +20,7 @@ class InventoryCatalogRemoteRepository
 
   @override
   Future<String?> readSnapshot() async {
-    final payload = await _remote.list(perPage: 500);
+    final payload = await _remote.shopCatalog();
     final products = payload.map(ProductApiMapper.fromJson).toList();
     _lastPayloadByBarcode
       ..clear()

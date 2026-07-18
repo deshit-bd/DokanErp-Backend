@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -436,13 +437,21 @@ class DokanAppFlowNotifier extends Notifier<DokanAppFlowState> {
 
   Future<void> logout() async {
     final previousRole = state.currentUserRole;
+    
+    // Clear local products catalog snapshot
     try {
-      await ref.read(authGatewayProvider)?.logout();
-    } catch (_) {
-      // Ignore network/auth errors during remote logout so we always clear local state
-    } finally {
-      await ref.read(authSessionRepositoryProvider).clearUser();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('dokan_inventory_catalog_snapshot');
+    } catch (_) {}
+    
+    // Trigger remote logout in the background to avoid blocking the UI
+    final gateway = ref.read(authGatewayProvider);
+    if (gateway != null) {
+      gateway.logout().catchError((_) {});
     }
+    
+    // Instantly clear local session
+    await ref.read(authSessionRepositoryProvider).clearUser();
 
     state = state.copyWith(
       stage: DokanStartupStage.login,

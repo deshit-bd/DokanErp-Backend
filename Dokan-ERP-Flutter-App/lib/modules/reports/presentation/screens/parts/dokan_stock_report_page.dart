@@ -160,21 +160,65 @@ Color _stockMovementTypeColor(String type) {
   return const Color(0xFF2F6BFF);
 }
 
-final stockReportRemoteProvider = FutureProvider.autoDispose
-    .family<_RemoteStockReportData?, _StockReportRequestKey>(
-  (ref, key) async {
-    if (!ref.watch(reportConfiguredProvider)) {
-      return null;
+class StockReportLocalCache {
+  static const _keyPrefix = 'dokan_stock_report_cache_v2_';
+
+  static String _storageKey(_StockReportRequestKey key) {
+    return '$_keyPrefix${key.selectedDate.year}_${key.selectedDate.month}_${key.selectedDate.day}_${key.selectedRange}';
+  }
+
+  static Future<Map<String, dynamic>?> load(_StockReportRequestKey key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey(key));
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<void> save(_StockReportRequestKey key, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey(key), jsonEncode(data));
+    } catch (_) {}
+  }
+}
+
+class StockReportRemoteNotifier extends AutoDisposeFamilyAsyncNotifier<_RemoteStockReportData?, _StockReportRequestKey> {
+  @override
+  Future<_RemoteStockReportData?> build(_StockReportRequestKey arg) async {
+    // 1. Try to load from cache
+    final cached = await StockReportLocalCache.load(arg);
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave(arg);
+      return _parse(cached);
     }
 
-    final payload = await ref.watch(reportRepositoryProvider).fetchReport(
-          'stock',
-          filters: _stockReportFiltersFor(key),
-        );
-    if (payload.isEmpty) {
-      return null;
-    }
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave(arg);
+  }
 
+  Future<_RemoteStockReportData?> _fetchAndSave(_StockReportRequestKey arg) async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final payload = await ref.read(reportRepositoryProvider).fetchReport(
+            'stock',
+            filters: _stockReportFiltersFor(arg),
+          );
+      if (payload.isNotEmpty) {
+        await StockReportLocalCache.save(arg, payload);
+        final parsed = _parse(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  _RemoteStockReportData? _parse(Map<String, dynamic> payload) {
     final summaryMap = _mapValue(
           _pickFirstValue(
               payload, const ['summary', 'overview', 'totals', 'kpi']),
@@ -216,7 +260,11 @@ final stockReportRemoteProvider = FutureProvider.autoDispose
     final outOfStockCount = _intValue(
       _pickFirstValue(
         summaryMap,
-        const ['outOfStockCount', 'outOfStock', 'zeroStockCount'],
+        const [
+          'outOfStockCount',
+          'outOfStock',
+          'zeroStockCount'
+        ],
       ),
     );
 
@@ -300,7 +348,12 @@ final stockReportRemoteProvider = FutureProvider.autoDispose
       movements: movements,
       alerts: alerts,
     );
-  },
+  }
+}
+
+final stockReportRemoteProvider = AsyncNotifierProvider.autoDispose
+    .family<StockReportRemoteNotifier, _RemoteStockReportData?, _StockReportRequestKey>(
+  StockReportRemoteNotifier.new,
 );
 
 class _StockMovementTile extends StatelessWidget {

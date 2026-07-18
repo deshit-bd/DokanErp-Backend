@@ -14,8 +14,8 @@ abstract final class AppConfig {
     if (fromEnv.isNotEmpty) {
       return fromEnv;
     }
-    // Fallback to Mac's local network IP for physical device debugging over Wi-Fi
-    return 'http://192.168.0.127:4000';
+    // Public tunnel URL for global backend access
+    return 'https://orange-plums-wear.loca.lt';
   }
   static const syncRemoteDeletions = bool.fromEnvironment(
     'DOKAN_API_SYNC_DELETIONS',

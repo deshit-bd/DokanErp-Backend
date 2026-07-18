@@ -53,7 +53,7 @@ function mountApiScope(prefix: string, appType: AppType) {
 
   if (appType === AppType.MOBILE) {
     scopedRouter.use(async (request, response, next) => {
-      if (request.path.startsWith("/auth") || request.path.startsWith("/subscriptions")) {
+      if (request.path.startsWith("/auth") || request.path.startsWith("/subscriptions") || request.path.startsWith("/debug-error")) {
         return next();
       }
 
@@ -87,6 +87,14 @@ function mountApiScope(prefix: string, appType: AppType) {
       return next();
     });
   }
+
+  scopedRouter.post("/debug-error", (request, response) => {
+    console.error("=================== CLIENT EXCEPTION ===================");
+    console.error("Message:", request.body.message);
+    console.error("Stacktrace:", request.body.stacktrace);
+    console.error("========================================================");
+    return response.json({ ok: true });
+  });
 
   scopedRouter.use("/auth", authLimiter, authRoutes);
   scopedRouter.use("/bank-accounts", bankAccountRoutes);

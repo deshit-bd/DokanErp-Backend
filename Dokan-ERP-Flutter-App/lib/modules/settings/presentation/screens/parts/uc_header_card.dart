@@ -114,60 +114,65 @@ class _UCList<T> extends StatelessWidget {
       child: Column(
         children: [
           for (int i = 0; i < items.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(11),
+            DokanFadeSlideIn(
+              delay: Duration(milliseconds: i * 30),
+              duration: const Duration(milliseconds: 450),
+              slideOffset: const Offset(0, 10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: iconColor.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(icon, color: iconColor, size: 19),
                     ),
-                    child: Icon(icon, color: iconColor, size: 19),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_getBangla(items[i]),
-                            style: const TextStyle(
-                                color: Color(0xFF16302E),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
-                        if (_getEnglish(items[i]).isNotEmpty)
-                          Text(_getEnglish(items[i]),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_getBangla(items[i]),
                               style: const TextStyle(
-                                  color: Color(0xFF6F8280),
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500)),
-                      ],
+                                  color: Color(0xFF16302E),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700)),
+                          if (_getEnglish(items[i]).isNotEmpty)
+                            Text(_getEnglish(items[i]),
+                                style: const TextStyle(
+                                    color: Color(0xFF6F8280),
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500)),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => onEdit(items[i]),
-                    icon: const Icon(Icons.edit_rounded, size: 17),
-                    style: IconButton.styleFrom(
-                      foregroundColor: const Color(0xFF0E8F5F),
-                      backgroundColor: const Color(0xFFEAF5F1),
-                      padding: const EdgeInsets.all(7),
-                      minimumSize: const Size(32, 32),
+                    IconButton(
+                      onPressed: () => onEdit(items[i]),
+                      icon: const Icon(Icons.edit_rounded, size: 17),
+                      style: IconButton.styleFrom(
+                        foregroundColor: const Color(0xFF0E8F5F),
+                        backgroundColor: const Color(0xFFEAF5F1),
+                        padding: const EdgeInsets.all(7),
+                        minimumSize: const Size(32, 32),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  IconButton(
-                    onPressed: () => onDelete(items[i]),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 17),
-                    style: IconButton.styleFrom(
-                      foregroundColor: const Color(0xFFE15241),
-                      backgroundColor: const Color(0xFFFEF0EF),
-                      padding: const EdgeInsets.all(7),
-                      minimumSize: const Size(32, 32),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      onPressed: () => onDelete(items[i]),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                      style: IconButton.styleFrom(
+                        foregroundColor: const Color(0xFFE15241),
+                        backgroundColor: const Color(0xFFFEF0EF),
+                        padding: const EdgeInsets.all(7),
+                        minimumSize: const Size(32, 32),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (i < items.length - 1)

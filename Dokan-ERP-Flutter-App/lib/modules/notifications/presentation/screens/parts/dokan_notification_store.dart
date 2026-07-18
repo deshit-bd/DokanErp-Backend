@@ -136,8 +136,19 @@ Future<void> showDokanNotificationPreviewSheet(BuildContext context) {
         onSeeAll: () {
           Navigator.of(sheetContext).pop();
           Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const DokanNotificationCenterScreen(),
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const DokanNotificationCenterScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                const begin = Offset(0.0, 1.0);
+                const end = Offset.zero;
+                const curve = Curves.easeInOut;
+                var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                return SlideTransition(
+                  position: animation.drive(tween),
+                  child: child,
+                );
+              },
             ),
           );
         },
@@ -726,14 +737,19 @@ class _DokanNotificationCenterScreenState
               onBack: () => Navigator.of(context).pop(),
               onMarkAllRead: _markAllAsRead,
             ),
-            _FilterStrip(
-              selectedIndex: _selectedFilterIndex,
-              filters: _filters,
-              onSelected: (index) {
-                setState(() {
-                  _selectedFilterIndex = index;
-                });
-              },
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 30),
+              duration: const Duration(milliseconds: 450),
+              slideOffset: const Offset(0, 10),
+              child: _FilterStrip(
+                selectedIndex: _selectedFilterIndex,
+                filters: _filters,
+                onSelected: (index) {
+                  setState(() {
+                    _selectedFilterIndex = index;
+                  });
+                },
+              ),
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -742,60 +758,101 @@ class _DokanNotificationCenterScreenState
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_visibleGroups().isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 48),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications_off_outlined,
-                                size: 54,
-                                color: Colors.grey,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, 0.05),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Column(
+                    key: ValueKey<int>(_selectedFilterIndex),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_visibleGroups().isEmpty)
+                        const DokanFadeSlideIn(
+                          delay: Duration(milliseconds: 50),
+                          duration: Duration(milliseconds: 400),
+                          slideOffset: Offset(0, 10),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 48),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 54,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'কোনো নোটিফিকেশন নেই',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(height: 12),
-                              Text(
-                                'কোনো নোটিফিকেশন নেই',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
-                                ),
+                            ),
+                          ),
+                        )
+                      else ...[
+                        ..._visibleGroups().asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final group = entry.value;
+                          return DokanFadeSlideIn(
+                            delay: Duration(milliseconds: 40 + idx * 30),
+                            duration: const Duration(milliseconds: 450),
+                            slideOffset: const Offset(0, 15),
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _NotificationGroupView(
+                                group: group,
+                                onItemTap: (item) => _openNotification(context, item),
                               ),
-                            ],
+                            ),
+                          );
+                        }),
+                      ],
+                      DokanFadeSlideIn(
+                        delay: Duration(milliseconds: 40 + _visibleGroups().length * 30),
+                        duration: const Duration(milliseconds: 450),
+                        slideOffset: const Offset(0, 15),
+                        child: _UpdatePromoCard(
+                          onTap: () => _showInfoSheet(
+                            context,
+                            title: 'নতুন আপডেট!',
+                            message:
+                                'এখন আরও দ্রুত নোটিফিকেশন দেখা, পড়া এবং ফিল্টার করা যাবে।',
                           ),
                         ),
-                      )
-                    else
-                      for (final group in _visibleGroups()) ...[
-                        _NotificationGroupView(
-                          group: group,
-                          onItemTap: (item) => _openNotification(context, item),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    _UpdatePromoCard(
-                      onTap: () => _showInfoSheet(
-                        context,
-                        title: 'নতুন আপডেট!',
-                        message:
-                            'এখন আরও দ্রুত নোটিফিকেশন দেখা, পড়া এবং ফিল্টার করা যাবে।',
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _NotificationPreferencesCard(
-                      prefs: _prefs,
-                      onChanged: () {
-                        _dokanNotificationStore.savePreferences(_prefs);
-                        setState(() {});
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 16),
+                      DokanFadeSlideIn(
+                        delay: Duration(milliseconds: 70 + _visibleGroups().length * 30),
+                        duration: const Duration(milliseconds: 450),
+                        slideOffset: const Offset(0, 15),
+                        child: _NotificationPreferencesCard(
+                          prefs: _prefs,
+                          onChanged: () {
+                            _dokanNotificationStore.savePreferences(_prefs);
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
             ),

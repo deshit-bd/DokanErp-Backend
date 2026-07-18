@@ -20,120 +20,172 @@ class _RemoteDailySalesReportData {
   final List<_PaymentSlice> paymentSlices;
 }
 
-final dailySalesReportRemoteProvider = FutureProvider.autoDispose
-    .family<_RemoteDailySalesReportData?, DateTime>((ref, selectedDate) async {
-  if (!ref.watch(reportConfiguredProvider)) {
-    return null;
+class DailySalesReportLocalCache {
+  static const _keyPrefix = 'dokan_daily_sales_report_cache_v2_';
+
+  static String _storageKey(DateTime date) {
+    return '$_keyPrefix${date.year}_${date.month}_${date.day}';
   }
-  final from = DateTime(
-    selectedDate.year,
-    selectedDate.month,
-    selectedDate.day,
-  );
-  final to = DateTime(
-    selectedDate.year,
-    selectedDate.month,
-    selectedDate.day,
-    23,
-    59,
-    59,
-    999,
-  );
-  final payload = await ref.watch(reportRepositoryProvider).fetchReport(
-    'sales-daily',
-    filters: {
-      'from': from.toIso8601String(),
-      'to': to.toIso8601String(),
-    },
-  );
-  if (payload.isEmpty) {
+
+  static Future<Map<String, dynamic>?> load(DateTime date) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey(date));
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
     return null;
   }
 
-  final summary = _mapValue(
-        _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
-      ) ??
-      payload;
-  final totalSales = _intValue(
-    _pickFirstValue(summary, const ['sales', 'totalSales', 'salesTotal']),
-  );
-  final totalProfit = _intValue(
-    _pickFirstValue(summary, const ['profit', 'totalProfit', 'netProfit']),
-  );
-  final salesCount = _intValue(
-    _pickFirstValue(summary, const ['salesCount', 'ordersCount', 'count']),
-  );
-  final avgSale = _intValue(
-    _pickFirstValue(summary, const ['avgSale', 'averageSale', 'average']),
-  );
+  static Future<void> save(DateTime date, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey(date), jsonEncode(data));
+    } catch (_) {}
+  }
+}
 
-  final trend = _mapListValue(
-    _pickFirstValue(payload, const ['trend', 'hourlyTrend', 'timeline']),
-  )
-      .map(
-        (item) => _TrendPoint(
-          label: _stringValue(
-            _pickFirstValue(item, const ['label', 'hour', 'name']),
-            fallback: '-',
-          ),
-          value: _intValue(
-            _pickFirstValue(item, const ['value', 'amount', 'sales']),
-          ),
-        ),
-      )
-      .where((item) => item.label != '-')
-      .toList(growable: false);
+class DailySalesReportRemoteNotifier extends AutoDisposeFamilyAsyncNotifier<_RemoteDailySalesReportData?, DateTime> {
+  @override
+  Future<_RemoteDailySalesReportData?> build(DateTime arg) async {
+    // 1. Try to load from cache
+    final cached = await DailySalesReportLocalCache.load(arg);
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave(arg);
+      return _parse(cached);
+    }
 
-  final topProducts = _mapListValue(
-    _pickFirstValue(payload, const ['topProducts', 'top_products', 'products']),
-  )
-      .asMap()
-      .entries
-      .map(
-        (entry) => _TopProductStat(
-          rank: entry.key + 1,
-          name: _stringValue(
-            _pickFirstValue(
-              entry.value,
-              const ['name', 'title', 'productName'],
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave(arg);
+  }
+
+  Future<_RemoteDailySalesReportData?> _fetchAndSave(DateTime arg) async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final from = DateTime(
+        arg.year,
+        arg.month,
+        arg.day,
+      );
+      final to = DateTime(
+        arg.year,
+        arg.month,
+        arg.day,
+        23,
+        59,
+        59,
+        999,
+      );
+      final payload = await ref.read(reportRepositoryProvider).fetchReport(
+            'sales-daily',
+            filters: {
+              'from': from.toIso8601String(),
+              'to': to.toIso8601String(),
+            },
+          );
+      if (payload.isNotEmpty) {
+        await DailySalesReportLocalCache.save(arg, payload);
+        final parsed = _parse(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  _RemoteDailySalesReportData? _parse(Map<String, dynamic> payload) {
+    final summary = _mapValue(
+          _pickFirstValue(payload, const ['summary', 'kpi', 'totals']),
+        ) ??
+        payload;
+    final totalSales = _intValue(
+      _pickFirstValue(summary, const ['sales', 'totalSales', 'salesTotal']),
+    );
+    final totalProfit = _intValue(
+      _pickFirstValue(summary, const ['profit', 'totalProfit', 'netProfit']),
+    );
+    final salesCount = _intValue(
+      _pickFirstValue(summary, const ['salesCount', 'ordersCount', 'count']),
+    );
+    final avgSale = _intValue(
+      _pickFirstValue(summary, const ['avgSale', 'averageSale', 'average']),
+    );
+
+    final trend = _mapListValue(
+      _pickFirstValue(payload, const ['trend', 'hourlyTrend', 'timeline']),
+    )
+        .map(
+          (item) => _TrendPoint(
+            label: _stringValue(
+              _pickFirstValue(item, const ['label', 'hour', 'name']),
+              fallback: '-',
             ),
-            fallback: 'পণ্য',
-          ),
-          salesCount: _intValue(
-            _pickFirstValue(
-              entry.value,
-              const ['quantity', 'salesCount', 'count'],
+            value: _intValue(
+              _pickFirstValue(item, const ['value', 'amount', 'sales']),
             ),
           ),
-          revenue: _intValue(
-            _pickFirstValue(
-                entry.value, const ['revenue', 'amount', 'sales', 'value']),
-          ),
-          category: _stringValue(
-            _pickFirstValue(entry.value, const ['category', 'categoryName']),
-            fallback: 'বিক্রয়',
-          ),
-          icon: _reportIconForKind(
-            _stringValue(_pickFirstValue(entry.value, const ['kind', 'type'])),
-          ),
-          color: _reportColorFromValue(
-            _stringValue(entry.value['color']),
-            const Color(0xFF0C8C67),
-          ),
-        ),
-      )
-      .toList(growable: false);
+        )
+        .where((item) => item.label != '-')
+        .toList(growable: false);
 
-  return _RemoteDailySalesReportData(
-    totalSales: totalSales,
-    totalProfit: totalProfit,
-    salesCount: salesCount,
-    avgSale: avgSale,
-    hourlyTrend: trend,
-    topProducts: topProducts,
-    paymentSlices: _remotePaymentsFromPayload(payload),
-  );
-});
+    final topProducts = _mapListValue(
+      _pickFirstValue(payload, const ['topProducts', 'top_products', 'products']),
+    )
+        .asMap()
+        .entries
+        .map(
+          (entry) => _TopProductStat(
+            rank: entry.key + 1,
+            name: _stringValue(
+              _pickFirstValue(
+                entry.value,
+                const ['name', 'title', 'productName'],
+              ),
+              fallback: 'পণ্য',
+            ),
+            salesCount: _intValue(
+              _pickFirstValue(
+                entry.value,
+                const ['quantity', 'salesCount', 'count'],
+              ),
+            ),
+            revenue: _intValue(
+              _pickFirstValue(
+                  entry.value, const ['revenue', 'amount', 'sales', 'value']),
+            ),
+            category: _stringValue(
+              _pickFirstValue(entry.value, const ['category', 'categoryName']),
+              fallback: 'বিক্রয়',
+            ),
+            icon: _reportIconForKind(
+              _stringValue(_pickFirstValue(entry.value, const ['kind', 'type'])),
+            ),
+            color: _reportColorFromValue(
+              _stringValue(entry.value['color']),
+              const Color(0xFF0C8C67),
+            ),
+          ),
+        )
+        .toList(growable: false);
+
+    return _RemoteDailySalesReportData(
+      totalSales: totalSales,
+      totalProfit: totalProfit,
+      salesCount: salesCount,
+      avgSale: avgSale,
+      hourlyTrend: trend,
+      topProducts: topProducts,
+      paymentSlices: _remotePaymentsFromPayload(payload),
+    );
+  }
+}
+
+final dailySalesReportRemoteProvider = AsyncNotifierProvider.autoDispose
+    .family<DailySalesReportRemoteNotifier, _RemoteDailySalesReportData?, DateTime>(
+  DailySalesReportRemoteNotifier.new,
+);
 
 class _DokanDailySalesReportPage extends ConsumerStatefulWidget {
   const _DokanDailySalesReportPage();

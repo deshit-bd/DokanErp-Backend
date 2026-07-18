@@ -250,6 +250,15 @@ class _TaxChargeItem {
   final double value;
   final _TaxChargeValueType type;
 
+  Map<String, dynamic> toJson(bool isTax) {
+    return {
+      'id': id,
+      'name': name,
+      if (isTax) 'rate': value else 'amount': value,
+      'type': type == _TaxChargeValueType.percent ? 'PERCENTAGE' : 'FIXED',
+    };
+  }
+
   factory _TaxChargeItem.fromJson(Map<String, dynamic> json, bool isTax) {
     final name = json['name'] as String? ?? '';
     final rawVal = isTax ? json['rate'] : json['amount'];
@@ -291,37 +300,70 @@ class _DokanTaxChargesManagementScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchTaxesAndCharges();
-    });
+    _loadCachedAndFetch();
   }
 
-  Future<void> _fetchTaxesAndCharges() async {
-    setState(() => _loading = true);
+  Future<void> _loadCachedAndFetch() async {
+    final cached = await TaxesChargesLocalCache.get();
+    if (cached != null && mounted) {
+      final taxesRaw = cached['taxes'] as List? ?? [];
+      final chargesRaw = cached['charges'] as List? ?? [];
+      setState(() {
+        _taxes.clear();
+        _taxes.addAll(taxesRaw.map((e) =>
+            _TaxChargeItem.fromJson(Map<String, dynamic>.from(e), true)));
+        _charges.clear();
+        _charges.addAll(chargesRaw.map((e) =>
+            _TaxChargeItem.fromJson(Map<String, dynamic>.from(e), false)));
+        _loading = false;
+      });
+    }
+    await _fetchTaxesAndCharges(showSpinner: cached == null);
+  }
+
+  Future<void> _updateCache() async {
+    try {
+      final cacheData = {
+        'taxes': _taxes.map((e) => e.toJson(true)).toList(),
+        'charges': _charges.map((e) => e.toJson(false)).toList(),
+      };
+      await TaxesChargesLocalCache.save(cacheData);
+    } catch (_) {}
+  }
+
+  Future<void> _fetchTaxesAndCharges({bool showSpinner = true}) async {
+    if (showSpinner) {
+      setState(() => _loading = true);
+    }
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.get('/app/api/shops/me/taxes-charges');
       final data = response.data;
       if (data is Map<String, dynamic>) {
+        await TaxesChargesLocalCache.save(data);
         final taxesRaw = data['taxes'] as List? ?? [];
         final chargesRaw = data['charges'] as List? ?? [];
 
-        setState(() {
-          _taxes.clear();
-          _taxes.addAll(taxesRaw.map((e) =>
-              _TaxChargeItem.fromJson(Map<String, dynamic>.from(e), true)));
-          _charges.clear();
-          _charges.addAll(chargesRaw.map((e) =>
-              _TaxChargeItem.fromJson(Map<String, dynamic>.from(e), false)));
-          _loading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _taxes.clear();
+            _taxes.addAll(taxesRaw.map((e) =>
+                _TaxChargeItem.fromJson(Map<String, dynamic>.from(e), true)));
+            _charges.clear();
+            _charges.addAll(chargesRaw.map((e) =>
+                _TaxChargeItem.fromJson(Map<String, dynamic>.from(e), false)));
+            _loading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('লোড করতে ব্যর্থ হয়েছে: $e')),
-        );
+        if (showSpinner) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('লোড করতে ব্যর্থ হয়েছে: $e')),
+          );
+        }
       }
     }
   }
@@ -363,78 +405,88 @@ class _DokanTaxChargesManagementScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 30),
+          duration: const Duration(milliseconds: 400),
+          slideOffset: const Offset(0, 15),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800),
+                ),
               ),
-            ),
-            FilledButton(
-              onPressed: () => _openSheet(isTax: isTax),
-              style: FilledButton.styleFrom(
-                  backgroundColor: Colors.black, foregroundColor: Colors.white),
-              child: const Text('যোগ করুন'),
-            ),
-          ],
+              FilledButton(
+                onPressed: () => _openSheet(isTax: isTax),
+                style: FilledButton.styleFrom(
+                    backgroundColor: Colors.black, foregroundColor: Colors.white),
+                child: const Text('যোগ করুন'),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         ...List.generate(items.length, (index) {
           final item = items[index];
-          return Card(
-            color: Colors.white,
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 10),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFFE5E7EB)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              title: Text(item.name,
-                  style: const TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.w700)),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(item.type.format(item.value),
-                      style: const TextStyle(
-                          color: Colors.black, fontWeight: FontWeight.w800)),
-                  PopupMenuButton<String>(
-                    icon: const Icon(
-                      Icons.more_vert,
-                      color: Colors.black,
+          return DokanFadeSlideIn(
+            delay: Duration(milliseconds: 70 + index * 30),
+            duration: const Duration(milliseconds: 450),
+            slideOffset: const Offset(0, 12),
+            child: Card(
+              color: Colors.white,
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 10),
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                title: Text(item.name,
+                    style: const TextStyle(
+                        color: Colors.black, fontWeight: FontWeight.w700)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(item.type.format(item.value),
+                        style: const TextStyle(
+                            color: Colors.black, fontWeight: FontWeight.w800)),
+                    PopupMenuButton<String>(
+                      icon: const Icon(
+                        Icons.more_vert,
+                        color: Colors.black,
+                      ),
+                      color: Colors.white,
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _openSheet(isTax: isTax, index: index);
+                        }
+                        if (value == 'delete') {
+                          _deleteItem(isTax: isTax, index: index);
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Text(
+                            'Edit',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ),
+                      ],
                     ),
-                    color: Colors.white,
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _openSheet(isTax: isTax, index: index);
-                      }
-                      if (value == 'delete') {
-                        _deleteItem(isTax: isTax, index: index);
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Text(
-                          'Edit',
-                          style: TextStyle(color: Colors.black),
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(
-                          'Delete',
-                          style: TextStyle(color: Colors.black),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -458,6 +510,7 @@ class _DokanTaxChargesManagementScreenState
         setState(() {
           list.removeAt(index);
         });
+        await _updateCache();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('সফলভাবে মুছে ফেলা হয়েছে')),
         );
@@ -509,6 +562,7 @@ class _DokanTaxChargesManagementScreenState
             setState(() {
               _taxes.add(_TaxChargeItem.fromJson(response.data, true));
             });
+            await _updateCache();
           }
         } else {
           final response =
@@ -523,6 +577,7 @@ class _DokanTaxChargesManagementScreenState
             setState(() {
               _charges.add(_TaxChargeItem.fromJson(response.data, false));
             });
+            await _updateCache();
           }
         }
       } else {
@@ -547,6 +602,7 @@ class _DokanTaxChargesManagementScreenState
                 type: result.type,
               );
             });
+            await _updateCache();
           }
         } else {
           await client.patch('/app/api/shops/me/charges/$oldId', body: {
@@ -565,6 +621,7 @@ class _DokanTaxChargesManagementScreenState
                 type: result.type,
               );
             });
+            await _updateCache();
           }
         }
       }
@@ -580,5 +637,26 @@ class _DokanTaxChargesManagementScreenState
         );
       }
     }
+  }
+}
+
+
+class TaxesChargesLocalCache {
+  static const _key = 'dokan_taxes_charges_cache';
+
+  static Future<void> save(Map<String, dynamic> json) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(json));
+  }
+
+  static Future<Map<String, dynamic>?> get() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString(_key);
+    if (str != null) {
+      try {
+        return jsonDecode(str) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+    return null;
   }
 }

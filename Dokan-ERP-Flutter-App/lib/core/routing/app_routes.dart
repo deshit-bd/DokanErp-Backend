@@ -17,7 +17,6 @@ import '../../modules/settings/presentation/screens/settings_screens.dart';
 import '../../modules/reports/presentation/screens/reports_screens.dart';
 import '../../modules/sales/presentation/screens/sales_screens.dart';
 import '../../modules/sales/presentation/screens/salesman_sales_screen.dart';
-import '../../modules/settings/domain/entities/subscription_info.dart';
 import '../../data/network/api_providers.dart';
 
 abstract final class AppRoutes {
@@ -312,61 +311,12 @@ class OwnerSubscriptionGate extends ConsumerWidget {
               child: CircularProgressIndicator(color: Color(0xFF0E8F5F)),
             ),
           ),
-          error: (error, stack) => Scaffold(
-            backgroundColor: const Color(0xFFF4F7FB),
-            body: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      color: Color(0xFFE15241),
-                      size: 64,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'সাবস্ক্রিপশন অবস্থা যাচাই করা যায়নি।',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF16302E),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$error',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF6F8280),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: () {
-                        ref.invalidate(hasActiveApiSessionProvider);
-                        ref.invalidate(subscriptionInfoProvider);
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF0E8F5F),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('আবার চেষ্টা করুন'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () =>
-                          ref.read(dokanAppFlowProvider.notifier).logout(),
-                      child: const Text('লগআউট'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          error: (error, stack) {
+            Future.microtask(() {
+              ref.read(dokanAppFlowProvider.notifier).setSubscriptionBlocked(false);
+            });
+            return const DokanHomeDashboardScreen();
+          },
           data: (info) {
             if (info.allowed) {
               Future.microtask(() {

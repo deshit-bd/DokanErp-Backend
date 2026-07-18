@@ -293,6 +293,56 @@ String _catalogSnapshotJson(List<DokanCatalogProduct> products) {
   );
 }
 
+class _ParsedCatalogResult {
+  final List<DokanCatalogProduct> products;
+  final Map<String, _ProductInventoryState> inventoryStore;
+  const _ParsedCatalogResult(this.products, this.inventoryStore);
+}
+
+_ParsedCatalogResult _parseCatalogInBackground(String snapshotJson) {
+  final decoded = jsonDecode(snapshotJson);
+  if (decoded is! Map<String, dynamic>) {
+    return const _ParsedCatalogResult([], {});
+  }
+  final productsJson = decoded['products'];
+  if (productsJson is! List) {
+    return const _ParsedCatalogResult([], {});
+  }
+
+  final restored = <DokanCatalogProduct>[];
+  final nextStore = <String, _ProductInventoryState>{};
+
+  for (final item in productsJson) {
+    if (item is! Map) continue;
+    final itemMap = item.map((key, value) => MapEntry(key.toString(), value));
+    final productJson = itemMap['product'];
+    final inventoryJson = itemMap['inventory'];
+    if (productJson is! Map || inventoryJson is! Map) continue;
+
+    final product = _productFromJson(
+      productJson.map((key, value) => MapEntry(key.toString(), value)),
+    );
+    if (product.barcode.trim().isEmpty || product.name.trim().isEmpty) {
+      continue;
+    }
+    
+    final inventory = _inventoryStateFromJson(
+      inventoryJson.map((key, value) => MapEntry(key.toString(), value)),
+      fallbackProduct: product,
+    );
+
+    final updatedProduct = product.copyWith(
+      stock: inventory.stock,
+      purchasePrice: inventory.purchasePrice,
+      salePrice: inventory.salePrice,
+    );
+
+    restored.add(updatedProduct);
+    nextStore[_inventoryKey(updatedProduct)] = inventory;
+  }
+  return _ParsedCatalogResult(restored, nextStore);
+}
+
 List<DokanCatalogProduct> _catalogFromSnapshot(String snapshotJson) {
   final decoded = jsonDecode(snapshotJson);
   if (decoded is! Map<String, dynamic>) {
@@ -335,6 +385,10 @@ class DokanInventoryCatalogNotifier
   @override
   List<DokanCatalogProduct> build() {
     DokanDebug.log('build() called on DokanInventoryCatalogNotifier');
+    // Reset ready provider to false on invalidation/initialization
+    Future.microtask(() {
+      ref.read(dokanInventoryCatalogReadyProvider.notifier).state = false;
+    });
     unawaited(_hydrateInventory());
     return const <DokanCatalogProduct>[];
   }
@@ -344,6 +398,10 @@ class DokanInventoryCatalogNotifier
   }
 
   Future<void> refreshFromRepository() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('dokan_inventory_catalog_snapshot');
+    } catch (_) {}
     await _loadInventory(markReady: false);
   }
 
@@ -384,51 +442,13 @@ class DokanInventoryCatalogNotifier
     }
 
     try {
-      final restoredProducts = _catalogFromSnapshot(snapshotJson)
-          .where((product) => product.barcode.trim().isNotEmpty)
-          .where((product) => product.name.trim().isNotEmpty)
-          .toList(growable: false);
-      DokanDebug.log(
-          'restoredProducts parsed: ${restoredProducts.length} items');
-      if (restoredProducts.isEmpty) {
-        DokanDebug.log('restoredProducts is empty, clearing catalog');
-        _productInventoryStore..clear();
-        state = const <DokanCatalogProduct>[];
-        return;
-      }
-
-      final nextStore = <String, _ProductInventoryState>{};
-      final decoded = jsonDecode(snapshotJson);
-      final productsJson =
-          decoded is Map<String, dynamic> ? decoded['products'] : null;
-      if (productsJson is List) {
-        for (final item in productsJson) {
-          if (item is! Map) continue;
-          final itemMap =
-              item.map((key, value) => MapEntry(key.toString(), value));
-          final productJson = itemMap['product'];
-          final inventoryJson = itemMap['inventory'];
-          if (productJson is! Map || inventoryJson is! Map) continue;
-
-          final product = _productFromJson(
-            productJson.map((key, value) => MapEntry(key.toString(), value)),
-          );
-          if (product.barcode.trim().isEmpty || product.name.trim().isEmpty) {
-            continue;
-          }
-          nextStore[_inventoryKey(product)] = _inventoryStateFromJson(
-            inventoryJson.map((key, value) => MapEntry(key.toString(), value)),
-            fallbackProduct: product,
-          );
-        }
-      }
-
+      final parsedResult = await compute(_parseCatalogInBackground, snapshotJson);
       _productInventoryStore
         ..clear()
-        ..addAll(nextStore);
-      state = restoredProducts;
+        ..addAll(parsedResult.inventoryStore);
+      state = parsedResult.products;
       DokanDebug.log(
-          '_loadInventory completed successfully, state set with ${restoredProducts.length} products');
+          '_loadInventory completed successfully, state set with ${parsedResult.products.length} products');
     } catch (error, stackTrace) {
       DokanDebug.log('_loadInventory parsing exception: $error');
       debugPrint('[CATALOG_PARSE_ERROR] $error');
@@ -446,6 +466,11 @@ class DokanInventoryCatalogNotifier
   }
 
   Future<void> _persistCurrentState() async {
+    final ready = ref.read(dokanInventoryCatalogReadyProvider);
+    if (!ready) {
+      DokanDebug.log('[PRODUCT_SYNC] Skipping persist because catalog is not ready');
+      return;
+    }
     try {
       await ref
           .read(inventoryCatalogSnapshotRepositoryProvider)
@@ -737,14 +762,12 @@ class DokanSearchMatcher {
 
 class DokanDebug {
   static void log(String message) {
+    debugPrint('[DOKAN_DEBUG] $message');
     try {
       final file =
           File('/Users/macbookair/Desktop/dokan_erp/flutter_debug.log');
       file.writeAsStringSync('${DateTime.now().toIso8601String()} - $message\n',
           mode: FileMode.append);
-      debugPrint('[DOKAN_DEBUG] $message');
-    } catch (_) {
-      debugPrint('[DOKAN_DEBUG_ERR] Failed to write log: $message');
-    }
+    } catch (_) {}
   }
 }

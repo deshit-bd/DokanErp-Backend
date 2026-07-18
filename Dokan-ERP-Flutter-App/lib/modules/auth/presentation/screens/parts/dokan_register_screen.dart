@@ -232,6 +232,7 @@ class _DokanOtpVerificationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final demoOtp = AuthRemoteDataSource.lastDemoOtp;
     return _FlowScreen(
       onBack: widget.onBack,
       accent: const Color(0xFF00694C),
@@ -253,6 +254,32 @@ class _DokanOtpVerificationScreenState
             LengthLimitingTextInputFormatter(4),
           ],
         ),
+        if (demoOtp != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00694C).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Color(0xFF00694C)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'আপনার ডেমো OTP কোডটি হলো: $demoOtp',
+                    style: const TextStyle(
+                      color: Color(0xFF00694C),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

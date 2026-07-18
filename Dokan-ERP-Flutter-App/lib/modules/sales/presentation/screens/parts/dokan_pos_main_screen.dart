@@ -448,76 +448,94 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildTopBar(),
+                      DokanFadeSlideIn(
+                        delay: Duration.zero,
+                        child: _buildTopBar(),
+                      ),
                       if (syncError != null)
-                        Container(
-                          margin: const EdgeInsets.only(top: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEE2E2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFFECACA),
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 40),
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFFECACA),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            'Sync Error: $syncError',
-                            style: const TextStyle(
-                              color: Color(0xFFDC2626),
-                              fontWeight: FontWeight.w700,
+                            child: Text(
+                              'Sync Error: $syncError',
+                              style: const TextStyle(
+                                color: Color(0xFFDC2626),
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                       if (isSalesman)
-                        Container(
-                          margin: const EdgeInsets.only(top: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0FDF4),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFBBF7D0),
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 40),
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFBBF7D0),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            'সেলসম্যান মোড',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
+                            child: const Text(
+                              'সেলসম্যান মোড',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                       const SizedBox(height: 14),
-                      _buildSearchRow(),
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 80),
+                        child: _buildSearchRow(),
+                      ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        height: 46,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _categories.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            final selected = _selectedCategoryIndex == index;
-                            return _CategoryChip(
-                              label: tr(_categories[index].label,
-                                  _categories[index].englishLabel),
-                              selected: selected,
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategoryIndex = index;
-                                });
-                              },
-                            );
-                          },
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 120),
+                        child: SizedBox(
+                          height: 46,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _categories.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final selected = _selectedCategoryIndex == index;
+                              return _CategoryChip(
+                                label: tr(_categories[index].label,
+                                    _categories[index].englishLabel),
+                                selected: selected,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCategoryIndex = index;
+                                  });
+                                },
+                              );
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        tr('পণ্যসমূহ', 'Products'),
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 160),
+                        child: Text(
+                          tr('পণ্যসমূহ', 'Products'),
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -644,10 +662,14 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                 child: SafeArea(
                   top: false,
                   bottom: false,
-                  child: _CartDock(
-                    count: cartCount,
-                    total: grandTotal,
-                    onTap: _openCartSheet,
+                  child: DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 200),
+                    offset: 30,
+                    child: _CartDock(
+                      count: cartCount,
+                      total: grandTotal,
+                      onTap: _openCartSheet,
+                    ),
                   ),
                 ),
               ),

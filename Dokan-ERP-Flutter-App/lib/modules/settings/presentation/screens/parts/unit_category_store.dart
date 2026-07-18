@@ -239,25 +239,40 @@ class _CategoryListTabState extends ConsumerState<_CategoryListTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _UCHeaderCard(
-                        count: cats.length,
-                        countSuffix: 'টি ক্যাটেগরি',
-                        icon: Icons.category_rounded,
-                        onAdd: () => _showAddEdit(),
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 30),
+                        duration: const Duration(milliseconds: 400),
+                        slideOffset: const Offset(0, 15),
+                        child: _UCHeaderCard(
+                          count: cats.length,
+                          countSuffix: 'টি ক্যাটেগরি',
+                          icon: Icons.category_rounded,
+                          onAdd: () => _showAddEdit(),
+                        ),
                       ),
                       const SizedBox(height: 14),
                       if (cats.isEmpty)
-                        const _UCEmptyState(
-                          icon: Icons.category_outlined,
-                          message: 'কোনো ক্যাটেগরি নেই। নতুন যোগ করুন।',
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 70),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 15),
+                          child: const _UCEmptyState(
+                            icon: Icons.category_outlined,
+                            message: 'কোনো ক্যাটেগরি নেই। নতুন যোগ করুন।',
+                          ),
                         )
                       else
-                        _UCList(
-                          items: cats,
-                          iconColor: const Color(0xFF0E8F5F),
-                          icon: Icons.label_rounded,
-                          onEdit: _showAddEdit,
-                          onDelete: _confirmDelete,
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 70),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 15),
+                          child: _UCList(
+                            items: cats,
+                            iconColor: const Color(0xFF0E8F5F),
+                            icon: Icons.label_rounded,
+                            onEdit: _showAddEdit,
+                            onDelete: _confirmDelete,
+                          ),
                         ),
                     ],
                   ),
@@ -355,25 +370,40 @@ class _UnitListTabState extends ConsumerState<_UnitListTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _UCHeaderCard(
-                        count: units.length,
-                        countSuffix: 'টি ইউনিট',
-                        icon: Icons.straighten_rounded,
-                        onAdd: () => _showAddEdit(),
+                      DokanFadeSlideIn(
+                        delay: const Duration(milliseconds: 30),
+                        duration: const Duration(milliseconds: 400),
+                        slideOffset: const Offset(0, 15),
+                        child: _UCHeaderCard(
+                          count: units.length,
+                          countSuffix: 'টি ইউনিট',
+                          icon: Icons.straighten_rounded,
+                          onAdd: () => _showAddEdit(),
+                        ),
                       ),
                       const SizedBox(height: 14),
                       if (units.isEmpty)
-                        const _UCEmptyState(
-                          icon: Icons.straighten_outlined,
-                          message: 'কোনো ইউনিট নেই। নতুন যোগ করুন।',
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 70),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 15),
+                          child: const _UCEmptyState(
+                            icon: Icons.straighten_outlined,
+                            message: 'কোনো ইউনিট নেই। নতুন যোগ করুন।',
+                          ),
                         )
                       else
-                        _UCList(
-                          items: units,
-                          iconColor: Colors.blue,
-                          icon: Icons.scale_rounded,
-                          onEdit: _showAddEdit,
-                          onDelete: _confirmDelete,
+                        DokanFadeSlideIn(
+                          delay: const Duration(milliseconds: 70),
+                          duration: const Duration(milliseconds: 400),
+                          slideOffset: const Offset(0, 15),
+                          child: _UCList(
+                            items: units,
+                            iconColor: Colors.blue,
+                            icon: Icons.scale_rounded,
+                            onEdit: _showAddEdit,
+                            onDelete: _confirmDelete,
+                          ),
                         ),
                     ],
                   ),

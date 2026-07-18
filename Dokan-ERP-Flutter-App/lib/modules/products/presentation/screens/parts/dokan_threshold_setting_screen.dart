@@ -106,8 +106,12 @@ class _DokanThresholdSettingScreenState
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _InventoryPageCard(
-            title: 'গ্লোবাল সীমা',
+          DokanFadeSlideIn(
+            delay: const Duration(milliseconds: 30),
+            duration: const Duration(milliseconds: 400),
+            slideOffset: const Offset(0, 15),
+            child: _InventoryPageCard(
+              title: 'গ্লোবাল সীমা',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -163,9 +167,14 @@ class _DokanThresholdSettingScreenState
               ],
             ),
           ),
+          ),
           const SizedBox(height: 14),
-          _InventoryPageCard(
-            title: 'পণ্য-ভিত্তিক সীমা',
+          DokanFadeSlideIn(
+            delay: const Duration(milliseconds: 70),
+            duration: const Duration(milliseconds: 400),
+            slideOffset: const Offset(0, 15),
+            child: _InventoryPageCard(
+              title: 'পণ্য-ভিত্তিক সীমা',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -225,7 +234,11 @@ class _DokanThresholdSettingScreenState
                       final currentVal = _productThresholds[product.barcode] ??
                           product.lowStockThreshold;
 
-                      return Row(
+                      return DokanFadeSlideIn(
+                        delay: Duration(milliseconds: 100 + index * 30),
+                        duration: const Duration(milliseconds: 400),
+                        slideOffset: const Offset(0, 10),
+                        child: Row(
                         children: [
                           Container(
                             width: 44,
@@ -330,16 +343,22 @@ class _DokanThresholdSettingScreenState
                             ],
                           ),
                         ],
+                      ),
                       );
                     },
                   ),
               ],
             ),
           ),
+          ),
           const SizedBox(height: 18),
-          SizedBox(
-            height: 52,
-            child: ElevatedButton(
+          DokanFadeSlideIn(
+            delay: const Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 400),
+            slideOffset: const Offset(0, 15),
+            child: SizedBox(
+              height: 52,
+              child: ElevatedButton(
               onPressed: _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0C8C67),
@@ -350,6 +369,7 @@ class _DokanThresholdSettingScreenState
               child: const Text('সংরক্ষণ করুন',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
             ),
+          ),
           ),
         ],
       ),

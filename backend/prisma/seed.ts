@@ -120,7 +120,7 @@ async function main() {
     name: "Demo Admin",
     email: "admin@dokanerp.local",
     phone: "+8801000000009",
-    passwordHash: "change-me-before-production",
+    passwordHash: "1234",
     createdByUserId: superAdmin.id,
   });
 
@@ -139,7 +139,7 @@ async function main() {
     name: "Demo Store Owner",
     email: "owner@dokanerp.local",
     phone: "+8801000000001",
-    passwordHash: "change-me-before-production",
+    passwordHash: "1234",
     createdByUserId: superAdmin.id,
   });
 
@@ -147,7 +147,7 @@ async function main() {
     name: "Demo Salesman",
     email: "salesman@dokanerp.local",
     phone: "+8801000000002",
-    passwordHash: "change-me-before-production",
+    passwordHash: "1234",
     createdByUserId: admin.id,
   });
 

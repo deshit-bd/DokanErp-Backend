@@ -92,23 +92,23 @@ class _DokanExpenseEntryScreenState
     final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5FAF8),
+      backgroundColor: const Color(0xFFF4F8F6),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5FAF8),
+        backgroundColor: const Color(0xFFF4F8F6),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         title: Text(
           isEditMode ? 'খরচ সম্পাদনা করুন' : 'নতুন খরচ যোগ করুন',
           style: const TextStyle(
-            color: Color(0xFF0E6D4E),
+            color: Color(0xFF163732),
             fontWeight: FontWeight.w800,
             fontSize: 20,
           ),
         ),
         leading: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF163732)),
         ),
       ),
       body: SafeArea(
@@ -119,292 +119,288 @@ class _DokanExpenseEntryScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _EntrySectionCard(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const <Widget>[
-                      Icon(Icons.info_outline, color: Color(0xFF0E6D4E)),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'এই খরচটি যুক্ত করার সাথে সাথেই রিপোর্ট ও সারসংক্ষেপে দেখাবে এবং locally সংরক্ষিত থাকবে।',
-                          style: TextStyle(
-                            color: Color(0xFF1F2937),
-                            height: 1.45,
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 50),
+                  duration: const Duration(milliseconds: 500),
+                  slideOffset: const Offset(0, -15),
+                  child: const _EntrySectionCard(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Icon(Icons.info_outline, color: Color(0xFF0C8C67)),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'এই খরচটি যুক্ত করার সাথে সাথেই রিপোর্ট ও সারসংক্ষেপে দেখাবে এবং locally সংরক্ষিত থাকবে।',
+                            style: TextStyle(
+                              color: Color(0xFF163732),
+                              height: 1.45,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 120),
+                  duration: const Duration(milliseconds: 500),
+                  slideOffset: const Offset(0, 20),
+                  child: _EntrySectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        _LabelText('খরচের শিরোনাম *'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _titleController,
+                          textInputAction: TextInputAction.next,
+                          decoration:
+                              _fieldDecoration(hintText: 'যেমন: কর্মচারীর বেতন'),
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          validator: (String? value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'খরচের শিরোনাম দিন';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _LabelText('খরচের ধরন *'),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _category,
+                          decoration: _fieldDecoration(
+                              hintText: 'খরচের ধরন নির্বাচন করুন'),
+                          dropdownColor: Colors.white,
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          iconEnabledColor: const Color(0xFF0C8C67),
+                          items: _categories
+                              .map(
+                                (String value) => DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(
+                                    value,
+                                    style: const TextStyle(
+                                      color: Color(0xFF111111),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (String? value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() => _category = value);
+                          },
+                          validator: (String? value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'খরচের ধরন নির্বাচন করুন';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _LabelText('পরিমাণ (৳) *'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: NumericInputFormatters.decimal,
+                          decoration: _fieldDecoration(hintText: 'যেমন: ১৫০০'),
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          validator: (String? value) {
+                            final double? amount =
+                                double.tryParse(value?.trim() ?? '');
+                            if (amount == null || amount <= 0) {
+                              return 'সঠিক পরিমাণ লিখুন';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _LabelText('তারিখ *'),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _pickDate,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InputDecorator(
+                            decoration: _fieldDecoration(),
+                            child: Row(
+                              children: <Widget>[
+                                const Icon(Icons.date_range_outlined,
+                                    color: Color(0xFF0C8C67)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _formatDate(_selectedDate),
+                                    style: const TextStyle(
+                                      color: Color(0xFF111111),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _LabelText('নোট (ঐচ্ছিক)'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _noteController,
+                          maxLines: 3,
+                          decoration: _fieldDecoration(
+                              hintText: 'খরচের অতিরিক্ত তথ্য লিখুন'),
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                _EntrySectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _LabelText('খরচের শিরোনাম *'),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _titleController,
-                        textInputAction: TextInputAction.next,
-                        decoration:
-                            _fieldDecoration(hintText: 'যেমন: কর্মচারীর বেতন'),
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w700,
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'খরচের শিরোনাম দিন';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _LabelText('খরচের ধরন *'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _category,
-                        decoration: _fieldDecoration(
-                            hintText: 'খরচের ধরন নির্বাচন করুন'),
-                        dropdownColor: Colors.white,
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w700,
-                        ),
-                        iconEnabledColor: const Color(0xFF0C8C67),
-                        items: _categories
-                            .map(
-                              (String value) => DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(
-                                  value,
-                                  style: const TextStyle(
-                                    color: Color(0xFF111827),
-                                    fontWeight: FontWeight.w600,
+                        const SizedBox(height: 16),
+                        _LabelText('রসিদের ছবি (ঐচ্ছিক)'),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _showReceiptSheet,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InputDecorator(
+                            decoration: _fieldDecoration(),
+                            child: Row(
+                              children: <Widget>[
+                                const Icon(Icons.photo_outlined,
+                                    color: Color(0xFF0C8C67)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _receiptController.text,
+                                    style: const TextStyle(
+                                      color: Color(0xFF111111),
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (String? value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setState(() => _category = value);
-                        },
-                        validator: (String? value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'খরচের ধরন নির্বাচন করুন';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _LabelText('পরিমাণ (৳) *'),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        inputFormatters: NumericInputFormatters.decimal,
-                        decoration: _fieldDecoration(hintText: 'যেমন: ১৫০০'),
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w700,
-                        ),
-                        validator: (String? value) {
-                          final double? amount =
-                              double.tryParse(value?.trim() ?? '');
-                          if (amount == null || amount <= 0) {
-                            return 'সঠিক পরিমাণ লিখুন';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _LabelText('তারিখ *'),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _pickDate,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InputDecorator(
-                          decoration: _fieldDecoration(),
-                          child: Row(
-                            children: <Widget>[
-                              const Icon(Icons.date_range_outlined,
-                                  color: Color(0xFF0E6D4E)),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _formatDate(_selectedDate),
-                                  style: const TextStyle(
-                                    color: Color(0xFF111827),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _LabelText('নোট (ঐচ্ছিক)'),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _noteController,
-                        maxLines: 3,
-                        decoration: _fieldDecoration(
-                            hintText: 'খরচের অতিরিক্ত তথ্য লিখুন'),
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _LabelText('রসিদের ছবি (ঐচ্ছিক)'),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _showReceiptSheet,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InputDecorator(
-                          decoration: _fieldDecoration(),
-                          child: Row(
-                            children: <Widget>[
-                              const Icon(Icons.photo_outlined,
-                                  color: Color(0xFF0E6D4E)),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _receiptController.text,
-                                  style: const TextStyle(
-                                    color: Color(0xFF111827),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const Icon(Icons.keyboard_arrow_down_rounded,
-                                  color: Color(0xFF6B7280)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _EntrySectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _LabelText('পেমেন্ট মাধ্যম'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _paymentMethod,
-                        decoration:
-                            _fieldDecoration(labelText: 'পেমেন্ট মাধ্যম'),
-                        dropdownColor: Colors.white,
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w700,
-                        ),
-                        iconEnabledColor: const Color(0xFF0C8C67),
-                        items: _paymentMethods
-                            .map(
-                              (String value) => DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(
-                                  value,
-                                  style: const TextStyle(
-                                    color: Color(0xFF111827),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (String? value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setState(() => _paymentMethod = value);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _LabelText('অবস্থা'),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<DokanExpenseStatus>(
-                        value: _status,
-                        decoration: _fieldDecoration(labelText: 'অবস্থা'),
-                        dropdownColor: Colors.white,
-                        style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontWeight: FontWeight.w700,
-                        ),
-                        iconEnabledColor: const Color(0xFF0C8C67),
-                        items: const <DropdownMenuItem<DokanExpenseStatus>>[
-                          DropdownMenuItem<DokanExpenseStatus>(
-                            value: DokanExpenseStatus.paid,
-                            child: Text(
-                              'পরিশোধিত',
-                              style: TextStyle(
-                                color: Color(0xFF111827),
-                                fontWeight: FontWeight.w600,
-                              ),
+                                const Icon(Icons.keyboard_arrow_down_rounded,
+                                    color: Color(0xFF6B7280)),
+                              ],
                             ),
                           ),
-                          DropdownMenuItem<DokanExpenseStatus>(
-                            value: DokanExpenseStatus.pending,
-                            child: Text(
-                              'বাকি',
-                              style: TextStyle(
-                                color: Color(0xFF111827),
-                                fontWeight: FontWeight.w600,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 500),
+                  slideOffset: const Offset(0, 20),
+                  child: _EntrySectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        _LabelText('পেমেন্ট মাধ্যম'),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _paymentMethod,
+                          decoration:
+                              _fieldDecoration(labelText: 'পেমেন্ট মাধ্যম'),
+                          dropdownColor: Colors.white,
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          iconEnabledColor: const Color(0xFF0C8C67),
+                          items: _paymentMethods
+                              .map(
+                                (String value) => DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(
+                                    value,
+                                    style: const TextStyle(
+                                      color: Color(0xFF111111),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (String? value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() => _paymentMethod = value);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _LabelText('অবস্থা'),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<DokanExpenseStatus>(
+                          value: _status,
+                          decoration: _fieldDecoration(labelText: 'অবস্থা'),
+                          dropdownColor: Colors.white,
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          iconEnabledColor: const Color(0xFF0C8C67),
+                          items: const <DropdownMenuItem<DokanExpenseStatus>>[
+                            DropdownMenuItem<DokanExpenseStatus>(
+                              value: DokanExpenseStatus.paid,
+                              child: Text(
+                                'পরিশোধিত',
+                                style: TextStyle(
+                                  color: Color(0xFF111111),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                        onChanged: (DokanExpenseStatus? value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setState(() => _status = value);
-                        },
-                      ),
-                    ],
+                            DropdownMenuItem<DokanExpenseStatus>(
+                              value: DokanExpenseStatus.pending,
+                              child: Text(
+                                'বাকি',
+                                style: TextStyle(
+                                  color: Color(0xFF111111),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: (DokanExpenseStatus? value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() => _status = value);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 240),
+                  duration: const Duration(milliseconds: 500),
+                  slideOffset: const Offset(0, 15),
+                  child: DokanButton(
                     onPressed: _saving ? null : _saveExpense,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0E6D4E),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: _saving
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            isEditMode
-                                ? 'পরিবর্তন সংরক্ষণ করুন'
-                                : 'খরচ সংরক্ষণ করুন',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                    text: isEditMode ? 'পরিবর্তন সংরক্ষণ করুন' : 'খরচ সংরক্ষণ করুন',
+                    isLoading: _saving,
+                    backgroundColor: const Color(0xFF0C8C67),
+                    foregroundColor: Colors.white,
+                    borderRadius: 16,
+                    width: double.infinity,
                   ),
                 ),
               ],
@@ -418,10 +414,21 @@ class _DokanExpenseEntryScreenState
   InputDecoration _fieldDecoration({String? hintText, String? labelText}) {
     return InputDecoration(
       hintText: hintText,
+      hintStyle: const TextStyle(
+        color: Color(0xFF8B9B99),
+        fontSize: 14,
+        fontWeight: FontWeight.normal,
+      ),
       labelText: labelText,
       floatingLabelBehavior: FloatingLabelBehavior.always,
       labelStyle: const TextStyle(
-        color: Color(0xFF111827),
+        color: Color(0xFF5D6B69),
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+      ),
+      floatingLabelStyle: const TextStyle(
+        color: Color(0xFF0C8C67),
+        fontSize: 12,
         fontWeight: FontWeight.w800,
       ),
       filled: true,
@@ -429,15 +436,15 @@ class _DokanExpenseEntryScreenState
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFD7E3DD)),
+        borderSide: const BorderSide(color: Color(0xFFC0D3CF)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFD7E3DD)),
+        borderSide: const BorderSide(color: Color(0xFFC0D3CF)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF0E6D4E), width: 1.4),
+        borderSide: const BorderSide(color: Color(0xFF0C8C67), width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -445,7 +452,7 @@ class _DokanExpenseEntryScreenState
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.4),
+        borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
       ),
     );
   }

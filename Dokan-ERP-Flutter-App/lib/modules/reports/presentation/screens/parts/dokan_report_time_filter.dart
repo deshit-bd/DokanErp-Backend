@@ -1268,20 +1268,68 @@ final activityLogProvider = Provider<List<_ActivityEntry>>((ref) {
       )
       .toList(growable: false);
 });
+class ReportDashboardLocalCache {
+  static const _keyPrefix = 'dokan_report_dashboard_cache_v2_';
 
-final reportDashboardRemoteProvider =
-    FutureProvider<_RemoteReportDashboardData?>((ref) async {
-  ref.keepAlive();
-  if (!ref.watch(reportConfiguredProvider)) {
+  static String _storageKey(DokanReportTimeFilter filter) {
+    return '$_keyPrefix${filter.name}';
+  }
+
+  static Future<Map<String, dynamic>?> load(DokanReportTimeFilter filter) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey(filter));
+      if (raw != null && raw.isNotEmpty) {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      }
+    } catch (_) {}
     return null;
   }
-  final filter = ref.watch(reportFilterProvider);
-  final payload = await ref.watch(reportRepositoryProvider).fetchReport(
-        'dashboard',
-        filters: _reportFiltersFor(filter),
-      );
-  if (payload.isEmpty) {
+
+  static Future<void> save(DokanReportTimeFilter filter, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey(filter), jsonEncode(data));
+    } catch (_) {}
+  }
+}
+
+class ReportDashboardRemoteNotifier extends AsyncNotifier<_RemoteReportDashboardData?> {
+  @override
+  Future<_RemoteReportDashboardData?> build() async {
+    final filter = ref.watch(reportFilterProvider);
+
+    // 1. Try to load from cache
+    final cached = await ReportDashboardLocalCache.load(filter);
+    if (cached != null) {
+      // Trigger background network fetch
+      _fetchAndSave(filter);
+      return _remoteDashboardFromPayload(cached);
+    }
+
+    // 2. If no cache, perform remote fetch
+    return _fetchAndSave(filter);
+  }
+
+  Future<_RemoteReportDashboardData?> _fetchAndSave(DokanReportTimeFilter filter) async {
+    try {
+      if (!ref.read(reportConfiguredProvider)) return null;
+      final payload = await ref.read(reportRepositoryProvider).fetchReport(
+            'dashboard',
+            filters: _reportFiltersFor(filter),
+          );
+      if (payload.isNotEmpty) {
+        await ReportDashboardLocalCache.save(filter, payload);
+        final parsed = _remoteDashboardFromPayload(payload);
+        state = AsyncData(parsed);
+        return parsed;
+      }
+    } catch (_) {}
     return null;
   }
-  return _remoteDashboardFromPayload(payload);
-});
+}
+
+final reportDashboardRemoteProvider = AsyncNotifierProvider<
+    ReportDashboardRemoteNotifier, _RemoteReportDashboardData?>(
+  ReportDashboardRemoteNotifier.new,
+);

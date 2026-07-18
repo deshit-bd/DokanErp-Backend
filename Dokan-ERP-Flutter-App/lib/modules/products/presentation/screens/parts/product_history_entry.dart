@@ -1347,135 +1347,144 @@ class _DokanNewProductAddScreenState
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
-                Container(
-                  height: 82,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3FAFB),
-                    border: Border.all(color: const Color(0xFFD9E6E2)),
-                  ),
-                  child: Row(
-                    children: [
-                      Material(
-                        color: Colors.white,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: _isSaving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          child: const SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Icon(Icons.arrow_back,
-                                color: Color(0xFF3D4943)),
-                          ),
-                        ),
-                      ),
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            'নতুন পণ্য যোগ করুন',
-                            style: TextStyle(
-                              color: Color(0xFF00694C),
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 44),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7FBFA),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFD8E6E1)),
-                  ),
-                  child: const Text(
-                    'এই পণ্যটি আপনার দোকানে সাথে সাথে যোগ হবে এবং আমাদের টিম যাচাই করে Master DB তে যুক্ত করবে',
-                    style: TextStyle(
-                      color: Color(0xFF55605C),
-                      fontSize: 13,
-                      height: 1.55,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                GestureDetector(
-                  onTap: _isSaving ? null : _chooseImageSource,
+                DokanFadeSlideIn(
+                  delay: Duration.zero,
                   child: Container(
-                    padding: const EdgeInsets.all(18),
+                    height: 82,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: _imageHint == null
-                            ? const Color(0xFFD9E6E2)
-                            : const Color(0xFF0C8C67),
-                        width: 1.4,
-                      ),
+                      color: const Color(0xFFF3FAFB),
+                      border: Border.all(color: const Color(0xFFD9E6E2)),
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          width: 76,
-                          height: 76,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF7F0),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            _imageHint == null
-                                ? Icons.photo_outlined
-                                : Icons.check_circle_outline,
-                            color: const Color(0xFF0C8C67),
-                            size: 34,
+                        Material(
+                          color: Colors.white,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            child: const SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: Icon(Icons.arrow_back,
+                                  color: Color(0xFF3D4943)),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'ছবি যোগ করুন (ঐচ্ছিক)',
-                                style: TextStyle(
-                                  color: Color(0xFF111111),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                        const Expanded(
+                          child: Center(
+                            child: Text(
+                              'নতুন পণ্য যোগ করুন',
+                              style: TextStyle(
+                                color: Color(0xFF00694C),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _selectedImageLabel,
-                                style: const TextStyle(
-                                  color: Color(0xFF111111),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              if (_imageHint != null) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  _imageHint!,
-                                  style: const TextStyle(
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 44),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 40),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FBFA),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFD8E6E1)),
+                    ),
+                    child: const Text(
+                      'এই পণ্যটি আপনার দোকানে সাথে সাথে যোগ হবে এবং আমাদের টিম যাচাই করে Master DB তে যুক্ত করবে',
+                      style: TextStyle(
+                        color: Color(0xFF55605C),
+                        fontSize: 13,
+                        height: 1.55,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 80),
+                  child: GestureDetector(
+                    onTap: _isSaving ? null : _chooseImageSource,
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: _imageHint == null
+                              ? const Color(0xFFD9E6E2)
+                              : const Color(0xFF0C8C67),
+                          width: 1.4,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF7F0),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              _imageHint == null
+                                  ? Icons.photo_outlined
+                                  : Icons.check_circle_outline,
+                              color: const Color(0xFF0C8C67),
+                              size: 34,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'ছবি যোগ করুন (ঐচ্ছিক)',
+                                  style: TextStyle(
                                     color: Color(0xFF111111),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _selectedImageLabel,
+                                  style: const TextStyle(
+                                    color: Color(0xFF111111),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (_imageHint != null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _imageHint!,
+                                    style: const TextStyle(
+                                      color: Color(0xFF111111),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1515,333 +1524,363 @@ class _DokanNewProductAddScreenState
                   ),
                 ],
                 const SizedBox(height: 14),
-                _buildFieldCard(
-                  label: 'পণ্যের নাম (আবশ্যিক) *',
-                  child: TextFormField(
-                    controller: _nameController,
-                    readOnly: true,
-                    onTap: _showNameSelectionSheet,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'পণ্যের নাম দিন';
-                      }
-                      return null;
-                    },
-                    decoration: _inputDecoration(
-                      hintText: 'যেমন: প্রাণ আলু চিপস',
-                      suffixIcon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF6F7D78),
-                      ),
-                    ),
-                    style: const TextStyle(
-                        color: Color(0xFF111111), fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildFieldCard(
-                  label: 'ক্যাটাগরি *',
-                  child: TextFormField(
-                    controller: _categoryController,
-                    readOnly: true,
-                    onTap: _showCategorySelectionSheet,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'ক্যাটাগরি নির্বাচন করুন';
-                      }
-                      return null;
-                    },
-                    decoration: _inputDecoration(
-                      hintText: 'ক্যাটাগরি নির্বাচন করুন',
-                      suffixIcon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF6F7D78),
-                      ),
-                    ),
-                    style: const TextStyle(
-                        color: Color(0xFF111111), fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildFieldCard(
-                  label: 'ব্র্যান্ড *',
-                  child: TextFormField(
-                    controller: _brandController,
-                    readOnly: true,
-                    onTap: _showBrandSelectionSheet,
-                    validator: (value) =>
-                        _validateRequiredText(value, 'ব্র্যান্ড দিন'),
-                    decoration: _inputDecoration(
-                      hintText: 'যেমন: প্রাণ',
-                      suffixIcon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF6F7D78),
-                      ),
-                    ),
-                    style: const TextStyle(
-                        color: Color(0xFF111111), fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildFieldCard(
-                  label: 'পরিমাণের একক *',
-                  child: TextFormField(
-                    controller: _unitController,
-                    readOnly: true,
-                    onTap: _showUnitSelectionSheet,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'পরিমাণের একক নির্বাচন করুন';
-                      }
-                      return null;
-                    },
-                    decoration: _inputDecoration(
-                      hintText: 'পিস / কেজি / লিটার / প্যাকেট',
-                      suffixIcon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF6F7D78),
-                      ),
-                    ),
-                    style: const TextStyle(
-                        color: Color(0xFF111111), fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildFieldCard(
-                  label: 'বারকোড *',
-                  child: TextFormField(
-                    controller: _barcodeController,
-                    textInputAction: TextInputAction.next,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) {
-                      final textError =
-                          _validateRequiredText(value, 'বারকোড দিন');
-                      if (textError != null) return textError;
-                      if (value!.trim().length < 6) {
-                        return 'কমপক্ষে ৬ সংখ্যা দিন';
-                      }
-                      return _validateBarcode(value);
-                    },
-                    decoration: _inputDecoration(hintText: 'বারকোড লিখুন'),
-                    style: const TextStyle(
-                        color: Color(0xFF111111), fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildFieldCard(
-                        label: 'বিক্রয় মূল্য ৳ *',
-                        child: TextFormField(
-                          controller: _salePriceController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: NumericInputFormatters.wholeNumber,
-                          readOnly: !ref.watch(dokanAppFlowProvider).can(DokanPermission.settingsManage),
-                          onChanged: (_) => setState(() {}),
-                          validator: (value) {
-                            final parsed = int.tryParse(value?.trim() ?? '');
-                            if (parsed == null || parsed <= 0) {
-                              return 'বিক্রয় মূল্য দিন';
-                            }
-                            return null;
-                          },
-                          decoration: _inputDecoration(hintText: '৳ ০'),
-                          style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w700),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 120),
+                  child: _buildFieldCard(
+                    label: 'পণ্যের নাম (আবশ্যিক) *',
+                    child: TextFormField(
+                      controller: _nameController,
+                      readOnly: true,
+                      onTap: _showNameSelectionSheet,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'পণ্যের নাম দিন';
+                        }
+                        return null;
+                      },
+                      decoration: _inputDecoration(
+                        hintText: 'যেমন: প্রাণ আলু চিপস',
+                        suffixIcon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF6F7D78),
                         ),
                       ),
+                      style: const TextStyle(
+                          color: Color(0xFF111111), fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildFieldCard(
-                        label: 'ক্রয় মূল্য ৳',
-                        child: TextFormField(
-                          controller: _purchasePriceController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: NumericInputFormatters.wholeNumber,
-                          readOnly: !ref.watch(dokanAppFlowProvider).can(DokanPermission.settingsManage),
-                          onChanged: (_) => setState(() {}),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'ক্রয় মূল্য দিন';
-                            }
-                            final parsed = int.tryParse(value.trim());
-                            if (parsed == null || parsed < 0) {
-                              return 'সঠিক ক্রয় মূল্য দিন';
-                            }
-                            return null;
-                          },
-                          decoration: _inputDecoration(hintText: '৳ ০'),
-                          style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildFieldCard(
-                        label: 'বর্তমান স্টক',
-                        child: TextFormField(
-                          controller: _stockController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: NumericInputFormatters.wholeNumber,
-                          onChanged: (_) => setState(() {}),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty)
-                              return 'বর্তমান স্টক দিন';
-                            final parsed = int.tryParse(value.trim());
-                            if (parsed == null || parsed < 0) {
-                              return 'সঠিক স্টক দিন';
-                            }
-                            return null;
-                          },
-                          decoration: _inputDecoration(hintText: '০'),
-                          style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w700),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 160),
+                  child: _buildFieldCard(
+                    label: 'ক্যাটাগরি *',
+                    child: TextFormField(
+                      controller: _categoryController,
+                      readOnly: true,
+                      onTap: _showCategorySelectionSheet,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'ক্যাটাগরি নির্বাচন করুন';
+                        }
+                        return null;
+                      },
+                      decoration: _inputDecoration(
+                        hintText: 'ক্যাটাগরি নির্বাচন করুন',
+                        suffixIcon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF6F7D78),
                         ),
                       ),
+                      style: const TextStyle(
+                          color: Color(0xFF111111), fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildFieldCard(
-                        label: 'কম স্টক সীমা',
-                        child: TextFormField(
-                          controller: _lowStockController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: NumericInputFormatters.wholeNumber,
-                          onChanged: (_) => setState(() {}),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty)
-                              return 'কম স্টক সীমা দিন';
-                            final parsed = int.tryParse(value.trim());
-                            if (parsed == null || parsed < 0) {
-                              return 'সঠিক সীমা দিন';
-                            }
-                            return null;
-                          },
-                          decoration: _inputDecoration(hintText: '৫'),
-                          style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF7F0),
-                    borderRadius: BorderRadius.circular(22),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                const SizedBox(height: 12),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 200),
+                  child: _buildFieldCard(
+                    label: 'ব্র্যান্ড *',
+                    child: TextFormField(
+                      controller: _brandController,
+                      readOnly: true,
+                      onTap: _showBrandSelectionSheet,
+                      validator: (value) =>
+                          _validateRequiredText(value, 'ব্র্যান্ড দিন'),
+                      decoration: _inputDecoration(
+                        hintText: 'যেমন: প্রাণ',
+                        suffixIcon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF6F7D78),
+                        ),
+                      ),
+                      style: const TextStyle(
+                          color: Color(0xFF111111), fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 240),
+                  child: _buildFieldCard(
+                    label: 'পরিমাণের একক *',
+                    child: TextFormField(
+                      controller: _unitController,
+                      readOnly: true,
+                      onTap: _showUnitSelectionSheet,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'পরিমাণের একক নির্বাচন করুন';
+                        }
+                        return null;
+                      },
+                      decoration: _inputDecoration(
+                        hintText: 'পিস / কেজি / লিটার / প্যাকেট',
+                        suffixIcon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF6F7D78),
+                        ),
+                      ),
+                      style: const TextStyle(
+                          color: Color(0xFF111111), fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 280),
+                  child: _buildFieldCard(
+                    label: 'বারকোড *',
+                    child: TextFormField(
+                      controller: _barcodeController,
+                      textInputAction: TextInputAction.next,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (_) => setState(() {}),
+                      validator: (value) {
+                        final textError =
+                            _validateRequiredText(value, 'বারকোড দিন');
+                        if (textError != null) return textError;
+                        if (value!.trim().length < 6) {
+                          return 'কমপক্ষে ৬ সংখ্যা দিন';
+                        }
+                        return _validateBarcode(value);
+                      },
+                      decoration: _inputDecoration(hintText: 'বারকোড লিখুন'),
+                      style: const TextStyle(
+                          color: Color(0xFF111111), fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 320),
+                  child: Row(
                     children: [
-                      const Text(
-                        'প্রিভিউ',
-                        style: TextStyle(
-                          color: Color(0xFF141F22),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
+                      Expanded(
+                        child: _buildFieldCard(
+                          label: 'বিক্রয় মূল্য ৳ *',
+                          child: TextFormField(
+                            controller: _salePriceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: NumericInputFormatters.wholeNumber,
+                            readOnly: !ref.watch(dokanAppFlowProvider).can(DokanPermission.settingsManage),
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              final parsed = int.tryParse(value?.trim() ?? '');
+                              if (parsed == null || parsed <= 0) {
+                                return 'বিক্রয় মূল্য দিন';
+                              }
+                              return null;
+                            },
+                            decoration: _inputDecoration(hintText: '৳ ০'),
+                            style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _nameController.text.trim().isEmpty
-                            ? 'পণ্যের নাম'
-                            : _nameController.text.trim(),
-                        style: const TextStyle(
-                          color: Color(0xFF111111),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'ক্যাটাগরি: $_selectedCategory • একক: $_selectedUnit',
-                        style: const TextStyle(
-                          color: Color(0xFF111111),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'বারকোড: ${_barcodeController.text.trim().isEmpty ? 'স্বয়ংক্রিয়ভাবে তৈরি হবে' : _barcodeController.text.trim()}',
-                        style: const TextStyle(
-                          color: Color(0xFF111111),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildFieldCard(
+                          label: 'ক্রয় মূল্য ৳',
+                          child: TextFormField(
+                            controller: _purchasePriceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: NumericInputFormatters.wholeNumber,
+                            readOnly: !ref.watch(dokanAppFlowProvider).can(DokanPermission.settingsManage),
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'ক্রয় মূল্য দিন';
+                              }
+                              final parsed = int.tryParse(value.trim());
+                              if (parsed == null || parsed < 0) {
+                                return 'সঠিক ক্রয় মূল্য দিন';
+                              }
+                              return null;
+                            },
+                            decoration: _inputDecoration(hintText: '৳ ০'),
+                            style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 360),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildFieldCard(
+                          label: 'বর্তমান স্টক',
+                          child: TextFormField(
+                            controller: _stockController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: NumericInputFormatters.wholeNumber,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty)
+                                return 'বর্তমান স্টক দিন';
+                              final parsed = int.tryParse(value.trim());
+                              if (parsed == null || parsed < 0) {
+                                return 'সঠিক স্টক দিন';
+                              }
+                              return null;
+                            },
+                            decoration: _inputDecoration(hintText: '০'),
+                            style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildFieldCard(
+                          label: 'কম স্টক সীমা',
+                          child: TextFormField(
+                            controller: _lowStockController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: NumericInputFormatters.wholeNumber,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty)
+                                return 'কম স্টক সীমা দিন';
+                              final parsed = int.tryParse(value.trim());
+                              if (parsed == null || parsed < 0) {
+                                return 'সঠিক সীমা দিন';
+                              }
+                              return null;
+                            },
+                            decoration: _inputDecoration(hintText: '৫'),
+                            style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 400),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF7F0),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'প্রিভিউ',
+                          style: TextStyle(
+                            color: Color(0xFF141F22),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _nameController.text.trim().isEmpty
+                              ? 'পণ্যের নাম'
+                              : _nameController.text.trim(),
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'ক্যাটাগরি: $_selectedCategory • একক: $_selectedUnit',
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'বারকোড: ${_barcodeController.text.trim().isEmpty ? 'স্বয়ংক্রিয়ভাবে তৈরি হবে' : _barcodeController.text.trim()}',
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7FBFA),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFD8E6E1)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.check_circle_rounded,
-                              color: Color(0xFF0C8C67), size: 18),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'পণ্যের তথ্য যাচাই করলে দ্রুত Master DB তে যুক্ত হবে',
-                              style: TextStyle(
-                                color: Color(0xFF111111),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 440),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FBFA),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFD8E6E1)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.check_circle_rounded,
+                                color: Color(0xFF0C8C67), size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'পণ্যের তথ্য যাচাই করলে দ্রুত Master DB তে যুক্ত হবে',
+                                style: TextStyle(
+                                  color: Color(0xFF111111),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
-                SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0C8C67),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18)),
+                DokanFadeSlideIn(
+                  delay: const Duration(milliseconds: 480),
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0C8C67),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18)),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.4, color: Colors.white),
+                            )
+                          : const Text(
+                              'পণ্য যোগ করুন',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w900, fontSize: 16),
+                            ),
                     ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2.4, color: Colors.white),
-                          )
-                        : const Text(
-                            'পণ্য যোগ করুন',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w900, fontSize: 16),
-                          ),
                   ),
                 ),
                 const SizedBox(height: 14),

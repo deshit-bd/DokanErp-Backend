@@ -99,6 +99,7 @@ class HttpApiFileTransfer implements ApiFileTransfer {
     Map<String, String> headers,
     bool authenticated,
   ) async {
+    headers['bypass-tunnel-reminder'] = 'true';
     if (!authenticated || _authenticator == null) return;
     final token = await _authenticator.getAccessToken();
     if (token != null && token.isNotEmpty) {

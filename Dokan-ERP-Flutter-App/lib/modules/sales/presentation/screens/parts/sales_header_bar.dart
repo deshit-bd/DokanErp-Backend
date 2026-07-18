@@ -245,7 +245,13 @@ class _SalesGroupSection extends StatelessWidget {
           itemCount: group.items.length,
           separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            return _SalesCard(item: group.items[index]);
+            final cardDelay = Duration(milliseconds: math.min(250, index * 30));
+            return DokanFadeSlideIn(
+              delay: cardDelay,
+              duration: const Duration(milliseconds: 350),
+              slideOffset: const Offset(0, 10),
+              child: _SalesCard(item: group.items[index]),
+            );
           },
         ),
       ],

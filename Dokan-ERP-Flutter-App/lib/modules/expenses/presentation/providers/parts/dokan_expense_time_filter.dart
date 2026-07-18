@@ -56,7 +56,22 @@ class DokanExpenseController extends AsyncNotifier<List<DokanExpenseRecord>> {
   ExpenseRepository get _repository => ref.read(expenseRepositoryProvider);
 
   @override
-  Future<List<DokanExpenseRecord>> build() => _repository.loadExpenses();
+  Future<List<DokanExpenseRecord>> build() async {
+    const local = ExpenseLocalDataSource();
+    final cached = await local.load();
+    if (cached.isNotEmpty) {
+      _fetchRemoteInBackground();
+      return cached;
+    }
+    return _repository.loadExpenses();
+  }
+
+  Future<void> _fetchRemoteInBackground() async {
+    try {
+      final remote = await _repository.loadExpenses();
+      state = AsyncData(remote);
+    } catch (_) {}
+  }
 
   Future<void> addExpense(DokanExpenseRecord expense) async {
     final saved = await _repository.createExpense(expense);

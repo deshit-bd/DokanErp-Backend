@@ -19,6 +19,17 @@ class SubscriptionInvoice {
   final double amountDue;
   final String status;
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'billingDate': billingDate,
+        'billableAccounts': billableAccounts,
+        'ratePerAccount': ratePerAccount,
+        'totalAmount': totalAmount,
+        'paidAmount': paidAmount,
+        'amountDue': amountDue,
+        'status': status,
+      };
+
   factory SubscriptionInvoice.fromJson(Map<String, dynamic> json) {
     return SubscriptionInvoice(
       id: json['id'] as String? ?? '',
@@ -53,6 +64,17 @@ class SubscriptionPayment {
   final String status;
   final String paidAt;
   final String? billingDate;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'invoiceId': invoiceId,
+        'amount': amount,
+        'method': method,
+        'trxId': trxId,
+        'status': status,
+        'paidAt': paidAt,
+        'billingDate': billingDate,
+      };
 
   factory SubscriptionPayment.fromJson(Map<String, dynamic> json) {
     return SubscriptionPayment(
@@ -131,4 +153,22 @@ class SubscriptionInfo {
           .toList(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'subscription': {
+          'allowed': allowed,
+          'status': status,
+          'tier': tier,
+          'trialEndsAt': trialEndsAt,
+          'billingDate': billingDate,
+          'billableAccounts': billableAccounts,
+          'ratePerAccount': ratePerAccount,
+          'totalAmount': totalAmount,
+          'paidAmount': paidAmount,
+          'amountDue': amountDue,
+          'message': message,
+        },
+        'recentInvoices': recentInvoices.map((i) => i.toJson()).toList(),
+        'recentPayments': recentPayments.map((p) => p.toJson()).toList(),
+      };
 }

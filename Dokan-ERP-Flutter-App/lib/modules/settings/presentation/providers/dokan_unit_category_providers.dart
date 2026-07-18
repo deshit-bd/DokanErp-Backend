@@ -51,7 +51,7 @@ class DokanUnit {
 }
 
 class DokanCategoryListNotifier
-    extends AutoDisposeAsyncNotifier<List<DokanCategory>> {
+    extends AsyncNotifier<List<DokanCategory>> {
   @override
   FutureOr<List<DokanCategory>> build() async {
     return _fetch();
@@ -112,12 +112,12 @@ class DokanCategoryListNotifier
   }
 }
 
-final dokanCategoryListProvider = AsyncNotifierProvider.autoDispose<
+final dokanCategoryListProvider = AsyncNotifierProvider<
     DokanCategoryListNotifier, List<DokanCategory>>(
   DokanCategoryListNotifier.new,
 );
 
-class DokanUnitListNotifier extends AutoDisposeAsyncNotifier<List<DokanUnit>> {
+class DokanUnitListNotifier extends AsyncNotifier<List<DokanUnit>> {
   @override
   FutureOr<List<DokanUnit>> build() async {
     return _fetch();
@@ -183,6 +183,6 @@ class DokanUnitListNotifier extends AutoDisposeAsyncNotifier<List<DokanUnit>> {
 }
 
 final dokanUnitListProvider =
-    AsyncNotifierProvider.autoDispose<DokanUnitListNotifier, List<DokanUnit>>(
+    AsyncNotifierProvider<DokanUnitListNotifier, List<DokanUnit>>(
   DokanUnitListNotifier.new,
 );

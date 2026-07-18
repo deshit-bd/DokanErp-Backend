@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/expense.dart';
 import '../../domain/repositories/expense_repository.dart';
+import '../../data/datasources/expense_local_data_source.dart';
 
 export '../../domain/entities/expense.dart';
 

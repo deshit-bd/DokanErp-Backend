@@ -71,72 +71,82 @@ class _SalesFilterScreenState extends State<_SalesFilterScreen> {
           padding: const EdgeInsets.only(bottom: 16),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  _HistoryIconButton(
-                    icon: Icons.arrow_back,
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'ফিল্টার',
-                      style: TextStyle(
-                        color: Color(0xFF00694C),
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 30),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, -10),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  children: [
+                    _HistoryIconButton(
+                      icon: Icons.arrow_back,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'ফিল্টার',
+                        style: TextStyle(
+                          color: Color(0xFF00694C),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                  ),
-                  _HistoryIconButton(
-                    icon: Icons.restart_alt,
-                    onTap: () {
-                      setState(() {
-                        _selectedTime = 0;
-                        _selectedStatus = 0;
-                        _selectedRange = 0;
-                      });
-                    },
-                  ),
-                ],
+                    _HistoryIconButton(
+                      icon: Icons.restart_alt,
+                      onTap: () {
+                        setState(() {
+                          _selectedTime = 0;
+                          _selectedStatus = 0;
+                          _selectedRange = 0;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1D9E75), Color(0xFF00694C)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+            DokanFadeSlideIn(
+              delay: const Duration(milliseconds: 70),
+              duration: const Duration(milliseconds: 500),
+              slideOffset: const Offset(0, 10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1D9E75), Color(0xFF00694C)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'বিক্রয় ফিল্টার করুন',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'বিক্রয় ফিল্টার করুন',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'সময়, অবস্থা, এবং পরিমাণ অনুযায়ী তালিকা সাজান।',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                      SizedBox(height: 6),
+                      Text(
+                        'সময়, অবস্থা, এবং পরিমাণ অনুযায়ী তালিকা সাজান।',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -145,99 +155,119 @@ class _SalesFilterScreenState extends State<_SalesFilterScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 children: [
-                  _FilterSectionCard(
-                    title: 'সময় নির্বাচন',
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: List.generate(_times.length, (index) {
-                        return _FilterChoiceChip(
-                          label: _times[index],
-                          selected: _selectedTime == index,
-                          onTap: () {
-                            setState(() {
-                              _selectedTime = index;
-                            });
-                          },
-                        );
-                      }),
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 110),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 15),
+                    child: _FilterSectionCard(
+                      title: 'সময় নির্বাচন',
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: List.generate(_times.length, (index) {
+                          return _FilterChoiceChip(
+                            label: _times[index],
+                            selected: _selectedTime == index,
+                            onTap: () {
+                              setState(() {
+                                _selectedTime = index;
+                              });
+                            },
+                          );
+                        }),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _FilterSectionCard(
-                    title: 'পরিশোধ অবস্থা',
-                    child: Column(
-                      children: List.generate(_statuses.length, (index) {
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index == _statuses.length - 1 ? 0 : 10,
-                          ),
-                          child: _FilterListTile(
-                            title: _statuses[index],
-                            selected: _selectedStatus == index,
-                            onTap: () {
-                              setState(() {
-                                _selectedStatus = index;
-                              });
-                            },
-                          ),
-                        );
-                      }),
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 150),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 15),
+                    child: _FilterSectionCard(
+                      title: 'পরিশোধ অবস্থা',
+                      child: Column(
+                        children: List.generate(_statuses.length, (index) {
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: index == _statuses.length - 1 ? 0 : 10,
+                            ),
+                            child: _FilterListTile(
+                              title: _statuses[index],
+                              selected: _selectedStatus == index,
+                              onTap: () {
+                                setState(() {
+                                  _selectedStatus = index;
+                                });
+                              },
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _FilterSectionCard(
-                    title: 'পরিমাণ সীমা',
-                    child: Column(
-                      children: List.generate(_ranges.length, (index) {
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index == _ranges.length - 1 ? 0 : 10,
-                          ),
-                          child: _FilterListTile(
-                            title: _ranges[index],
-                            selected: _selectedRange == index,
-                            onTap: () {
-                              setState(() {
-                                _selectedRange = index;
-                              });
-                            },
-                          ),
-                        );
-                      }),
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 190),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 15),
+                    child: _FilterSectionCard(
+                      title: 'পরিমাণ সীমা',
+                      child: Column(
+                        children: List.generate(_ranges.length, (index) {
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: index == _ranges.length - 1 ? 0 : 10,
+                            ),
+                            child: _FilterListTile(
+                              title: _ranges[index],
+                              selected: _selectedRange == index,
+                              onTap: () {
+                                setState(() {
+                                  _selectedRange = index;
+                                });
+                              },
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _FilterActionButton(
-                          label: 'রিসেট',
-                          filled: false,
-                          onTap: () {
-                            setState(() {
-                              _selectedTime = 0;
-                              _selectedStatus = 0;
-                              _selectedRange = 0;
-                            });
-                          },
+                  DokanFadeSlideIn(
+                    delay: const Duration(milliseconds: 230),
+                    duration: const Duration(milliseconds: 500),
+                    slideOffset: const Offset(0, 15),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _FilterActionButton(
+                            label: 'রিসেট',
+                            filled: false,
+                            onTap: () {
+                              setState(() {
+                                _selectedTime = 0;
+                                _selectedStatus = 0;
+                                _selectedRange = 0;
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _FilterActionButton(
-                          label: 'ফলাফল দেখুন',
-                          filled: true,
-                          onTap: () => Navigator.of(context).pop(
-                            _HistoryFilterSelection(
-                              timeIndex: _selectedTime,
-                              statusIndex: _selectedStatus,
-                              rangeIndex: _selectedRange,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _FilterActionButton(
+                            label: 'ফলাফল দেখুন',
+                            filled: true,
+                            onTap: () => Navigator.of(context).pop(
+                              _HistoryFilterSelection(
+                                timeIndex: _selectedTime,
+                                statusIndex: _selectedStatus,
+                                rangeIndex: _selectedRange,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

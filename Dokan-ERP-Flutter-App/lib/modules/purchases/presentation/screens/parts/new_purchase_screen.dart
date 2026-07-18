@@ -964,31 +964,46 @@ class _DokanNewPurchaseScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'পণ্য নির্বাচন করুন',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF16302E),
+                          const DokanFadeSlideIn(
+                            delay: Duration(milliseconds: 30),
+                            duration: Duration(milliseconds: 400),
+                            slideOffset: Offset(0, -10),
+                            child: Text(
+                              'পণ্য নির্বাচন করুন',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF16302E),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            isLoading
-                                ? 'ডাটাবেস থেকে পণ্য আনা হচ্ছে...'
-                                : '${filtered.length} টি পণ্য পাওয়া গেছে',
-                            style: const TextStyle(
-                              color: Color(0xFF71827F),
-                              fontWeight: FontWeight.w600,
+                          DokanFadeSlideIn(
+                            delay: const Duration(milliseconds: 70),
+                            duration: const Duration(milliseconds: 400),
+                            slideOffset: const Offset(0, -10),
+                            child: Text(
+                              isLoading
+                                  ? 'ডাটাবেস থেকে পণ্য আনা হচ্ছে...'
+                                  : '${filtered.length} টি পণ্য পাওয়া গেছে',
+                              style: const TextStyle(
+                                color: Color(0xFF71827F),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
-                          DokanSearchField(
-                            controller: searchController,
-                            hintText: 'নাম, বারকোড, বা ক্যাটাগরি দিয়ে খুঁজুন',
-                            onChanged: (value) {
-                              setSheetState(() => query = value);
-                            },
+                          DokanFadeSlideIn(
+                            delay: const Duration(milliseconds: 120),
+                            duration: const Duration(milliseconds: 450),
+                            slideOffset: const Offset(0, 10),
+                            child: DokanSearchField(
+                              controller: searchController,
+                              hintText: 'নাম, বারকোড, বা ক্যাটাগরি দিয়ে খুঁজুন',
+                              onChanged: (value) {
+                                setSheetState(() => query = value);
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -1039,111 +1054,117 @@ class _DokanNewPurchaseScreenState
                                     final product = filtered[index];
                                     final isSelected = selectedProductIds
                                         .contains(product.productId);
-                                    return InkWell(
-                                      onTap: () {
-                                        setSheetState(() {
-                                          if (isSelected) {
-                                            selectedProductIds
-                                                .remove(product.productId);
-                                          } else {
-                                            selectedProductIds
-                                                .add(product.productId);
-                                          }
-                                        });
-                                      },
-                                      borderRadius: BorderRadius.circular(18),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? const Color(0xFFF0FDF4)
-                                              : const Color(0xFFF8FBFA),
-                                          borderRadius:
-                                              BorderRadius.circular(18),
-                                          border: Border.all(
+                                    final itemDelay = Duration(milliseconds: math.min(250, index * 30));
+                                    return DokanFadeSlideIn(
+                                      delay: itemDelay,
+                                      duration: const Duration(milliseconds: 400),
+                                      slideOffset: const Offset(0, 15),
+                                      child: InkWell(
+                                        onTap: () {
+                                          setSheetState(() {
+                                            if (isSelected) {
+                                              selectedProductIds
+                                                  .remove(product.productId);
+                                            } else {
+                                              selectedProductIds
+                                                  .add(product.productId);
+                                            }
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
                                             color: isSelected
-                                                ? const Color(0xFF86EFAC)
-                                                : const Color(0xFFE2EBE8),
-                                            width: isSelected ? 1.5 : 1.0,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              isSelected
-                                                  ? Icons.check_circle_rounded
-                                                  : Icons
-                                                      .radio_button_off_rounded,
+                                                ? const Color(0xFFF0FDF4)
+                                                : const Color(0xFFF8FBFA),
+                                            borderRadius:
+                                                BorderRadius.circular(18),
+                                            border: Border.all(
                                               color: isSelected
-                                                  ? const Color(0xFF0D6B55)
-                                                  : const Color(0xFFBDC7C4),
-                                              size: 22,
+                                                  ? const Color(0xFF86EFAC)
+                                                  : const Color(0xFFE2EBE8),
+                                              width: isSelected ? 1.5 : 1.0,
                                             ),
-                                            const SizedBox(width: 10),
-                                            _productThumbnail(
-                                              emoji: product.emoji,
-                                              imageUrl: product.imageLabel,
-                                              size: 40,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                isSelected
+                                                    ? Icons.check_circle_rounded
+                                                    : Icons
+                                                        .radio_button_off_rounded,
+                                                color: isSelected
+                                                    ? const Color(0xFF0D6B55)
+                                                    : const Color(0xFFBDC7C4),
+                                                size: 22,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              _productThumbnail(
+                                                emoji: product.emoji,
+                                                imageUrl: product.imageLabel,
+                                                size: 40,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      product.name,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: Color(0xFF16302E),
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      '${product.category} · বারকোড: ${product.barcode}',
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: Color(0xFF71827F),
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Column(
                                                 crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                                    CrossAxisAlignment.end,
                                                 children: [
                                                   Text(
-                                                    product.name,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                    '৳ ${_bn(product.purchasePrice)}',
                                                     style: const TextStyle(
-                                                      color: Color(0xFF16302E),
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      fontSize: 14,
+                                                      color: Color(0xFF0D6B55),
+                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: 16,
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    '${product.category} · বারকোড: ${product.barcode}',
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: const TextStyle(
+                                                  const SizedBox(height: 2),
+                                                  const Text(
+                                                    'ক্রয় মূল্য',
+                                                    style: TextStyle(
                                                       color: Color(0xFF71827F),
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 11,
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  '৳ ${_bn(product.purchasePrice)}',
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF0D6B55),
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                const Text(
-                                                  'ক্রয় মূল্য',
-                                                  style: TextStyle(
-                                                    color: Color(0xFF71827F),
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     );

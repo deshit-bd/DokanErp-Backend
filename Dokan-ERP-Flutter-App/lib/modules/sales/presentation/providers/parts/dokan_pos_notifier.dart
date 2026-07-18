@@ -1756,6 +1756,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
   Future<String?> confirmCheckout({
     bool allowDueConfirmation = false,
   }) async {
+    if (state.submitting) return null;
     if (state.paymentConfirmed &&
         state.confirmationMessage == 'চেকআউট সম্পন্ন হয়েছে') {
       return state.confirmationMessage;
@@ -1821,6 +1822,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
     }
 
 
+    state = state.copyWith(submitting: true);
     DokanDebug.log(
         '[CHECKOUT] Started confirmCheckout. Deductions: ${deductions.map((d) => "${d.key.name}: ${d.value}").join(", ")}');
     try {
@@ -1962,6 +1964,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
             List<DokanCustomerProfileRecord>.unmodifiable(updatedProfiles),
         paymentConfirmed: true,
         confirmationMessage: 'চেকআউট সম্পন্ন হয়েছে',
+        submitting: false,
       );
       await _persistSalesHistory();
       ref.read(dokanDashboardLiveSalesProvider.notifier).update((orders) {
@@ -1980,8 +1983,22 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
       unawaited(fetchCustomers());
       return 'চেকআউট সম্পন্ন হয়েছে';
     } catch (error, stackTrace) {
+      state = state.copyWith(submitting: false);
       debugPrint('[SALE] checkout failed: $error');
       debugPrintStack(stackTrace: stackTrace);
+      try {
+        final client = ref.read(apiClientProvider);
+        unawaited(client.post(
+          '/app/api/debug-error',
+          body: {
+            'message': '$error',
+            'stacktrace': '$stackTrace',
+          },
+          authenticated: false,
+        ));
+      } catch (e) {
+        debugPrint('[SALE] failed to send debug error: $e');
+      }
       return 'চেকআউট ব্যর্থ হয়েছে';
     }
   }
@@ -2096,6 +2113,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
       bankRoutingNumber: '',
       paymentConfirmed: false,
       confirmationMessage: null,
+      submitting: false,
     );
     unawaited(_saveCartToPrefs(const <String, int>{}));
   }

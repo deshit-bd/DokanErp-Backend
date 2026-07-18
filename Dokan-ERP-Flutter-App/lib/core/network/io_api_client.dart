@@ -122,6 +122,7 @@ class IoApiClient implements ApiClient {
       final request = await _client.openUrl(method, _buildUri(path, query));
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       request.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
+      request.headers.set('bypass-tunnel-reminder', 'true');
       headers?.forEach(request.headers.set);
 
       if (authenticated && _authenticator != null) {
