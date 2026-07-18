@@ -15,7 +15,7 @@ abstract final class AppConfig {
       return fromEnv;
     }
     // Public tunnel URL for global backend access
-    return 'https://orange-plums-wear.loca.lt';
+    return 'https://dokan-erp-test-api.loca.lt';
   }
   static const syncRemoteDeletions = bool.fromEnvironment(
     'DOKAN_API_SYNC_DELETIONS',
