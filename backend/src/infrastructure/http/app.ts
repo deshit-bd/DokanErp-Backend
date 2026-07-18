@@ -41,6 +41,7 @@ const authLimiter = rateLimit({
   max: 50,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false },
   message: { message: "Too many attempts. Please try again later." },
 });
 
