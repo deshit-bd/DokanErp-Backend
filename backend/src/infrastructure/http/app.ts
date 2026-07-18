@@ -33,6 +33,7 @@ import settingsRoutes from "../../routes/settings";
 import { evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "../../subscription/access";
 
 const app = express();
+app.set("trust proxy", true);
 
 // Throttle authentication endpoints to blunt brute-force / credential-stuffing.
 const authLimiter = rateLimit({
