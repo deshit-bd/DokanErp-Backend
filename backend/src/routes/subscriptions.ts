@@ -227,7 +227,7 @@ router.get("/me", async (request, response) => {
 
     if (auth.payload.role === "SALESMAN") {
       const shopUser = await prisma.shopUser.findFirst({
-        where: { userId: auth.payload.id },
+        where: { userId: auth.user.id },
         include: { shop: true }
       });
       if (shopUser?.shop) {
