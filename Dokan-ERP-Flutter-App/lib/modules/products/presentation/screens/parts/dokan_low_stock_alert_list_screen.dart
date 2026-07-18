@@ -40,7 +40,7 @@ class _SummaryPill extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
+          AnimatedNumberString(
             value,
             style: TextStyle(
               color: color,
@@ -181,7 +181,7 @@ class _LowStockProductCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
+              AnimatedNumberString(
                 '${_bnDigits(product.stock.toString())}টি',
                 style: TextStyle(
                   color: statusColor,
@@ -203,7 +203,7 @@ class _LowStockProductCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
+              AnimatedNumberString(
                 '$percentage%',
                 style: TextStyle(
                   color: statusColor,

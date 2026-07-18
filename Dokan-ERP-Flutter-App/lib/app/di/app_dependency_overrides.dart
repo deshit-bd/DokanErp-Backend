@@ -157,6 +157,7 @@ List<Override> get appDependencyOverrides {
           .toList(growable: false);
     }),
     salesHistoryOrdersProvider.overrideWith((ref) async {
+      ref.keepAlive();
       void logMsg(String msg) {
         try {
           File('/Users/macbookair/Desktop/dokan_erp/flutter_debug.log')

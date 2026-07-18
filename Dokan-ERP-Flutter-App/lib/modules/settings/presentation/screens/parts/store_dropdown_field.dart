@@ -389,25 +389,34 @@ class DokanAroOptionScreen extends ConsumerWidget {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                 children: [
-                  _ProfileCard(
-                    shopName: shopName,
-                    ownerName: ownerName,
-                    badgeText: badgeText,
-                    accent: _accent,
-                    onRefresh: () {
-                      ref.invalidate(storeDetailsProvider);
-                      ref.invalidate(subscriptionInfoProvider);
-                    },
+                  ScrollReveal(
+                    child: _ProfileCard(
+                      shopName: shopName,
+                      ownerName: ownerName,
+                      badgeText: badgeText,
+                      accent: _accent,
+                      onRefresh: () {
+                        ref.invalidate(storeDetailsProvider);
+                        ref.invalidate(subscriptionInfoProvider);
+                      },
+                    ),
                   ),
                   const SizedBox(height: 18),
-                  ...sections.map(
-                    (section) => Padding(
-                      padding: const EdgeInsets.only(bottom: 18),
-                      child: _MoreSectionView(
-                        title: section.title,
-                        items: section.items,
-                      ),
-                    ),
+                  ...sections.asMap().entries.map(
+                    (entry) {
+                      final index = entry.key;
+                      final section = entry.value;
+                      return ScrollReveal(
+                        delay: Duration(milliseconds: 60 * (index + 1)),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 18),
+                          child: _MoreSectionView(
+                            title: section.title,
+                            items: section.items,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

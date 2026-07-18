@@ -341,7 +341,7 @@ class _MetricPill extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          Text(
+          AnimatedNumberString(
             value,
             style: TextStyle(
               color: valueColor ?? const Color(0xFF163732),

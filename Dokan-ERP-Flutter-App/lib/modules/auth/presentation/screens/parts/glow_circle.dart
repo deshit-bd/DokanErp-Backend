@@ -144,9 +144,10 @@ class _FeatureTile extends StatelessWidget {
 }
 
 class _MiniChart extends StatelessWidget {
-  const _MiniChart({required this.accent});
+  const _MiniChart({required this.accent, required this.isActive});
 
   final Color accent;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -171,13 +172,13 @@ class _MiniChart extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _bar(10, accent.withOpacity(0.35)),
+              _bar(10, accent.withOpacity(0.35), const Duration(milliseconds: 600)),
               const SizedBox(width: 4),
-              _bar(18, accent.withOpacity(0.55)),
+              _bar(18, accent.withOpacity(0.55), const Duration(milliseconds: 700)),
               const SizedBox(width: 4),
-              _bar(26, accent),
+              _bar(26, accent, const Duration(milliseconds: 800)),
               const SizedBox(width: 4),
-              _bar(14, const Color(0xFF0A8B68)),
+              _bar(14, const Color(0xFF0A8B68), const Duration(milliseconds: 900)),
             ],
           ),
         ],
@@ -185,13 +186,20 @@ class _MiniChart extends StatelessWidget {
     );
   }
 
-  Widget _bar(double height, Color color) {
+  Widget _bar(double height, Color color, Duration delay) {
     return Expanded(
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(999),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: _AnimatedHeightFactor(
+          delay: delay,
+          isActive: isActive,
+          height: height,
+          child: Container(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
         ),
       ),
     );
@@ -290,9 +298,10 @@ class _StackedCard extends StatelessWidget {
 }
 
 class _ReceiptCard extends StatelessWidget {
-  const _ReceiptCard({required this.accent});
+  const _ReceiptCard({required this.accent, required this.isActive});
 
   final Color accent;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -339,34 +348,32 @@ class _ReceiptCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _receiptLine(0.9, accent),
+            _receiptLine(0.9, accent, const Duration(milliseconds: 400)),
             const SizedBox(height: 8),
-            _receiptLine(0.6, const Color(0xFFC9D8D2)),
+            _receiptLine(0.6, const Color(0xFFC9D8D2), const Duration(milliseconds: 500)),
             const SizedBox(height: 8),
-            _receiptLine(0.75, const Color(0xFFC9D8D2)),
+            _receiptLine(0.75, const Color(0xFFC9D8D2), const Duration(milliseconds: 600)),
             const Spacer(),
-            Container(
-              height: 10,
-              decoration: BoxDecoration(
-                color: accent.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
+            _receiptLine(1.0, accent.withOpacity(0.18), const Duration(milliseconds: 700)),
           ],
         ),
       ),
     );
   }
 
-  Widget _receiptLine(double factor, Color color) {
+  Widget _receiptLine(double factor, Color color, Duration delay) {
     return FractionallySizedBox(
       widthFactor: factor,
       alignment: Alignment.centerLeft,
-      child: Container(
-        height: 8,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(999),
+      child: _AnimatedWidthFactor(
+        delay: delay,
+        isActive: isActive,
+        child: Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(999),
+          ),
         ),
       ),
     );

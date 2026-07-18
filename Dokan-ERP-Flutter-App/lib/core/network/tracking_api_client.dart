@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'api_activity_tracker.dart';
 import 'api_client.dart';
 import 'api_response.dart';
@@ -18,7 +19,8 @@ class TrackingApiClient implements ApiClient {
     Map<String, String>? headers,
     bool authenticated = true,
   }) {
-    final shouldTrack = headers?['X-No-Track'] != 'true';
+    final isUntracked = Zone.current[#untracked_api_request] == true;
+    final shouldTrack = headers?['X-No-Track'] != 'true' && !isUntracked;
     final outgoingHeaders = headers != null
         ? (Map<String, String>.from(headers)..remove('X-No-Track'))
         : null;
@@ -49,7 +51,8 @@ class TrackingApiClient implements ApiClient {
     Map<String, String>? headers,
     bool authenticated = true,
   }) {
-    final shouldTrack = headers?['X-No-Track'] != 'true';
+    final isUntracked = Zone.current[#untracked_api_request] == true;
+    final shouldTrack = headers?['X-No-Track'] != 'true' && !isUntracked;
     final outgoingHeaders = headers != null
         ? (Map<String, String>.from(headers)..remove('X-No-Track'))
         : null;
@@ -82,7 +85,8 @@ class TrackingApiClient implements ApiClient {
     Map<String, String>? headers,
     bool authenticated = true,
   }) {
-    final shouldTrack = headers?['X-No-Track'] != 'true';
+    final isUntracked = Zone.current[#untracked_api_request] == true;
+    final shouldTrack = headers?['X-No-Track'] != 'true' && !isUntracked;
     final outgoingHeaders = headers != null
         ? (Map<String, String>.from(headers)..remove('X-No-Track'))
         : null;
@@ -115,7 +119,8 @@ class TrackingApiClient implements ApiClient {
     Map<String, String>? headers,
     bool authenticated = true,
   }) {
-    final shouldTrack = headers?['X-No-Track'] != 'true';
+    final isUntracked = Zone.current[#untracked_api_request] == true;
+    final shouldTrack = headers?['X-No-Track'] != 'true' && !isUntracked;
     final outgoingHeaders = headers != null
         ? (Map<String, String>.from(headers)..remove('X-No-Track'))
         : null;
@@ -148,7 +153,8 @@ class TrackingApiClient implements ApiClient {
     Map<String, String>? headers,
     bool authenticated = true,
   }) {
-    final shouldTrack = headers?['X-No-Track'] != 'true';
+    final isUntracked = Zone.current[#untracked_api_request] == true;
+    final shouldTrack = headers?['X-No-Track'] != 'true' && !isUntracked;
     final outgoingHeaders = headers != null
         ? (Map<String, String>.from(headers)..remove('X-No-Track'))
         : null;

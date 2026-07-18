@@ -61,9 +61,6 @@ class _DokanReportsDashboardScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.invalidate(salesHistoryOrdersProvider);
-      ref.invalidate(reportDashboardRemoteProvider);
-      ref.invalidate(purchaseOrderProvider);
       if (widget.initialFilter != null) {
         ref
             .read(reportFilterProvider.notifier)
@@ -134,8 +131,7 @@ class _DokanReportsDashboardScreenState
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       children: [
-        DokanFadeSlideIn(
-          delay: Duration.zero,
+        ScrollReveal(
           child: _KpiCard(
             label: tr('মোট বিক্রয়', 'Total Sales'),
             value: _currency(summary.sales.abs()),
@@ -144,8 +140,8 @@ class _DokanReportsDashboardScreenState
             subtitle: monthLabel,
           ),
         ),
-        DokanFadeSlideIn(
-          delay: const Duration(milliseconds: 50),
+        ScrollReveal(
+          delay: const Duration(milliseconds: 100),
           child: _KpiCard(
             label: tr('লাভ', 'Profit'),
             value: _currency(summary.profit.abs()),
@@ -154,8 +150,8 @@ class _DokanReportsDashboardScreenState
             subtitle: tr('নিট মুনাফা', 'Net Profit'),
           ),
         ),
-        DokanFadeSlideIn(
-          delay: const Duration(milliseconds: 100),
+        ScrollReveal(
+          delay: const Duration(milliseconds: 200),
           child: _KpiCard(
             label: tr('ক্রয়', 'Purchase'),
             value: _currency(summary.purchase.abs()),
@@ -164,8 +160,8 @@ class _DokanReportsDashboardScreenState
             subtitle: tr('পণ্য ক্রয়', 'Product Purchase'),
           ),
         ),
-        DokanFadeSlideIn(
-          delay: const Duration(milliseconds: 150),
+        ScrollReveal(
+          delay: const Duration(milliseconds: 300),
           child: _KpiCard(
             label: tr('খরচ', 'Expense'),
             value: _currency(summary.expense.abs()),
@@ -490,7 +486,7 @@ class _DokanReportsDashboardScreenState
             sliver: SliverList(
               delegate: SliverChildListDelegate(
                 [
-                  if (remoteDashboardAsync.isLoading)
+                  if (remoteDashboardAsync.isLoading && !remoteDashboardAsync.hasValue)
                     Container(
                       margin: const EdgeInsets.only(bottom: 14),
                       padding: const EdgeInsets.symmetric(
@@ -545,200 +541,214 @@ class _DokanReportsDashboardScreenState
                         ),
                       ),
                     ),
-                  _SectionCard(
-                    title: tr('টাইম ফিল্টার', 'Time Filter'),
-                    child: _buildTimeFilterRow(selectedFilter, ref),
+                  ScrollReveal(
+                    child: _SectionCard(
+                      title: tr('টাইম ফিল্টার', 'Time Filter'),
+                      child: _buildTimeFilterRow(selectedFilter, ref),
+                    ),
                   ),
                   const SizedBox(height: 14),
-                  _SectionCard(
-                    title: tr('মাসিক সারসংক্ষেপ', 'Monthly Summary'),
-                    child: _buildHeroSummaryCard(
-                        summary, monthLabel, _trendGrowthValue(trend)),
+                  ScrollReveal(
+                    child: _SectionCard(
+                      title: tr('মাসিক সারসংক্ষেপ', 'Monthly Summary'),
+                      child: _buildHeroSummaryCard(
+                          summary, monthLabel, _trendGrowthValue(trend)),
+                    ),
                   ),
                   const SizedBox(height: 14),
                   _buildKpiCardGrid(summary, monthLabel),
                   const SizedBox(height: 14),
-                  _SectionCard(
-                    title: tr('বিক্রয় ট্রেন্ড', 'Sales Trend'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              trendLabel,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF111111),
-                                  ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${_growthText(trend)} ↑',
-                              style: const TextStyle(
-                                color: Color(0xFF0C8C67),
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 190,
-                          child: _TrendChart(points: trend),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildBreakdownTabs(selectedBreakdownIndex, ref),
-                  const SizedBox(height: 14),
-                  _SectionCard(
-                    title:
-                        tr('পেমেন্ট মেথড বিশ্লেষণ', 'Payment Method Analysis'),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0F5F4),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
+                  ScrollReveal(
+                    child: _SectionCard(
+                      title: tr('বিক্রয় ট্রেন্ড', 'Sales Trend'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () {
-                                    ref
-                                        .read(paymentAnalysisTypeProvider
-                                            .notifier)
-                                        .state = 0;
-                                  },
-                                  child: Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: ref.watch(
-                                                  paymentAnalysisTypeProvider) ==
-                                              0
-                                          ? const Color(0xFF0D6B55)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(10),
+                              Text(
+                                trendLabel,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF111111),
                                     ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      tr('বিক্রয়', 'Sales'),
-                                      style: TextStyle(
-                                        color: ref.watch(
-                                                    paymentAnalysisTypeProvider) ==
-                                                0
-                                            ? Colors.white
-                                            : const Color(0xFF556663),
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () {
-                                    ref
-                                        .read(paymentAnalysisTypeProvider
-                                            .notifier)
-                                        .state = 1;
-                                  },
-                                  child: Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: ref.watch(
-                                                  paymentAnalysisTypeProvider) ==
-                                              1
-                                          ? const Color(0xFF0D6B55)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      tr('ক্রয়', 'Purchase'),
-                                      style: TextStyle(
-                                        color: ref.watch(
-                                                    paymentAnalysisTypeProvider) ==
-                                                1
-                                            ? Colors.white
-                                            : const Color(0xFF556663),
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
+                              const Spacer(),
+                              Text(
+                                '${_growthText(trend)} ↑',
+                                style: const TextStyle(
+                                  color: Color(0xFF0C8C67),
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        for (final slice in paymentSlices) ...[
-                          _PaymentAnalysisRow(
-                            label: slice.label,
-                            amount: _currency(slice.amount.abs()),
-                            percent:
-                                _paymentPercent(slice.amount, paymentSlices),
-                            color: slice.color,
-                            icon: slice.icon,
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 190,
+                            child: _TrendChart(points: trend),
                           ),
-                          if (slice != paymentSlices.last)
-                            const SizedBox(height: 12),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _SectionCard(
-                    title: tr('সেরা বিক্রয় পণ্য', 'Top Selling Products'),
-                    child: Column(
-                      children: [
-                        for (final product in topProducts)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _RankedProductCard(product: product),
+                  ScrollReveal(
+                    child: _buildBreakdownTabs(selectedBreakdownIndex, ref),
+                  ),
+                  const SizedBox(height: 14),
+                  ScrollReveal(
+                    child: _SectionCard(
+                      title:
+                          tr('পেমেন্ট মেথড বিশ্লেষণ', 'Payment Method Analysis'),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F5F4),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      ref
+                                          .read(paymentAnalysisTypeProvider
+                                              .notifier)
+                                          .state = 0;
+                                    },
+                                    child: Container(
+                                      padding:
+                                          const EdgeInsets.symmetric(vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: ref.watch(
+                                                    paymentAnalysisTypeProvider) ==
+                                                0
+                                            ? const Color(0xFF0D6B55)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        tr('বিক্রয়', 'Sales'),
+                                        style: TextStyle(
+                                          color: ref.watch(
+                                                      paymentAnalysisTypeProvider) ==
+                                                  0
+                                              ? Colors.white
+                                              : const Color(0xFF556663),
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      ref
+                                          .read(paymentAnalysisTypeProvider
+                                              .notifier)
+                                          .state = 1;
+                                    },
+                                    child: Container(
+                                      padding:
+                                          const EdgeInsets.symmetric(vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: ref.watch(
+                                                    paymentAnalysisTypeProvider) ==
+                                                1
+                                            ? const Color(0xFF0D6B55)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        tr('ক্রয়', 'Purchase'),
+                                        style: TextStyle(
+                                          color: ref.watch(
+                                                      paymentAnalysisTypeProvider) ==
+                                                  1
+                                              ? Colors.white
+                                              : const Color(0xFF556663),
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                      ],
+                          const SizedBox(height: 16),
+                          for (final slice in paymentSlices) ...[
+                            _PaymentAnalysisRow(
+                              label: slice.label,
+                              amount: _currency(slice.amount.abs()),
+                              percent:
+                                  _paymentPercent(slice.amount, paymentSlices),
+                              color: slice.color,
+                              icon: slice.icon,
+                            ),
+                            if (slice != paymentSlices.last)
+                              const SizedBox(height: 12),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _SectionCard(
-                    title: tr('সাম্প্রতিক অ্যাক্টিভিটি', 'Recent Activity'),
-                    child: activities.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: Text(
-                                tr('কোনো সাম্প্রতিক অ্যাক্টিভিটি পাওয়া যায়নি',
-                                    'No recent activity found'),
-                                style: const TextStyle(
-                                  color: Color(0xFF3D4943),
-                                  fontWeight: FontWeight.w700,
+                  ScrollReveal(
+                    child: _SectionCard(
+                      title: tr('সেরা বিক্রয় পণ্য', 'Top Selling Products'),
+                      child: Column(
+                        children: [
+                          for (final product in topProducts)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _RankedProductCard(product: product),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ScrollReveal(
+                    child: _SectionCard(
+                      title: tr('সাম্প্রতিক অ্যাক্টিভিটি', 'Recent Activity'),
+                      child: activities.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Text(
+                                  tr('কোনো সাম্প্রতিক অ্যাক্টিভিটি পাওয়া যায়নি',
+                                      'No recent activity found'),
+                                  style: const TextStyle(
+                                    color: Color(0xFF3D4943),
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
+                            )
+                          : ListView.separated(
+                              itemCount: activities.length,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final item = activities[index];
+                                return _ActivityTile(entry: item);
+                              },
                             ),
-                          )
-                        : ListView.separated(
-                            itemCount: activities.length,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final item = activities[index];
-                              return _ActivityTile(entry: item);
-                            },
-                          ),
+                    ),
                   ),
                   const SizedBox(height: 4),
                 ],

@@ -24,7 +24,6 @@ class _DokanSalesmanDashboardScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPermissions();
-      ref.invalidate(salesHistoryOrdersProvider);
     });
   }
 

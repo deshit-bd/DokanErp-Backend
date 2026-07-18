@@ -300,42 +300,50 @@ class _DokanNewPurchaseScreenState
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                     children: [
-                      _buildInfoCard(),
+                      DokanFadeSlideIn(
+                        child: _buildInfoCard(),
+                      ),
                       const SizedBox(height: 14),
-                      _buildSupplierCard(suppliers),
+                      ScrollReveal(
+                        delay: const Duration(milliseconds: 40),
+                        child: _buildSupplierCard(suppliers),
+                      ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'পণ্য যোগ করুন',
-                              style: TextStyle(
-                                color: Color(0xFF16302E),
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
+                      ScrollReveal(
+                        delay: const Duration(milliseconds: 80),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'পণ্য যোগ করুন',
+                                style: TextStyle(
+                                  color: Color(0xFF16302E),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
-                          ),
-                          TextButton.icon(
-                            onPressed: productsLoading
-                                ? null
-                                : () => _showProductSelectionDialog(
-                                      catalogProducts,
-                                      isLoading: productsLoading,
-                                    ),
-                            icon: const Icon(Icons.add_circle_outline_rounded,
-                                color: Color(0xFF0D6B55)),
-                            label: Text(
-                              productsLoading
-                                  ? 'লোড হচ্ছে...'
-                                  : 'পণ্য নির্বাচন',
-                              style: const TextStyle(
-                                color: Color(0xFF0D6B55),
-                                fontWeight: FontWeight.w800,
+                            TextButton.icon(
+                              onPressed: productsLoading
+                                  ? null
+                                  : () => _showProductSelectionDialog(
+                                        catalogProducts,
+                                        isLoading: productsLoading,
+                                      ),
+                              icon: const Icon(Icons.add_circle_outline_rounded,
+                                  color: Color(0xFF0D6B55)),
+                              label: Text(
+                                productsLoading
+                                    ? 'লোড হচ্ছে...'
+                                    : 'পণ্য নির্বাচন',
+                                style: const TextStyle(
+                                  color: Color(0xFF0D6B55),
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 10),
                       if (productsLoading)
@@ -359,12 +367,25 @@ class _DokanNewPurchaseScreenState
                           ),
                         ),
                       if (_items.isEmpty)
-                        _buildEmptyItemsState()
+                        ScrollReveal(
+                          delay: const Duration(milliseconds: 120),
+                          child: _buildEmptyItemsState(
+                              catalogProducts, productsLoading),
+                        )
                       else
                         ...List.generate(
-                            _items.length, (idx) => _buildItemCard(idx)),
+                          _items.length,
+                          (idx) => ScrollReveal(
+                            key: ValueKey('new-purchase-item-${_items[idx].product.productId}-${_items[idx].product.masterProductId}'),
+                            delay: Duration(milliseconds: (idx % 5) * 60),
+                            child: _buildItemCard(idx),
+                          ),
+                        ),
                       const SizedBox(height: 16),
-                      _buildNotesCard(),
+                      ScrollReveal(
+                        delay: const Duration(milliseconds: 160),
+                        child: _buildNotesCard(),
+                      ),
                     ],
                   ),
                 ),
@@ -541,43 +562,52 @@ class _DokanNewPurchaseScreenState
     );
   }
 
-  Widget _buildEmptyItemsState() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2EBE8)),
-      ),
-      child: const Column(
-        children: [
-          SizedBox(height: 8),
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Color(0xFFE5F4EF),
-            child: Icon(Icons.inventory_2_outlined, color: Color(0xFF0D6B55)),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'এখনও কোনো পণ্য যোগ করা হয়নি',
-            style: TextStyle(
-              color: Color(0xFF16302E),
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
+  Widget _buildEmptyItemsState(
+      List<DokanCatalogProduct> catalogProducts, bool productsLoading) {
+    return GestureDetector(
+      onTap: productsLoading
+          ? null
+          : () => _showProductSelectionDialog(
+                catalogProducts,
+                isLoading: productsLoading,
+              ),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE2EBE8)),
+        ),
+        child: const Column(
+          children: [
+            SizedBox(height: 8),
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: Color(0xFFE5F4EF),
+              child: Icon(Icons.inventory_2_outlined, color: Color(0xFF0D6B55)),
             ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'উপরে "পণ্য নির্বাচন" চাপুন এবং ডাটাবেস থেকে পণ্য যোগ করুন।',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF71827F),
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+            SizedBox(height: 12),
+            Text(
+              'এখনও কোনো পণ্য যোগ করা হয়নি',
+              style: TextStyle(
+                color: Color(0xFF16302E),
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-        ],
+            SizedBox(height: 4),
+            Text(
+              'এখানে চাপুন অথবা উপরে "পণ্য নির্বাচন" থেকে পণ্য যোগ করুন।',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF71827F),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -845,8 +875,8 @@ class _DokanNewPurchaseScreenState
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${_items.length} টি পণ্য',
+                    AnimatedNumberString(
+                      '${_bn(_items.length)} টি পণ্য',
                       style: const TextStyle(
                         color: Color(0xFF71827F),
                         fontWeight: FontWeight.w700,
@@ -854,7 +884,7 @@ class _DokanNewPurchaseScreenState
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    AnimatedNumberString(
                       '৳ ${_bn(_totalAmount)}',
                       style: const TextStyle(
                         color: Color(0xFF0D6B55),

@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class DokanPhoneShell extends StatelessWidget {
-  const DokanPhoneShell({required this.child});
+  const DokanPhoneShell({super.key, required this.child});
 
   final Widget child;
 

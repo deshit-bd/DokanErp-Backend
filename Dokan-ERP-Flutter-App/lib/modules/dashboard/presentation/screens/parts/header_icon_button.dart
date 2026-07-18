@@ -207,7 +207,7 @@ class _MetricBlock extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
+            child: AnimatedNumberString(
               value,
               maxLines: 1,
               softWrap: false,

@@ -358,13 +358,18 @@ class _DokanCustomerListScreenState
   @override
   void initState() {
     super.initState();
+    final hasCustomers = ref.read(dokanPosProvider).customerProfiles.isNotEmpty;
+    _ready = hasCustomers;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
       }
       try {
-        await ref.read(dokanPosProvider.notifier).fetchCustomers();
-        ref.invalidate(salesHistoryOrdersProvider);
+        if (!hasCustomers) {
+          await ref.read(dokanPosProvider.notifier).fetchCustomers();
+        } else {
+          ref.read(dokanPosProvider.notifier).fetchCustomers().catchError((_) {});
+        }
       } catch (_) {}
       if (mounted) {
         setState(() => _ready = true);
@@ -434,45 +439,47 @@ class _DokanCustomerListScreenState
           bottom: false,
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                child: Row(
-                  children: [
-                    _HeaderButton(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'গ্রাহক',
-                            style: TextStyle(
-                              color: Color(0xFF163732),
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'গ্রাহকের তথ্য, বাকি ও ট্রানজেকশন',
-                            style: TextStyle(
-                              color: Color(0xFF6B7B79),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+              DokanFadeSlideIn(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                  child: Row(
+                    children: [
+                      _HeaderButton(
+                        icon: Icons.arrow_back_rounded,
+                        onTap: () => Navigator.of(context).maybePop(),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    _HeaderButton(
-                      icon: Icons.refresh_rounded,
-                      onTap: _onRefresh,
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'গ্রাহক',
+                              style: TextStyle(
+                                color: Color(0xFF163732),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'গ্রাহকের তথ্য, বাকি ও ট্রানজেকশন',
+                              style: TextStyle(
+                                color: Color(0xFF6B7B79),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _HeaderButton(
+                        icon: Icons.refresh_rounded,
+                        onTap: _onRefresh,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Expanded(
@@ -484,57 +491,92 @@ class _DokanCustomerListScreenState
                         parent: ClampingScrollPhysics()),
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                     children: [
-                      _SearchField(
-                        controller: _searchController,
-                        query: _query,
-                        onChanged: (value) => setState(() => _query = value),
-                        onClear: () {
-                          _searchController.clear();
-                          setState(() => _query = '');
-                        },
+                      ScrollReveal(
+                        child: _SearchField(
+                          controller: _searchController,
+                          query: _query,
+                          onChanged: (value) => setState(() => _query = value),
+                          onClear: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
                       ),
                       const SizedBox(height: 14),
-                      _ReceivableHeroCard(
-                        totalReceivable: totalReceivable,
-                        totalCustomers: totalCustomers,
-                        dueCustomers: dueCustomers,
+                      ScrollReveal(
+                        delay: const Duration(milliseconds: 80),
+                        child: _ReceivableHeroCard(
+                          totalReceivable: totalReceivable,
+                          totalCustomers: totalCustomers,
+                          dueCustomers: dueCustomers,
+                        ),
                       ),
                       const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _SummaryCard(
-                              icon: Icons.people_alt_rounded,
-                              iconColor: const Color(0xFF0E855D),
-                              iconBackground: const Color(0xFFE7F5EF),
-                              title: 'গ্রাহক',
-                              value: _banglaDigits(totalCustomers.toString()),
-                              subtitle: dueCustomers > 0
-                                  ? 'বাকি আছে ${_banglaDigits(dueCustomers.toString())} জন'
-                                  : 'সব হিসাব আপডেট আছে',
+                      ScrollReveal(
+                        delay: const Duration(milliseconds: 160),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _SummaryCard(
+                                icon: Icons.people_alt_rounded,
+                                iconColor: const Color(0xFF0E855D),
+                                iconBackground: const Color(0xFFE7F5EF),
+                                title: 'গ্রাহক',
+                                value: _banglaDigits(totalCustomers.toString()),
+                                subtitle: dueCustomers > 0
+                                    ? Row(
+                                        children: [
+                                          const Text(
+                                            'বাকি আছে ',
+                                            style: TextStyle(
+                                              color: Color(0xFF7A8A88),
+                                              fontSize: 11.5,
+                                              height: 1.25,
+                                            ),
+                                          ),
+                                          AnimatedNumberString(
+                                            _banglaDigits(dueCustomers.toString()),
+                                            style: const TextStyle(
+                                              color: Color(0xFF7A8A88),
+                                              fontSize: 11.5,
+                                              height: 1.25,
+                                            ),
+                                          ),
+                                          const Text(
+                                            ' জন',
+                                            style: TextStyle(
+                                              color: Color(0xFF7A8A88),
+                                              fontSize: 11.5,
+                                              height: 1.25,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : 'সব হিসাব আপডেট আছে',
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _SummaryCard(
-                              icon: Icons.account_balance_wallet_rounded,
-                              iconColor: const Color(0xFFB14A12),
-                              iconBackground: const Color(0xFFFFF0E2),
-                              title: 'মোট পাওনা',
-                              value: _formatCurrency(totalReceivable),
-                              subtitle: 'সকল গ্রাহকের বাকি যোগফল',
-                              valueColor: const Color(0xFFB3261E),
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const DokanDueManagementScreen(),
-                                  ),
-                                );
-                              },
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _SummaryCard(
+                                icon: Icons.account_balance_wallet_rounded,
+                                iconColor: const Color(0xFFB14A12),
+                                iconBackground: const Color(0xFFFFF0E2),
+                                title: 'মোট পাওনা',
+                                value: _formatCurrency(totalReceivable),
+                                subtitle: 'সকল গ্রাহকের বাকি যোগফল',
+                                valueColor: const Color(0xFFB3261E),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const DokanDueManagementScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 14),
                       if (_query.trim().isNotEmpty)
@@ -552,51 +594,58 @@ class _DokanCustomerListScreenState
                       if (filteredCustomers.isEmpty)
                         const _CustomerEmptyState()
                       else
-                        ...filteredCustomers.map(
-                          (customer) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Dismissible(
-                              key: ValueKey('customer-${customer.key}'),
-                              direction: DismissDirection.endToStart,
-                              background: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFDECEC),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                alignment: Alignment.centerRight,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 18),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Icon(Icons.delete_rounded,
-                                        color: Color(0xFFD6453A)),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'বাদ দিন',
-                                      style: TextStyle(
-                                        color: Color(0xFFD6453A),
-                                        fontWeight: FontWeight.w800,
+                        ...filteredCustomers.asMap().entries.map(
+                          (entry) {
+                            final index = entry.key;
+                            final customer = entry.value;
+                            return ScrollReveal(
+                              delay: Duration(milliseconds: (index % 5) * 60),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Dismissible(
+                                  key: ValueKey('customer-${customer.key}'),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFDECEC),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    alignment: Alignment.centerRight,
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 18),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Icon(Icons.delete_rounded,
+                                            color: Color(0xFFD6453A)),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'বাদ দিন',
+                                          style: TextStyle(
+                                            color: Color(0xFFD6453A),
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  confirmDismiss: (_) => _confirmDeleteCustomer(
+                                      context, ref, customer),
+                                  child: _CustomerListTile(
+                                    customer: customer,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => DokanCustomerDetailScreen(
+                                            customerKey: customer.key),
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              confirmDismiss: (_) => _confirmDeleteCustomer(
-                                  context, ref, customer),
-                              child: _CustomerListTile(
-                                customer: customer,
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => DokanCustomerDetailScreen(
-                                        customerKey: customer.key),
+                                    onLongPress: () => _confirmDeleteCustomer(
+                                        context, ref, customer),
                                   ),
                                 ),
-                                onLongPress: () => _confirmDeleteCustomer(
-                                    context, ref, customer),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                     ],
                   ),

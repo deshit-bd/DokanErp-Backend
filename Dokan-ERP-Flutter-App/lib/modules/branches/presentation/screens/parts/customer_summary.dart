@@ -162,7 +162,7 @@ class _SummaryCard extends StatelessWidget {
   final Color iconBackground;
   final String title;
   final String value;
-  final String subtitle;
+  final dynamic subtitle;
   final Color? valueColor;
   final VoidCallback? onTap;
 
@@ -204,7 +204,7 @@ class _SummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          AnimatedNumberString(
             value,
             style: TextStyle(
               color: valueColor ?? const Color(0xFF163732),
@@ -213,14 +213,17 @@ class _SummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Color(0xFF7A8A88),
-              fontSize: 11.5,
-              height: 1.25,
+          if (subtitle is Widget)
+            subtitle as Widget
+          else if (subtitle is String)
+            Text(
+              subtitle as String,
+              style: const TextStyle(
+                color: Color(0xFF7A8A88),
+                fontSize: 11.5,
+                height: 1.25,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -319,13 +322,50 @@ class _ReceivableHeroCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'গ্রাহক ${_banglaDigits(totalCustomers.toString())} জন • বাকি আছে ${_banglaDigits(dueCustomers.toString())} জন',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.86),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'গ্রাহক ',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.86),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        AnimatedNumberString(
+                          _banglaDigits(totalCustomers.toString()),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.86),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          ' জন • বাকি আছে ',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.86),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        AnimatedNumberString(
+                          _banglaDigits(dueCustomers.toString()),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.86),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          ' জন',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.86),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

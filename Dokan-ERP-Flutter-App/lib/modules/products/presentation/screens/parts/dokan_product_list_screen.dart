@@ -89,206 +89,219 @@ class _DokanProductListScreenState
                   ),
                 ),
               ),
-            Container(
-              height: 82,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3FAFB),
-                border: Border.all(color: const Color(0xFFD9E6E2)),
-              ),
-              child: Row(
-                children: [
-                  Material(
-                    color: Colors.white,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: _openInventoryDrawer,
-                      child: const SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Icon(Icons.menu, color: Color(0xFF3D4943)),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        tr('পণ্য তালিকা', 'Product List'),
-                        style: const TextStyle(
-                          color: Color(0xFF00694C),
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
+            DokanFadeSlideIn(
+              child: Container(
+                height: 82,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3FAFB),
+                  border: Border.all(color: const Color(0xFFD9E6E2)),
+                ),
+                child: Row(
+                  children: [
+                    Material(
+                      color: Colors.white,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: _openInventoryDrawer,
+                        child: const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(Icons.menu, color: Color(0xFF3D4943)),
                         ),
                       ),
                     ),
-                  ),
-                  _HeaderIconButton(
-                    icon: Icons.qr_code_scanner_rounded,
-                    onTap: () async {
-                      final status = await ref
-                          .read(dokanScannerPermissionServiceProvider)
-                          .ensureCameraPermission();
-                      if (!context.mounted) return;
-                      if (!status.isGranted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content:
-                                Text('ক্যামেরা অনুমতি না পেলে স্ক্যান হবে না'),
-                            backgroundColor: Color(0xFFB3261E),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          tr('পণ্য তালিকা', 'Product List'),
+                          style: const TextStyle(
+                            color: Color(0xFF00694C),
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
                           ),
+                        ),
+                      ),
+                    ),
+                    _HeaderIconButton(
+                      icon: Icons.qr_code_scanner_rounded,
+                      onTap: () async {
+                        final status = await ref
+                            .read(dokanScannerPermissionServiceProvider)
+                            .ensureCameraPermission();
+                        if (!context.mounted) return;
+                        if (!status.isGranted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('ক্যামেরা অনুমতি না পেলে স্ক্যান হবে না'),
+                              backgroundColor: Color(0xFFB3261E),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const DokanBarcodeScannerScreen()),
                         );
-                        return;
-                      }
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const DokanBarcodeScannerScreen()),
-                      );
-                    },
-                  ),
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _HeaderIconButton(
+                      icon: Icons.tune_rounded,
+                      onTap: _openSortMenu,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            ScrollReveal(
+              child: DokanSearchField(
+                controller: _searchController,
+                hintText: tr('পণ্যের নাম বা বারকোড লিখুন...',
+                    'Enter product name or barcode...'),
+                onChanged: (value) => setState(() => _searchQuery = value),
+                showClear: _searchQuery.isNotEmpty,
+                borderRadius: 18,
+                onClear: () {
+                  setState(() {
+                    _searchController.clear();
+                    _searchQuery = '';
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            ScrollReveal(
+              delay: const Duration(milliseconds: 80),
+              child: Row(
+                children: [
+                  _statChip(tr('মোট পণ্য', 'Total Products'),
+                      _bnDigits(visibleProducts.length.toString())),
                   const SizedBox(width: 10),
-                  _HeaderIconButton(
-                    icon: Icons.tune_rounded,
-                    onTap: _openSortMenu,
-                  ),
+                  _statChip(tr('কম স্টক', 'Low Stock'),
+                      _bnDigits(lowStockCount.toString()),
+                      accent: const Color(0xFFF49B1A)),
+                  const SizedBox(width: 10),
+                  _statChip(tr('স্টক নেই', 'Out of Stock'),
+                      _bnDigits(outOfStockCount.toString()),
+                      accent: const Color(0xFFD43B3B)),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            DokanSearchField(
-              controller: _searchController,
-              hintText: tr('পণ্যের নাম বা বারকোড লিখুন...',
-                  'Enter product name or barcode...'),
-              onChanged: (value) => setState(() => _searchQuery = value),
-              showClear: _searchQuery.isNotEmpty,
-              borderRadius: 18,
-              onClear: () {
-                setState(() {
-                  _searchController.clear();
-                  _searchQuery = '';
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _statChip(tr('মোট পণ্য', 'Total Products'),
-                    _bnDigits(visibleProducts.length.toString())),
-                const SizedBox(width: 10),
-                _statChip(tr('কম স্টক', 'Low Stock'),
-                    _bnDigits(lowStockCount.toString()),
-                    accent: const Color(0xFFF49B1A)),
-                const SizedBox(width: 10),
-                _statChip(tr('স্টক নেই', 'Out of Stock'),
-                    _bnDigits(outOfStockCount.toString()),
-                    accent: const Color(0xFFD43B3B)),
-              ],
-            ),
             const SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: normalizedCategories.map(_categoryChip).toList(),
+            ScrollReveal(
+              delay: const Duration(milliseconds: 140),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: normalizedCategories.map(_categoryChip).toList(),
+                ),
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Text(
-                  tr('ফিল্টার:', 'Filter:'),
-                  style: const TextStyle(
-                    color: Color(0xFF111111),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      canvasColor: Colors.white,
-                    ),
-                    child: DropdownButtonFormField<_ProductSortMode>(
-                      value: _sortMode,
-                      isExpanded: true,
-                      dropdownColor: Colors.white,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                          color: Color(0xFF6F6F6F)),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFD9E6E2)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFD9E6E2)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                              color: Color(0xFF00694C), width: 1.4),
-                        ),
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFF111111),
-                        fontWeight: FontWeight.w800,
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: _ProductSortMode.newest,
-                          child: Text(
-                            tr('নতুন পণ্য আগে', 'Newest First'),
-                            style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: _ProductSortMode.name,
-                          child: Text(
-                            tr('নাম অনুযায়ী', 'By Name'),
-                            style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: _ProductSortMode.lowStock,
-                          child: Text(
-                            tr('কম স্টক আগে', 'Low Stock First'),
-                            style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: _ProductSortMode.highestSales,
-                          child: Text(
-                            tr('বেশি বিক্রি', 'Highest Sales'),
-                            style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _sortMode = value);
-                      },
+            ScrollReveal(
+              delay: const Duration(milliseconds: 200),
+              child: Row(
+                children: [
+                  Text(
+                    tr('ফিল্টার:', 'Filter:'),
+                    style: const TextStyle(
+                      color: Color(0xFF111111),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Theme(
+                      data: Theme.of(context).copyWith(
+                        canvasColor: Colors.white,
+                      ),
+                      child: DropdownButtonFormField<_ProductSortMode>(
+                        value: _sortMode,
+                        isExpanded: true,
+                        dropdownColor: Colors.white,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: Color(0xFF6F6F6F)),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD9E6E2)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD9E6E2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF00694C), width: 1.4),
+                          ),
+                        ),
+                        style: const TextStyle(
+                          color: Color(0xFF111111),
+                          fontWeight: FontWeight.w800,
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: _ProductSortMode.newest,
+                            child: Text(
+                              tr('নতুন পণ্য আগে', 'Newest First'),
+                              style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: _ProductSortMode.name,
+                            child: Text(
+                              tr('নাম অনুযায়ী', 'By Name'),
+                              style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: _ProductSortMode.lowStock,
+                            child: Text(
+                              tr('কম স্টক আগে', 'Low Stock First'),
+                              style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: _ProductSortMode.highestSales,
+                            child: Text(
+                              tr('বেশি বিক্রি', 'Highest Sales'),
+                              style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _sortMode = value);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
             if (visibleProducts.isEmpty)
@@ -322,10 +335,14 @@ class _DokanProductListScreenState
                 itemCount: visibleProducts.length,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 10),
-                itemBuilder: (context, index) => DokanFadeSlideIn(
-                  delay: Duration(milliseconds: 45 * (index.clamp(0, 9))),
-                  child: _productCard(visibleProducts[index], threshold),
-                ),
+                itemBuilder: (context, index) {
+                  final product = visibleProducts[index];
+                  return ScrollReveal(
+                    key: ValueKey('list-prod-$_selectedCategory-${product.masterProductId}-${product.barcode}-${product.name}'),
+                    delay: Duration(milliseconds: (index % 5) * 60),
+                    child: _productCard(product, threshold),
+                  );
+                },
               ),
             const SizedBox(height: 18),
           ],

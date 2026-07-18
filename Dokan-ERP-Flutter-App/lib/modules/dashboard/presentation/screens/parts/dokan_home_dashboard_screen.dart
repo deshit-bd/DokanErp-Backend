@@ -292,8 +292,7 @@ class _DokanHomeDashboardScreenState
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    DokanFadeSlideIn(
-                                      delay: Duration.zero,
+                                    ScrollReveal(
                                       child: DokanHabitCard(
                                         todaySales: totalSales,
                                         todayProfit: todayProfit,
@@ -302,7 +301,7 @@ class _DokanHomeDashboardScreenState
                                                 0,
                                       ),
                                     ),
-                                    DokanFadeSlideIn(
+                                    ScrollReveal(
                                       delay: const Duration(milliseconds: 100),
                                       child: _SalesSummaryCard(
                                         dateLabel: todayLabel,
@@ -332,8 +331,7 @@ class _DokanHomeDashboardScreenState
                                           ? 1.5
                                           : (constraints.maxWidth < 380 ? 1.4 : 1.5),
                                       children: [
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 200),
+                                        ScrollReveal(
                                           child: _StatCard(
                                             background: const Color(0xFFFFE7CC),
                                             tint: const Color(0xFFF49B1A),
@@ -356,8 +354,8 @@ class _DokanHomeDashboardScreenState
                                             },
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 240),
+                                        ScrollReveal(
+                                          delay: const Duration(milliseconds: 100),
                                           child: _StatCard(
                                             background: const Color(0xFFFCE7E8),
                                             tint: const Color(0xFFB11E24),
@@ -375,8 +373,7 @@ class _DokanHomeDashboardScreenState
                                             ),
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 280),
+                                        ScrollReveal(
                                           child: _StatCard(
                                             background: const Color(0xFFE7F0FF),
                                             tint: const Color(0xFF1F63E0),
@@ -394,8 +391,8 @@ class _DokanHomeDashboardScreenState
                                             ),
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 320),
+                                        ScrollReveal(
+                                          delay: const Duration(milliseconds: 100),
                                           child: _StatCard(
                                             background: const Color(0xFFE2F3E8),
                                             tint: const Color(0xFF0E7B58),
@@ -413,8 +410,7 @@ class _DokanHomeDashboardScreenState
                                             ),
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 360),
+                                        ScrollReveal(
                                           child: _StatCard(
                                             background: const Color(0xFFEDE9FF),
                                             tint: const Color(0xFF6B46C1),
@@ -432,8 +428,8 @@ class _DokanHomeDashboardScreenState
                                             ),
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 400),
+                                        ScrollReveal(
+                                          delay: const Duration(milliseconds: 100),
                                           child: _StatCard(
                                             background: const Color(0xFFFFF1F2),
                                             tint: const Color(0xFFE11D48),
@@ -451,8 +447,7 @@ class _DokanHomeDashboardScreenState
                                             ),
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 440),
+                                        ScrollReveal(
                                           child: _StatCard(
                                             background: const Color(0xFFE6FFFA),
                                             tint: const Color(0xFF0D9488),
@@ -470,8 +465,8 @@ class _DokanHomeDashboardScreenState
                                             ),
                                           ),
                                         ),
-                                        DokanFadeSlideIn(
-                                          delay: const Duration(milliseconds: 480),
+                                        ScrollReveal(
+                                          delay: const Duration(milliseconds: 100),
                                           child: _StatCard(
                                             background: const Color(0xFFF0FDF4),
                                             tint: const Color(0xFF15803D),
@@ -492,147 +487,86 @@ class _DokanHomeDashboardScreenState
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          tr('সাম্প্রতিক পণ্য',
-                                              'Recent Products'),
-                                          style: const TextStyle(
-                                            color: Color(0xFF1D2624),
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () => Navigator.of(context)
-                                              .pushNamed(AppRoutes.sales),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor:
-                                                const Color(0xFF0E7B58),
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                          ),
-                                          child: Text(
-                                            tr('সব দেখুন', 'View All'),
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    SizedBox(
-                                      height: 116,
-                                      child: ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: recentProducts.length,
-                                        separatorBuilder: (context, _) =>
-                                            const SizedBox(width: 12),
-                                        itemBuilder: (context, index) {
-                                          final product = recentProducts[index];
-                                          return _ProductCard(
-                                            title: product.name,
-                                            price:
-                                                '৳${_bengaliNumber(product.salePrice)}',
-                                            imageUrl: product.imageLabel,
-                                            emoji: product.emoji,
-                                            icon: product.emoji == '📦'
-                                                ? Icons.inventory_2_rounded
-                                                : Icons.shopping_bag_outlined,
-                                            colors: const [
-                                              Color(0xFFF4F1E7),
-                                              Color(0xFFE7DDD0),
-                                            ],
-                                            onTap: () => Navigator.of(context)
-                                                .pushNamed(AppRoutes.sales),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _AnalysisCard(
-                                      title: tr(
-                                          'বিক্রয় বিশ্লেষণ', 'Sales Analysis'),
-                                      subtitle: _translateComparisonLabel(
-                                          salesComparisonLabel),
-                                      onTap: () => Navigator.of(context)
-                                          .pushNamed(AppRoutes.sales),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: _MicFab(
-                                        onTap: () {
-                                          final flow =
-                                              ref.read(dokanAppFlowProvider);
-                                          if (!FeatureAccessControl.can(
-                                            flow.currentRole,
-                                            DokanFeature.voiceAssist,
-                                          )) {
-                                            ScaffoldMessenger.of(context)
-                                              ..clearSnackBars()
-                                              ..showSnackBar(
-                                                SnackBar(
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                  margin:
-                                                      const EdgeInsets.fromLTRB(
-                                                    16,
-                                                    0,
-                                                    16,
-                                                    16,
-                                                  ),
-                                                  duration: const Duration(
-                                                      seconds: 2),
-                                                  backgroundColor:
-                                                      const Color(0xFF0C8C67),
-                                                  content: Text(
-                                                    tr('ফিচার শিগগিরই আসছে',
-                                                        'Feature coming soon'),
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                  ),
+                                    ScrollReveal(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                tr('সাম্প্রতিক পণ্য',
+                                                    'Recent Products'),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF1D2624),
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.w700,
                                                 ),
-                                              );
-                                            return;
-                                          }
-                                          ScaffoldMessenger.of(context)
-                                            ..clearSnackBars()
-                                            ..showSnackBar(
-                                              SnackBar(
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                margin:
-                                                    const EdgeInsets.fromLTRB(
-                                                  16,
-                                                  0,
-                                                  16,
-                                                  16,
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.of(context)
+                                                    .pushNamed(AppRoutes.sales),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor:
+                                                      const Color(0xFF0E7B58),
+                                                  padding: EdgeInsets.zero,
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize: MaterialTapTargetSize
+                                                      .shrinkWrap,
                                                 ),
-                                                duration:
-                                                    const Duration(seconds: 2),
-                                                backgroundColor:
-                                                    const Color(0xFF0C8C67),
-                                                content: Text(
-                                                  tr('ফিচার শিগগিরই আসছে',
-                                                      'Feature coming soon'),
+                                                child: Text(
+                                                  tr('সব দেখুন', 'View All'),
                                                   style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                               ),
-                                            );
-                                        },
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          SizedBox(
+                                            height: 116,
+                                            child: ListView.separated(
+                                              scrollDirection: Axis.horizontal,
+                                              itemCount: recentProducts.length,
+                                              separatorBuilder: (context, _) =>
+                                                  const SizedBox(width: 12),
+                                              itemBuilder: (context, index) {
+                                                final product = recentProducts[index];
+                                                return _ProductCard(
+                                                  title: product.name,
+                                                  price:
+                                                      '৳${_bengaliNumber(product.salePrice)}',
+                                                  imageUrl: product.imageLabel,
+                                                  emoji: product.emoji,
+                                                  icon: product.emoji == '📦'
+                                                      ? Icons.inventory_2_rounded
+                                                      : Icons.shopping_bag_outlined,
+                                                  colors: const [
+                                                    Color(0xFFF4F1E7),
+                                                    Color(0xFFE7DDD0),
+                                                  ],
+                                                  onTap: () => Navigator.of(context)
+                                                      .pushNamed(AppRoutes.sales),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    ScrollReveal(
+                                      child: _AnalysisCard(
+                                        title: tr(
+                                            'বিক্রয় বিশ্লেষণ', 'Sales Analysis'),
+                                        subtitle: _translateComparisonLabel(
+                                            salesComparisonLabel),
+                                        onTap: () => Navigator.of(context)
+                                            .pushNamed(AppRoutes.sales),
                                       ),
                                     ),
                                     const SizedBox(height: 12),

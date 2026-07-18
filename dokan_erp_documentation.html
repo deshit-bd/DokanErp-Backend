@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokan ERP - ডকুমেন্টেশন ও নির্দেশিকা</title>
+    <!-- Google Fonts for Bengali and English -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --accent: #10B981;
+            --accent-bg: #D1FAE5;
+            --warning: #F59E0B;
+            --warning-bg: #FEF3C7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Hind Siliguri', 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 50px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .logo-area {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download {
+            background-color: var(--primary);
+            color: #white;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+            text-decoration: none;
+        }
+
+        .btn-download:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(79, 70, 229, 0.3);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+            padding-left: 12px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: #334155;
+        }
+
+        ul {
+            margin-left: 24px;
+            margin-bottom: 20px;
+            color: #334155;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Highlight Boxes */
+        .alert-box {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .alert-box.success {
+            background-color: var(--accent-bg);
+            border-color: #A7F3D0;
+            color: #065F46;
+        }
+
+        .alert-box.warning {
+            background-color: var(--warning-bg);
+            border-color: #FDE68A;
+            color: #92400E;
+        }
+
+        /* Custom Table style */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 15px;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            background-color: #F1F5F9;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #F8FAFC;
+        }
+
+        /* Print optimization */
+        @media print {
+            body {
+                background-color: #FFF;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+            .action-bar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="logo-area">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Dokan ERP
+        </div>
+        <button onclick="window.print()" class="btn-download">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            PDF ডাউনলোড করুন / প্রিন্ট করুন
+        </button>
+    </div>
+
+    <h1>Dokan ERP (দোকান ইআরপি) - ভূমিকা, ফিচার ও ব্যবহার নির্দেশিকা</h1>
+    <div class="subtitle">Dokan ERP সিস্টেমের বিভিন্ন রোল, পণ্য ক্রয়-বিক্রয় প্রক্রিয়া, বাকিতে বিক্রয়, বকেয়া সংগ্রহ এবং সেলসম্যানের পারমিশন সংক্রান্ত বিস্তারিত নির্দেশিকা।</div>
+
+    <h2>১. ব্যবহারকারীর রোলসমূহ (Roles & Responsibilities)</h2>
+    <p>Dokan ERP সিস্টেমে মূলত তিনটি রোল রয়েছে: <strong>প্ল্যাটফর্ম এডমিন (Platform Admin)</strong>, <strong>দোকানের মালিক বা এডমিন (Shop Owner / Admin)</strong>, এবং <strong>সেলসম্যান বা কর্মচারী (Salesman)</strong>।</p>
+
+    <h3>ক. দোকানের মালিক / এডমিন (Shop Owner / Admin)</h3>
+    <p>দোকানের মালিকের কাছে সম্পূর্ণ সিস্টেমের পূর্ণ নিয়ন্ত্রণ (Full Control) থাকে।</p>
+    <ul>
+        <li><strong>দোকানের সেটিংস ও কনফিগারেশন:</strong> দোকানের নাম, লোগো, ঠিকানা, রসিদের ভিজিবিলিটি সেটিংস, ভাষা, থিম ও কারেন্সি পরিবর্তন।</li>
+        <li><strong>ইনভেন্টরি সেটিংস:</strong> ন্যূনতম স্টক এলার্ট (Low Stock Alert), নেগেটিভ স্টক পারমিশন (Allow Negative Stock), এবং স্টক হিসাবের মেথড (যেমন: FIFO) নির্ধারণ।</li>
+        <li><strong>ট্যাক্স ও চার্জ:</strong> ভ্যাট (VAT) এবং ডেলিভারি চার্জ যোগ বা নিষ্ক্রিয় করা।</li>
+        <li><strong>স্টাফ (সেলসম্যান) ম্যানেজমেন্ট:</strong> নতুন সেলসম্যান যুক্ত করা, তাদের আইডি/পিন নিষ্ক্রিয় বা সক্রিয় করা, সিকিউরিটি পিন রিসেট করা এবং তাদের নির্দিষ্ট পারমিশন পরিবর্তন করা।</li>
+        <li><strong>ক্রয় (Purchase) অনুমোদন:</strong> সেলসম্যান কোনো পণ্যের ক্রয় রিকোয়েস্ট পাঠালে তা যাচাই করে অনুমোদন (Approve) বা বাতিল (Reject) করা।</li>
+        <li><strong>রিপোর্ট ও ক্লোজিং:</strong> দোকানের লাভ-ক্ষতি, দৈনিক/মাসিক বিক্রয় রিপোর্ট, ইনভেন্টরি স্টক ভ্যালুয়েশন রিপোর্ট এবং দিনের শেষে ডেইলি ক্লোজিং (Daily Closing) সামারি দেখা।</li>
+        <li><strong>সাবস্ক্রিপশন:</strong> দোকানের সাবস্ক্রিপশন ও বিলিং পেমেন্ট সম্পন্ন করা।</li>
+    </ul>
+
+    <h3>খ. সেলসম্যান / কর্মচারী (Salesman)</h3>
+    <p>সেলসম্যানের কার্যক্রম মূলত দোকানের মালিকের দেওয়া পারমিশন বা সুইচের ওপর নির্ভর করে।</p>
+    <ul>
+        <li><strong>স্বয়ংক্রিয় সুযোগ:</strong> নিজের প্রোফাইল দেখতে পারা, সাপ্তাহিক/দৈনিক নিজস্ব পারফরম্যান্স চার্ট ও টার্গেট ট্র্যাক করা।</li>
+        <li><strong>নিয়ন্ত্রিত সুযোগ (মালিকের পারমিশন সাপেক্ষে):</strong> পণ্য বিক্রয় করা, দাম পরিবর্তন করা, বকেয়া সংগ্রহ করা, স্টক দেখা এবং রিপোর্ট দেখা।</li>
+        <li><strong>ক্রয় প্রক্রিয়া:</strong> সেলসম্যান কোনো পণ্য ক্রয় সাবমিট করলে তা সরাসরি স্টকে যোগ হয় না; এটি <code>PENDING_APPROVAL</code> হিসেবে জমা থাকে। মালিক অনুমোদন দিলে তবেই তা কার্যকর হয়।</li>
+    </ul>
+
+    <h3>গ. প্ল্যাটফর্ম এডমিন (Platform Admin)</h3>
+    <p>এটি সিস্টেমের মূল এডমিন প্যানেল। দোকানদাররা যখন নতুন কোনো পণ্য বিক্রির জন্য তৈরি করে (Shop Local Product), তখন প্ল্যাটফর্ম এডমিন সেটি যাচাই করে গ্লোবাল ডাটাবেজে (<code>master_products</code>) যুক্ত বা রিজেক্ট করতে পারেন।</p>
+
+    <h2>২. পণ্য ক্রয় ও বিক্রয় প্রক্রিয়া (Product Buy & Sell Process)</h2>
+    
+    <h3>ক. পণ্য ক্রয় প্রক্রিয়া (Product Purchase Flow)</h3>
+    <p>১. <strong>সাপ্লায়ার সিলেকশন:</strong> প্রথমে সাপ্লায়ার লিস্ট থেকে সাপ্লায়ার সিলেক্ট করা হয়। নতুন সাপ্লায়ার হলে তা যোগ করা হয়।</p>
+    <p>২. <strong>পণ্য ও পরিমাণ নির্ধারণ:</strong> গ্লোবাল বা লোকাল প্রোডাক্ট থেকে পণ্য নির্বাচন করে পরিমাণ (Quantity) ও ক্রয়মূল্য (Purchase Price) দেওয়া হয়।</p>
+    <p>৩. <strong>পেমেন্ট ও সাবমিট:</strong> কত টাকা পরিশোধ করা হলো তা লিখে ক্রয় সাবমিট করা হয়।</p>
+    
+    <div class="alert-box success">
+        <strong>মালিক ক্রয় করলে:</strong> সরাসরি <strong>APPROVED</strong> হয়ে যায়। সঙ্গে সঙ্গে প্রোডাক্টের ইনভেন্টরি স্টক বৃদ্ধি পায় এবং সাপ্লায়ার লেজারে (Supplier Ledger) ডেবিট-ক্রেডিট এন্ট্রি বসে যায়।
+    </div>
+    <div class="alert-box warning">
+        <strong>সেলসম্যান ক্রয় করলে:</strong> ট্রানজেকশনটি <strong>PENDING_APPROVAL</strong> স্ট্যাটাসে থাকে। স্টক বা সাপ্লায়ার লেজারে কোনো পরিবর্তন আসে না যতক্ষণ না মালিক তা অনুমোদন করেন।
+    </div>
+
+    <h3>খ. পণ্য বিক্রয় প্রক্রিয়া (Product Sales Flow)</h3>
+    <p>১. <strong>কার্ট তৈরি:</strong> কাস্টমার যে পণ্যগুলো কিনবেন তা বারকোড স্ক্যানার বা সার্চের মাধ্যমে কার্টে যুক্ত করা হয়।</p>
+    <p>২. <strong>কাস্টমার নির্বাচন:</strong> কাস্টমার তালিকা থেকে কাস্টমার সিলেক্ট করা হয় বা নতুন কাস্টমার এন্ট্রি দেওয়া হয়।</p>
+    <p>৩. <strong>মূল্য পরিশোধ:</strong> কাস্টমার কত টাকা দিচ্ছেন (<code>paidAmount</code>) এবং কোন মাধ্যমে দিচ্ছেন (Cash, bKash, Nagad, Card) তা নির্বাচন করা হয়। কাস্টমারের জমানো টাকা থাকলে তা <code>storeCreditUsed</code> হিসেবে ব্যবহার করা যায়।</p>
+    <p>৪. <strong>চেকআউট:</strong> বিক্রয় সম্পন্ন হলে ইনভেন্টরি থেকে পণ্যের স্টক হ্রাস পায় এবং দোকানের ক্যাশ বা মোবাইল ব্যাংকিং বক্সের ব্যালেন্স আপডেট হয়।</p>
+
+    <h2>৩. বাকিতে বিক্রয় ও বকেয়া সংগ্রহ (Credit Sales & Due Collection)</h2>
+
+    <h3>ক. বাকিতে বিক্রয় প্রক্রিয়া (Selling Products on Credit / Baki)</h3>
+    <p>যখন কোনো পণ্যের মোট বিক্রয় মূল্য থেকে কাস্টমার কম টাকা পরিশোধ করেন, তখন বাকি অংশটি বকেয়া বা বাকি হিসেবে কাস্টমারের অ্যাকাউন্টে যোগ হয়।</p>
+    <ul>
+        <li><strong>হিসাব সূত্র:</strong> Due Amount = Total Invoice Amount - Paid Amount - Store Credit Used</li>
+        <li><strong>ডাটাবেজ ও লেজার রেকর্ড:</strong> কাস্টমার লেজারে একটি <code>SALE</code> (Debit) এন্ট্রি তৈরি হয়, যা কাস্টমারের মোট দেনা বৃদ্ধি করে। যদি কিছু টাকা নগদ দেওয়া হয়, তবে একটি <code>PAYMENT</code> (Credit) এন্ট্রি তৈরি হয়ে দেনা থেকে তা বিয়োগ হয়।</li>
+        <li><strong>ক্রেডিট লিমিট (Credit Limit):</strong> কাস্টমার প্রোফাইলে ক্রেডিট লিমিট (যেমন: <code>[CreditLimit: 15000]</code>) সেট করা থাকলে, তার বেশি বাকিতে পণ্য বিক্রয় করা যাবে না।</li>
+    </ul>
+
+    <h3>খ. বকেয়া সংগ্রহ প্রক্রিয়া (Due Collection Flow)</h3>
+    <p>কাস্টমারের পূর্বের বকেয়া টাকা আদায় করার জন্য নিচের ধাপগুলো অনুসরণ করা হয়:</p>
+    <p>১. কাস্টমার প্রোফাইল থেকে "Due Collection" বা বকেয়া আদায় অপশনে যেতে হবে।</p>
+    <p>২. আদায়কৃত টাকার পরিমাণ (Amount) এবং পেমেন্ট মেথড (যেমন: Cash, CARD, bKash, Nagad) সিলেক্ট করতে হবে।</p>
+    <ul>
+        <li><strong>BKASH বা NAGAD হলে:</strong> সেন্ডার নম্বর (Sender Number) এবং ট্রানজেকশন আইডি (Transaction ID) দিতে হবে।</li>
+        <li><strong>CARD হলে:</strong> কার্ড হোল্ডার নেম, কার্ডের শেষ ৪ ডিজিট, কার্ড টাইপ এবং ট্রানজেকশন আইডি দিতে হবে।</li>
+        <li><strong>CASH হলে:</strong> কোনো অতিরিক্ত তথ্য লাগবে না।</li>
+    </ul>
+    <p>৩. <strong>ভ্যালিডেশন নিয়ম:</strong> আদায়কৃত টাকার পরিমাণ কাস্টমারের বর্তমান মোট বকেয়া টাকার বেশি হতে পারবে না।</p>
+    <p>৪. সাবমিট করার পর কাস্টমার লেজারে একটি <code>PAYMENT</code> (Credit) এন্ট্রি যোগ হবে, যা কাস্টমারের বকেয়া কমিয়ে দেবে এবং দোকানের ক্যাশ বক্সে টাকা যোগ হবে。</p>
+
+    <h2>৪. সেলসম্যান পারমিশন কন্ট্রোল (Salesman Permissions)</h2>
+    <p>দোকানের মালিক যেকোনো সেলসম্যানের প্রোফাইলে গিয়ে নির্দিষ্ট ফিচার অন বা অফ করতে পারেন। নিচে পারমিশনগুলোর তালিকা দেওয়া হলো:</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>পারমিশনের নাম (API Field)</th>
+                <th>বিবরণ (Description)</th>
+                <th>অন থাকলে (Enabled)</th>
+                <th>অফ থাকলে (Disabled)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>পণ্য বিক্রয়</strong> (<code>canSell</code>)</td>
+                <td>কাস্টমারের কাছে পণ্য বিক্রি করার ক্ষমতা।</td>
+                <td>কাস্টমার চেকআউট করতে পারবে।</td>
+                <td>বিক্রয় বা চেকআউট করতে পারবে না।</td>
+            </tr>
+            <tr>
+                <td><strong>স্টক দেখা</strong> (<code>canViewStock</code>)</td>
+                <td>দোকানের পণ্যের বর্তমান স্টক দেখার ক্ষমতা।</td>
+                <td>ইনভেন্টরি ও পণ্যের সংখ্যা দেখতে পারবে।</td>
+                <td>পণ্যের স্টক দেখতে পারবে না।</td>
+            </tr>
+            <tr>
+                <td><strong>রিপোর্ট দেখা</strong> (<code>canViewReports</code>)</td>
+                <td>দোকানের লাভ-ক্ষতি ও বিক্রয় রিপোর্ট দেখার ক্ষমতা।</td>
+                <td>দৈনিক/মাসিক মোট লাভ-ক্ষতি ও বিক্রয় চার্ট দেখতে পারবে।</td>
+                <td>কোনো রিপোর্ট বা চার্ট দেখতে পারবে না।</td>
+            </tr>
+            <tr>
+                <td><strong>দাম পরিবর্তন</strong> (<code>canChangePrice</code>)</td>
+                <td>বিক্রয় করার সময় পণ্যের নির্ধারিত দাম কমানো বা বাড়ানোর ক্ষমতা।</td>
+                <td>কার্টে থাকা পণ্যের দাম ম্যানুয়ালি পরিবর্তন করতে পারবে।</td>
+                <td>পণ্যের নির্ধারিত ফিক্সড দামেই বিক্রি করতে হবে।</td>
+            </tr>
+            <tr>
+                <td><strong>বকেয়া সংগ্রহ</strong> (<code>canCollectDue</code>)</td>
+                <td>কাস্টমারের কাছ থেকে বকেয়া টাকা আদায়ের ক্ষমতা।</td>
+                <td>কাস্টমারের প্রোফাইল থেকে বকেয়া সংগ্রহ ও পেমেন্ট এন্ট্রি করতে পারবে।</td>
+                <td>বকেয়া টাকা সংগ্রহ বা পেমেন্ট এন্ট্রি করতে পারবে না।</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="alert-box success" style="margin-top: 30px;">
+        <strong>পাসওয়ার্ড ও পিন রিসেট:</strong> যেকোনো সেলসম্যানের পিন কোড ভুলে গেলে দোকানের মালিক তার পিন রিসেট করতে পারবেন, যার ফলে সেলসম্যান পরবর্তী লগইনে নতুন পিন সেট করতে বাধ্য থাকবে।
+    </div>
+</div>
+
+</body>
+</html>

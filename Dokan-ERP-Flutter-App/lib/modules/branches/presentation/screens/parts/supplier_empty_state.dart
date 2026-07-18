@@ -196,7 +196,7 @@ class _SupplierListTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  AnimatedNumberString(
                     _formatCurrency(supplier.totalDue),
                     style: TextStyle(
                       color: dueColor,

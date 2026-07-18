@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokan ERP - Full Technical Documentation</title>
+    <!-- Google Fonts for Bengali and English -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #3730A3;
+            --primary-light: #EEF2F6;
+            --secondary: #0F172A;
+            --success: #10B981;
+            --success-light: #ECFDF5;
+            --warning: #F59E0B;
+            --warning-light: #FFFBEB;
+            --danger: #EF4444;
+            --danger-light: #FEF2F2;
+            --bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Hind Siliguri', 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
+        }
+
+        /* Action Bar */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .logo-area {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-download {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+            text-decoration: none;
+        }
+
+        .btn-download:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        /* Header Area */
+        .header-title-box {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 30px;
+            background: linear-gradient(135deg, var(--primary-light), #FFFFFF);
+            border-radius: 12px;
+            border: 1px solid rgba(79, 70, 229, 0.15);
+        }
+
+        .header-title-box h1 {
+            font-size: 32px;
+            color: var(--secondary);
+            margin-bottom: 12px;
+        }
+
+        .header-title-box p {
+            font-size: 16px;
+            color: var(--text-muted);
+        }
+
+        /* Sections */
+        .doc-section {
+            margin-bottom: 50px;
+        }
+
+        h2 {
+            font-size: 22px;
+            color: var(--secondary);
+            margin-top: 35px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 {
+            font-size: 18px;
+            color: var(--primary);
+            margin-top: 25px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #334155;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+            color: #334155;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        strong {
+            color: var(--secondary);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 9999px;
+            text-transform: uppercase;
+        }
+
+        .badge-admin {
+            background-color: #EDE9FE;
+            color: #5B21B6;
+        }
+
+        .badge-owner {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge-salesman {
+            background-color: #E0F2FE;
+            color: #0369A1;
+        }
+
+        /* Highlight Boxes */
+        .info-card {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            background-color: #F8FAFC;
+        }
+
+        .alert-box {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .alert-box.success {
+            background-color: var(--success-light);
+            border-color: #A7F3D0;
+            color: #065F46;
+        }
+
+        .alert-box.warning {
+            background-color: var(--warning-light);
+            border-color: #FDE68A;
+            color: #92400E;
+        }
+
+        .alert-box.danger {
+            background-color: var(--danger-light);
+            border-color: #FCA5A5;
+            color: #991B1B;
+        }
+
+        /* Custom Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #F1F5F9;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #F8FAFC;
+        }
+
+        /* Flow Diagram styling */
+        .diagram-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 25px;
+            background-color: #F1F5F9;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin: 20px 0;
+        }
+
+        .diagram-step {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .diagram-step-title {
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagram-arrow {
+            text-align: center;
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        /* Code Block */
+        pre {
+            background-color: var(--secondary);
+            color: #E2E8F0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        /* Print Media CSS Optimization */
+        @media print {
+            body {
+                background-color: white;
+                color: black;
+                padding: 0;
+                font-size: 13px;
+            }
+
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .action-bar {
+                display: none;
+            }
+
+            h2, h3 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            .diagram-step, tr, .info-card, .alert-box {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .page-break {
+                page-break-before: always;
+                break-before: page;
+            }
+
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="logo-area">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Dokan ERP Technical Documentation
+        </div>
+        <button onclick="window.print()" class="btn-download">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            PDF ডাউনলোড / প্রিন্ট করুন
+        </button>
+    </div>
+
+    <!-- Header Box -->
+    <div class="header-title-box">
+        <h1>Dokan ERP (দোকান ইআরপি)</h1>
+        <p>সিস্টেম আর্কিটেকচার, ডেটাবেজ স্কিমা, ফিচার ফ্লো ও এপিআই রেফারেন্স ডকুমেন্টেশন</p>
+        <div style="margin-top: 15px; font-size: 13px; color: var(--text-muted);">
+            <strong>প্রস্তুতকারক:</strong> ডেভেলপমেন্ট টিম &nbsp;|&nbsp; 
+            <strong>লক্ষ্য:</strong> নতুন ডেভেলপার অনবোর্ডিং এবং সিস্টেম হ্যান্ডওভার
+        </div>
+    </div>
+
+    <!-- Section 1: Introduction -->
+    <div class="doc-section">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            ১. প্রজেক্টের ভূমিকা ও পরিচিতি (Project Overview)
+        </h2>
+        <p>
+            <strong>Dokan ERP</strong> একটি স্বয়ংসম্পূর্ণ, মাল্টি-শাখা সমর্থিত এবং ক্লাউড-বেইজড পয়েন্ট অফ সেলস (POS) এবং ইনভেন্টরি ম্যানেজমেন্ট সিস্টেম। এটি মূলত বাংলাদেশের খুচরা ও পাইকারি বিক্রেতাদের হিসাবরক্ষণ সহজ করার জন্য ডিজাইন করা হয়েছে। এই সিস্টেমের মূল উদ্দেশ্য হচ্ছে ক্যাশ বিক্রয়, বকেয়া আদায়, সাপ্লাইয়ারের কাছ থেকে পণ্য ক্রয়, লাভ-ক্ষতির হিসাব এবং দৈনিক হিসাব ক্লোজিং বা রিপোর্টিং স্বয়ংক্রিয় করা।
+        </p>
+        <p>
+            সিস্টেমটিতে বিশেষ দুটি বৈশিষ্ট্য রয়েছে যা এটিকে সাধারণ ইআরপি থেকে আলাদা করে:
+        </p>
+        <ul>
+            <li><strong>ভয়েস কমান্ড পার্সার (Voice Command Parser):</strong> ব্যবহারকারী মুখে বাংলা বা বাংলিশ ভাষায় কথা বললে (যেমন: "রহিম ভাই ৪০০ টাকা বাকি নিসে" বা "৫০০ টাকা দোকান ভাড়া খরচ") সিস্টেম সেটি স্বয়ংক্রিয়ভাবে প্রসেস করে বকেয়া বা খরচের লেজারে এন্ট্রি করে নেয়।</li>
+            <li><strong>রিয়েল-টাইম বারকোড রেজোলিউশন (Barcode Scanning Service):</strong> মোবাইল ক্যামেরা বা স্ক্যানার দিয়ে বারকোড স্ক্যান করামাত্রই সিস্টেম সেটি নরমাল আইডি হিসেবে প্রসেস করে লোকাল ইনভেন্টরি থেকে প্রোডাক্ট খুঁজে কার্টে যোগ করে।</li>
+        </ul>
+    </div>
+
+    <!-- Section 2: Tech Stack -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            ২. টেকনোলজি স্ট্যাক ও ডিরেক্টরি স্ট্রাকচার
+        </h2>
+        
+        <h3>ক. ব্যবহৃত প্রযুক্তিসমূহ (Technology Stack)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>কম্পোনেন্ট</th>
+                    <th>ব্যবহৃত টেকনোলজি</th>
+                    <th>বিবরণ ও ভূমিকা</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Backend API</strong></td>
+                    <td>Node.js, Express, TypeScript</td>
+                    <td>সম্পূর্ণ রেস্টফুল এপিআই (RESTful API) আর্কিটেকচার যা মডুলার রাউট আকারে তৈরি।</td>
+                </tr>
+                <tr>
+                    <td><strong>Database & ORM</strong></td>
+                    <td>PostgreSQL, Prisma ORM</td>
+                    <td>রিলেশনাল ডেটাবেজ ম্যানেজমেন্ট সিস্টেম। প্রিজমা ওআরএম-এর সাহায্যে ডেটাবেজ মাইগ্রেশন ও কোয়েরি পরিচালনা করা হয়।</td>
+                </tr>
+                <tr>
+                    <td><strong>Authentication</strong></td>
+                    <td>JWT (Access/Refresh Token) & Security PIN</td>
+                    <td>লগইনের জন্য সিকিউর পাসওয়ার্ড হ্যাশ এবং মোবাইল অ্যাপে দ্রুত লগইন/ভ্যালিডেশনের জন্য ৬ ডিজিটের সিকিউরিটি পিন সিস্টেম।</td>
+                </tr>
+                <tr>
+                    <td><strong>Frontend App</strong></td>
+                    <td>Flutter (Dart)</td>
+                    <td>অ্যান্ড্রয়েড এবং আইওএস (Android & iOS) দুই প্ল্যাটফর্মেই ব্যবহার উপযোগী নেটিভ মোবাইল অ্যাপ্লিকেশন।</td>
+                </tr>
+                <tr>
+                    <td><strong>State Management</strong></td>
+                    <td>BLoC / Provider Store Pattern</td>
+                    <td>অ্যাপ্লিকেশনের স্টেট এবং ডেটা ফ্লো নিয়ন্ত্রণ করার জন্য মডুলার স্টোর প্যাটার্ন ব্যবহার করা হয়েছে।</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>খ. ব্যাকএন্ড ডিরেক্টরি স্ট্রাকচার (Backend Structure)</h3>
+        <p>ব্যাকএন্ড সোর্স কোডটি <code>backend/src/</code> ডিরেক্টরির অধীনে মডুলার পদ্ধতিতে সাজানো হয়েছে:</p>
+        <pre>
+backend/
+├── prisma/                  # ডেটাবেজ স্কিমা (schema.prisma) ও সীড স্ক্রিপ্ট (seed.ts)
+├── src/
+│   ├── app.ts               # এক্সপ্রেস অ্যাপ এক্সপ্রেস মিডলওয়্যার কনফিগারেশন
+│   ├── server.ts            # অ্যাপ্লিকেশন সার্ভার ইনিশিয়েশন পয়েন্ট
+│   ├── routes/              # সমস্ত এপিআই রাউটস (যেমন: auth, products, sales, purchases)
+│   ├── auth/                # অথেনটিকেশন স্ট্র্যাটেজি ও পিন রিসেট মেকানিজম
+│   ├── config/              # গ্লোবাল কনফিগারেশন ও এনভায়রনমেন্ট ভ্যারিয়েবল সেটিংস
+│   └── utils/               # সহায়ক ফাংশনস ও হেল্পারস
+        </pre>
+
+        <h3>গ. ফ্লটার ডিরেক্টরি স্ট্রাকচার (Flutter App Structure)</h3>
+        <p>মোবাইল অ্যাপের কোডটি <code>Dokan-ERP-Flutter-App/lib/</code> ডিরেক্টরির অধীনে মডিউল ভিত্তিক (Feature-First) ডোমেইন ড্রাইভেন ডিজাইনে সাজানো হয়েছে:</p>
+        <pre>
+Dokan-ERP-Flutter-App/lib/
+├── app/                     # গ্লোবাল রাউটিং ও থিমিং কনফিগারেশন
+├── core/
+│   ├── utils/               # ভয়েস কমান্ড পার্সার (voice_command_parser.dart) সহ সহায়ক ইউটিলস
+│   └── network/             # এপিআই ক্লায়েন্ট ও নেটওয়ার্ক সার্ভিস
+├── data/                    # গ্লোবাল রিপোজিটরি ও ডেটা সোর্স
+└── modules/                 # ফিচার ভিত্তিক মডিউলসমূহ (প্রতিটি মডিউলের নিজস্ব Presentation, Domain, Data লেয়ার রয়েছে)
+    ├── auth/                # ইউজার সাইন-আপ ও পিন সেটআপ স্ক্রিন
+    ├── dashboard/           # মূল ড্যাশবোর্ড ও লাভ-ক্ষতির সামারি
+    ├── sales/               # POS স্ক্রিন, কার্ট ও পেমেন্ট গেটওয়ে প্রসেস
+    ├── products/            # পণ্য তালিকা ও বারকোড রেজোলিউশন সার্ভিস (dokan_scan_service.dart)
+    ├── purchases/           # সাপ্লাইয়ার ক্রয় এন্ট্রি ও এপ্রুভাল স্ক্রিন
+    ├── customers/           # কাস্টমার লেজার ও বকেয়া কালেকশন ইন্টারফেস
+    ├── reports/             # ডেইলি ক্লোজিং ও ট্রানজেকশন স্টেটমেন্ট
+    └── salesman/            # স্টাফ লিস্ট ও পারমিশন কন্ট্রোল সুইচ স্ক্রিন
+        </pre>
+    </div>
+
+    <!-- Section 3: Database Design -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22c5.523 0 10-2.239 10-5V5c0-2.761-4.477-5-10-5S2 2.239 2 5v12c0 2.761 4.477 5 10 5z"></path><path d="M22 5c0 2.761-4.477 5-10 5S2 7.761 2 5"></path><path d="M22 11c0 2.761-4.477 5-10 5S2 13.761 2 11"></path></svg>
+            ৩. ডেটাবেজ ডিজাইন ও মডেল রিলেশনস (Database Schema)
+        </h2>
+        <p>
+            প্রজেক্টের ডেটাবেজ হিসেবে <strong>PostgreSQL</strong> ব্যবহার করা হয়েছে এবং ওআরএম হিসেবে <strong>Prisma</strong> ব্যবহৃত হয়েছে। গুরুত্বপূর্ণ মডেলগুলোর লজিক্যাল সম্পর্ক নিচে তুলে ধরা হলো:
+        </p>
+
+        <div class="info-card">
+            <h3>১. ব্যবহারকারী ও দোকান সম্পর্ক (User & Shop Model)</h3>
+            <ul>
+                <li><strong>User:</strong> সিস্টেমে নিবন্ধিত সমস্ত ব্যবহারকারীর সাধারণ ডেটা ধারণ করে (নাম, ইমেইল, মোবাইল, পাসওয়ার্ড হ্যাশ)।</li>
+                <li><strong>Shop:</strong> দোকানের নাম, কোড, ঠিকানা, ভ্যাট এবং সেটিংস ধারণ করে। এটি <code>User</code> (Owner) এর সাথে ওয়ান-টু-মেনি রিলেশনে থাকে।</li>
+                <li><strong>ShopUser:</strong> দোকান এবং ব্যবহারকারীর সংযোগকারী টেবিল (Pivot Table)। এর মাধ্যমে নির্দিষ্ট করা হয় কোন ব্যবহারকারী কোন দোকানে কি রোলে আছেন (রোলের এনাম: <code>SHOP_OWNER</code>, <code>SALESMAN</code>)।</li>
+                <li><strong>SalesmanPermission:</strong> এটি <code>ShopUser</code> এর সাথে ওয়ান-টু-ওয়ান রিলেশনে যুক্ত থাকে। সেলসম্যানদের নির্দিষ্ট কাজের অনুমতি (যেমন: <code>canSell</code>, <code>canViewStock</code>) এই টেবিল থেকে ভ্যালিডেট হয়।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>২. প্রোডাক্ট ইনভেন্টরি সম্পর্ক (Product & Master Product)</h3>
+            <ul>
+                <li><strong>MasterProduct:</strong> গ্লোবাল ডাটাবেজ যেখানে সমস্ত স্ট্যান্ডার্ড পণ্যের নাম, ক্যাটাগরি, বারকোড ইত্যাদি থাকে। এটি প্ল্যাটফর্ম এডমিন দ্বারা নিয়ন্ত্রিত।</li>
+                <li><strong>ShopProduct:</strong> প্রতিটি দোকানের নিজস্ব প্রোডাক্ট ক্যাটালগ। এটি গ্লোবাল <code>MasterProduct</code>-এর রেফারেন্স ব্যবহার করতে পারে অথবা দোকানদার নিজে ম্যানুয়ালি লোকাল প্রোডাক্ট (<code>SHOP_LOCAL</code>) তৈরি করতে পারেন।</li>
+                <li><strong>InventoryBin / InventoryBinItem:</strong> দোকানে স্টকের রিয়েল-টাইম হিসাব রাখার জন্য এই টেবিলে জোন, র‍্যাক এবং বিন ভিত্তিক স্টকের অবস্থান সংরক্ষণ করা হয়।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>৩. ক্রয়-বিক্রয় ও লেজার সিস্টেম (Transaction & Ledger System)</h3>
+            <ul>
+                <li><strong>Purchase:</strong> সাপ্লাইয়ারদের কাছ থেকে মালামাল ক্রয়ের ট্রানজেকশন। এতে স্ট্যাটাস থাকে (<code>DRAFT</code>, <code>PENDING_APPROVAL</code>, <code>APPROVED</code>, <code>REJECTED</code>)।</li>
+                <li><strong>CustomerSale (Invoice):</strong> কাস্টমারদের কাছে পণ্য বিক্রির ট্রানজেকশন রেকর্ড।</li>
+                <li><strong>CustomerLedger:</strong> কাস্টমারের মোট বাকি এবং পেমেন্টের হিসাব। এর ট্রানজেকশন টাইপ হতে পারে: <code>OPENING_DUE</code>, <code>SALE</code> (ডেবিট), <code>PAYMENT</code> (ক্রেডিট) এবং <code>ADJUSTMENT</code>।</li>
+                <li><strong>SupplierLedger:</strong> সাপ্লায়ারের বকেয়া ও পেমেন্টের হিসাব। এর টাইপসমূহ: <code>OPENING_DUE</code>, <code>PURCHASE</code> (ক্রেডিট), <code>PAYMENT</code> (ডেবিট)।</li>
+                <li><strong>MoneyBox:</strong> দোকানের ক্যাশ বক্স ও মোবাইল ব্যাংকিং অ্যাকাউন্টের লাইভ ব্যালেন্স ট্র্যাকার।</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Section 4: Roles & RBAC -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            ৪. ব্যবহারকারীর রোল ও অ্যাক্সেস কন্ট্রোল (RBAC Matrix)
+        </h2>
+        <p>
+            সিস্টেমে মূলত ৩ ধরনের রোল রয়েছে। প্রতিটি রোলের কাজের সীমানা নিম্নরূপ:
+        </p>
+
+        <h3>রোল ভিত্তিক পারমিশন ম্যাট্রিক্স (Permission Matrix)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ফিচার / অপারেশন</th>
+                    <th><span class="badge badge-admin">Platform Admin</span></th>
+                    <th><span class="badge badge-owner">Shop Owner</span></th>
+                    <th><span class="badge badge-salesman">Salesman (কর্মচারী)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>মাস্টার প্রোডাক্ট অনুমোদন</strong></td>
+                    <td>✅ পূর্ণ নিয়ন্ত্রণ</td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>❌ অনুমতি নেই</td>
+                </tr>
+                <tr>
+                    <td><strong>দোকানের গ্লোবাল সেটিংস পরিবর্তন</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ পূর্ণ নিয়ন্ত্রণ</td>
+                    <td>❌ অনুমতি নেই</td>
+                </tr>
+                <tr>
+                    <td><strong>স্টাফ যুক্ত করা ও সিকিউরিটি পিন রিসেট</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ পূর্ণ নিয়ন্ত্রণ</td>
+                    <td>❌ অনুমতি নেই</td>
+                </tr>
+                <tr>
+                    <td><strong>পণ্য ক্রয় সরাসরি স্টক আপডেট</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ সরাসরি এপ্রুভড</td>
+                    <td>⚠️ Pending থাকবে (মালিকের অনুমোদন সাপেক্ষ)</td>
+                </tr>
+                <tr>
+                    <td><strong>পণ্য বিক্রয় (POS Checkout)</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ অনুমতি আছে</td>
+                    <td>⚠️ <code>canSell</code> পারমিশন অন থাকতে হবে</td>
+                </tr>
+                <tr>
+                    <td><strong>পণ্যের দাম পরিবর্তন (Discount/Markup)</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ অনুমতি আছে</td>
+                    <td>⚠️ <code>canChangePrice</code> পারমিশন অন থাকতে হবে</td>
+                </tr>
+                <tr>
+                    <td><strong>বকেয়া সংগ্রহ (Due Collection)</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ অনুমতি আছে</td>
+                    <td>⚠️ <code>canCollectDue</code> পারমিশন অন থাকতে হবে</td>
+                </tr>
+                <tr>
+                    <td><strong>ইনভেন্টরি স্টক পরিমাণ দেখা</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ অনুমতি আছে</td>
+                    <td>⚠️ <code>canViewStock</code> পারমিশন অন থাকতে হবে</td>
+                </tr>
+                <tr>
+                    <td><strong>লাভ-ক্ষতি ও বিক্রয় রিপোর্ট দেখা</strong></td>
+                    <td>❌ অনুমতি নেই</td>
+                    <td>✅ অনুমতি আছে</td>
+                    <td>⚠️ <code>canViewReports</code> পারমিশন অন থাকতে হবে</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert-box warning">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <div>
+                <strong>গুরুত্বপূর্ণ সিকিউরিটি নিয়ম:</strong> ব্যাকএন্ড এপিআই-তে প্রতিটি রিকোয়েস্ট প্রসেস করার আগে মিডলওয়্যারের মাধ্যমে ভ্যালিডেট করা হয় যে রিকোয়েস্টকারী ইউজারটি ওই দোকানের নিবন্ধিত মালিক কি না, অথবা সেলসম্যান হলে তার সংশ্লিষ্ট পারমিশন টেবিলের ফ্ল্যাগটি (যেমন: `canSell = true`) সক্রিয় রয়েছে কি না।
+            </div>
+        </div>
+        
+        <!-- Section 4.a: Use Case Diagram -->
+        <div class="page-break" style="margin-top: 30px;">
+            <h3>৪.ক ইউজ কেস ডায়াগ্রাম (Use Case Diagram)</h3>
+            <p>
+                Dokan ERP সিস্টেমের বিভিন্ন রোল ও তাদের সংশ্লিষ্ট কার্যকারিতার ইউজ কেস ডায়াগ্রাম নিচে ভিজ্যুয়ালি উপস্থাপন করা হলো:
+            </p>
+            <div style="text-align: center; margin: 20px 0; overflow-x: auto; background-color: white; border: 1px solid var(--border); padding: 20px; border-radius: 12px;">
+                <svg width="850" height="700" viewBox="0 0 850 700" fill="none" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Hind Siliguri', 'Inter', sans-serif;">
+                    <!-- System Boundary Box -->
+                    <rect x="200" y="20" width="450" height="660" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+                    <text x="425" y="45" text-anchor="middle" font-size="16" font-weight="700" fill="#4F46E5">Dokan ERP System Boundary</text>
+
+                    <!-- Actor: Platform Admin -->
+                    <circle cx="80" cy="90" r="15" fill="#EEF2F6" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="80" y1="105" x2="80" y2="145" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="60" y1="120" x2="100" y2="120" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="80" y1="145" x2="65" y2="175" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="80" y1="145" x2="95" y2="175" stroke="#4F46E5" stroke-width="2.5"/>
+                    <text x="80" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A">প্ল্যাটফর্ম এডমিন</text>
+                    <text x="80" y="215" text-anchor="middle" font-size="10" fill="#64748B">(Platform Admin)</text>
+
+                    <!-- Actor: Shop Owner -->
+                    <circle cx="80" cy="360" r="15" fill="#EEF2F6" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="80" y1="375" x2="80" y2="415" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="60" y1="390" x2="100" y2="390" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="80" y1="415" x2="65" y2="445" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="80" y1="415" x2="95" y2="445" stroke="#4F46E5" stroke-width="2.5"/>
+                    <text x="80" y="470" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A">দোকানের মালিক</text>
+                    <text x="80" y="485" text-anchor="middle" font-size="10" fill="#64748B">(Shop Owner / Admin)</text>
+
+                    <!-- Actor: Salesman -->
+                    <circle cx="770" cy="300" r="15" fill="#EEF2F6" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="770" y1="315" x2="770" y2="355" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="750" y1="330" x2="790" y2="330" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="770" y1="355" x2="755" y2="385" stroke="#4F46E5" stroke-width="2.5"/>
+                    <line x1="770" y1="355" x2="785" y2="385" stroke="#4F46E5" stroke-width="2.5"/>
+                    <text x="770" y="410" text-anchor="middle" font-size="12" font-weight="700" fill="#0F172A">সেলসম্যান</text>
+                    <text x="770" y="425" text-anchor="middle" font-size="10" fill="#64748B">(Salesman / Employee)</text>
+
+                    <!-- Connections: Platform Admin -->
+                    <line x1="95" y1="120" x2="290" y2="90" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+                    <!-- Connections: Shop Owner -->
+                    <line x1="95" y1="380" x2="290" y2="150" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="385" x2="290" y2="210" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="390" x2="290" y2="270" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="395" x2="290" y2="330" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="400" x2="290" y2="390" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="405" x2="290" y2="450" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="410" x2="290" y2="510" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="415" x2="290" y2="570" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="95" y1="420" x2="290" y2="630" stroke="#94A3B8" stroke-width="1.5"/>
+
+                    <!-- Connections: Salesman -->
+                    <line x1="755" y1="320" x2="560" y2="330" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="755" y1="325" x2="560" y2="390" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="755" y1="330" x2="560" y2="450" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="755" y1="335" x2="560" y2="510" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="755" y1="340" x2="560" y2="570" stroke="#94A3B8" stroke-width="1.5"/>
+                    <line x1="755" y1="345" x2="560" y2="630" stroke="#94A3B8" stroke-width="1.5"/>
+
+                    <!-- Use Case Ellipses -->
+                    <!-- UC1 -->
+                    <ellipse cx="425" cy="90" rx="135" ry="20" fill="#EEF2F6" stroke="#4F46E5" stroke-width="1.5"/>
+                    <text x="425" y="94" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">মাস্টার প্রোডাক্ট অনুমোদন ও নিয়ন্ত্রণ</text>
+
+                    <!-- UC2 -->
+                    <ellipse cx="425" cy="150" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="154" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">দোকানের লোগো, ভ্যাট ও সেটিংস পরিবর্তন</text>
+
+                    <!-- UC3 -->
+                    <ellipse cx="425" cy="210" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="214" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">স্টাফ নিয়োগ ও পারমিশন কন্ট্রোল</text>
+
+                    <!-- UC4 -->
+                    <ellipse cx="425" cy="270" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="274" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">পেনন্ডিং পণ্য ক্রয় অনুমোদন করা (Purchase Approval)</text>
+
+                    <!-- UC5 -->
+                    <ellipse cx="425" cy="330" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="334" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">পণ্য ক্রয় রিকোয়েস্ট সাবমিট করা</text>
+
+                    <!-- UC6 -->
+                    <ellipse cx="425" cy="390" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="394" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">পয়েন্ট অব সেলস (POS) পণ্য বিক্রয় (canSell)</text>
+
+                    <!-- UC7 -->
+                    <ellipse cx="425" cy="450" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="454" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">পণ্যের দাম পরিবর্তন বা ডিসকাউন্ট (canChangePrice)</text>
+
+                    <!-- UC8 -->
+                    <ellipse cx="425" cy="510" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="514" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">কাস্টমার বকেয়া আদায় ও সংগ্রহ (canCollectDue)</text>
+
+                    <!-- UC9 -->
+                    <ellipse cx="425" cy="570" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="574" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">লাভ-ক্ষতি ও বিক্রয় রিপোর্ট দেখা (canViewReports)</text>
+
+                    <!-- UC10 -->
+                    <ellipse cx="425" cy="630" rx="135" ry="20" fill="#F8FAFC" stroke="#6366F1" stroke-width="1.5"/>
+                    <text x="425" y="634" text-anchor="middle" font-size="11" font-weight="600" fill="#1E293B">দৈনিক ক্যাশ হিসাব ক্লোজিং করা (Daily Closing)</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Core Business Flows -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            ৫. প্রধান ফিচার ও ফাংশনাল ফ্লো (Core Business Flows)
+        </h2>
+
+        <h3>ক. পণ্য ক্রয় ও অনুমোদন লাইফসাইকেল (Purchase Approval Flow)</h3>
+        <p>
+            ক্রয় প্রক্রিয়া সম্পন্ন হওয়ার ফ্লো চার্ট এবং এর ব্যাকএন্ড মেকানিজম নিচে বর্ণিত হলো:
+        </p>
+
+        <div class="diagram-container">
+            <div class="diagram-step">
+                <div class="diagram-step-title">ধাপ ১: ক্রয় রিকোয়েস্ট সাবমিশন (Create Purchase Request)</div>
+                <div>সেলসম্যান বা দোকানের মালিক সাপ্লায়ার সিলেক্ট করে পণ্য এন্ট্রি ও পেইড এমাউন্ট সহ ক্রয় সাবমিট করেন।</div>
+            </div>
+            <div class="diagram-arrow">↓</div>
+            <div class="diagram-step">
+                <div class="diagram-step-title">ধাপ ২: ইউজার রোল চেকিং (Verify Creator Role)</div>
+                <div>সিস্টেম চেক করে রিকোয়েস্টকারী কি দোকানের মালিক (SHOP_OWNER) নাকি কর্মচারী (SALESMAN)?</div>
+            </div>
+            <div class="diagram-arrow">↓</div>
+            <div class="diagram-step">
+                <div class="diagram-step-title">ধাপ ৩: কন্ডিশনাল ব্রাঞ্চিং (Status Decision)</div>
+                <div>
+                    <strong>মালিক হলে:</strong> স্ট্যাটাস সরাসরি <code>APPROVED</code> হবে, স্টক বাড়বে এবং সাপ্লায়ার লেজার ইনস্ট্যান্ট আপডেট হবে।<br>
+                    <strong>সেলসম্যান হলে:</strong> স্ট্যাটাস থাকবে <code>PENDING_APPROVAL</code> এবং মালিকের প্যানেলে পুশ নোটিফিকেশন যাবে।
+                </div>
+            </div>
+            <div class="diagram-arrow">↓</div>
+            <div class="diagram-step">
+                <div class="diagram-step-title">ধাপ ৪: মালিকের অ্যাকশন (Owner Approval/Rejection)</div>
+                <div>মালিক পেন্ডিং রিকোয়েস্ট দেখে <strong>Approve</strong> করলে ট্রানজেকশন সম্পন্ন হবে অথবা <strong>Reject</strong> করলে ডাটা ডেড স্টেটে চলে যাবে।</div>
+            </div>
+        </div>
+
+        <h3>খ. পয়েন্ট অফ সেলস এবং ক্যাশ ম্যানেজমেন্ট (POS Sales & Money Box Flow)</h3>
+        <ul>
+            <li><strong>কার্ট ম্যানেজমেন্ট:</strong> কাস্টমার সিলেক্ট করে বারকোড স্ক্যানার বা ভয়েস সার্চের মাধ্যমে পণ্য অ্যাড করা হয়। সেলসম্যানের <code>canChangePrice</code> পারমিশন থাকলে সে পণ্যের নির্ধারিত বিক্রয়মূল্য ওভাররাইড করে ডিসকাউন্ট দিতে পারে।</li>
+            <li><strong>মানি বক্স ইন্টিগ্রেশন:</strong> কাস্টমার যখন পেমেন্ট করবে, তখন পেমেন্ট মেথড অনুযায়ী দোকানের ব্যালেন্স আপডেট হবে। যেমন:
+                <ul>
+                    <li>কাস্টমার যদি নগদে দেয়, তবে টাকা যুক্ত হবে দোকানের <code>CASH</code> মানি বক্সে।</li>
+                    <li>কাস্টমার যদি বিকাশ বা নগদে দেয়, তবে টাকা যুক্ত হবে যথাক্রমে <code>BKASH</code> বা <code>NAGAD</code> মানি বক্সে।</li>
+                </ul>
+            </li>
+            <li>সিস্টেম কোনো ট্রানজেকশনে নেগেティブ ব্যালেন্স অ্যালাউ করে না যদি না দোকানের সেটিংস থেকে তা বিশেষ অনুমতি দেওয়া থাকে।</li>
+        </ul>
+
+        <h3>গ. বাকিতে বিক্রয় ও বকেয়া সংগ্রহ (Due & Credit Limit Logic)</h3>
+        <p>
+            যখন কোনো ইনভয়েসে <strong>Paid Amount < Total Invoice Amount</strong> হয়, তখন বাকি অংশটিকে বকেয়া হিসেবে গণ্য করা হয়।
+        </p>
+        <div class="alert-box success">
+            <div>
+                <strong>বাকিতে বিক্রয়ের ডাটাবেজ ট্রানজেকশন (Atomic Transaction):</strong><br>
+                ১. `CustomerSale` টেবিলে ইনভয়েস ডাটা সেভ হয়।<br>
+                ২. কাস্টমারের মোট বাকি হিসেবের ঘর (`dueBalance`) ইনভয়েস বাকির সমপরিমাণ বৃদ্ধি পায়।<br>
+                ৩. কাস্টমার লেজারে (`CustomerLedger`) একটি `SALE` (Debit) রেকর্ড এন্ট্রি হয়।
+            </div>
+        </div>
+        <p>
+            <strong>বকেয়া সংগ্রহের নিয়ম (Due Collection):</strong><br>
+            বকেয়া সংগ্রহের সময় কাস্টমার লেজারে <code>PAYMENT</code> (Credit) এন্ট্রি বসে এবং কাস্টমারের বকেয়া কমে। মানি বক্সে পেমেন্ট মেথড অনুযায়ী ক্যাশ বা ডিজিটাল টাকা যোগ হয়। মোবাইল ব্যাংকিং এর মাধ্যমে বকেয়া নিলে সেন্ডার নম্বর এবং ট্রানজেকশন আইডি ইনপুট নেওয়া বাধ্যতামূলিক করা হয়েছে যাতে পরবর্তীতে হিসাব মিলাতে সুবিধা হয়।
+        </p>
+
+        <h3>ঘ. ডেইলি ক্লোজিং ফ্লো (Daily Closing Process)</h3>
+        <p>
+            দিনের শেষে দোকানের ক্যাশ ড্রয়ার মিলানোর জন্য এই প্রসেসটি অত্যন্ত গুরুত্বপূর্ণ।
+        </p>
+        <ol>
+            <li>ব্যবহারকারী দিনের শুরুতে থাকা ওপেনিং ক্যাশ ব্যালেন্স এবং সারাদিনের মোট বিক্রয় ও ক্রয়ের ডাটা সামারি আকারে স্ক্রিনে দেখতে পায়।</li>
+            <li>ক্যাশ বাক্সে রিয়েল-টাইমে কত টাকা থাকার কথা (Expected Cash in Hand) তা সিস্টেম গণনা করে।</li>
+            <li>সেলসম্যান ক্যাশ কাউন্টারের ড্রয়ারের টাকা গুনে ক্যাশ বক্সের প্রকৃত ফিগার (Actual Cash in Hand) ইনপুট দেয়।</li>
+            <li>যদি Expected এবং Actual ক্যাশের মধ্যে কোনো গরমিল থাকে, তবে সিস্টেম শর্টেজ (Shortage) বা সারপ্লাস (Surplus) হিসেবে রিপোর্ট তৈরি করে এবং ক্লোজিং এন্ট্রি লক করে দেয়।</li>
+        </ol>
+    </div>
+
+    <!-- Section 6: API Reference -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            ৬. ব্যাকএন্ড API এন্ডপয়েন্ট রেফারেন্স (API Endpoints Directory)
+        </h2>
+        <p>
+            মোবাইল অ্যাপ্লিকেশনটি ব্যাকএন্ড সার্ভারের সাথে যোগাযোগের জন্য নিম্নলিখিত এপিআই এন্ডপয়েন্টগুলো ব্যবহার করে:
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>মেথড</th>
+                    <th>এন্ডপয়েন্ট</th>
+                    <th>প্রয়োজনীয় রোল / পারমিশন</th>
+                    <th>কাজের বিবরণ ও উদ্দেশ্য</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">POST</span></td>
+                    <td><code>/app/api/auth/signup</code></td>
+                    <td>Public (গ্লোবাল)</td>
+                    <td>নতুন দোকানের মালিকের রেজিস্ট্রেশন এবং ওটিপি (OTP) ও পিন ভেরিফিকেশন প্রক্রিয়া।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">POST</span></td>
+                    <td><code>/app/api/auth/login</code></td>
+                    <td>Public (গ্লোবাল)</td>
+                    <td>ইউজারনেম/ফোন এবং পাসওয়ার্ড ব্যবহার করে টোকেন জেনারেট করা।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">POST</span></td>
+                    <td><code>/app/api/auth/check-pin</code></td>
+                    <td>নিবন্ধিত ইউজার</td>
+                    <td>৬ ডিজিটের নিরাপত্তা পিন যাচাই করে সেশন সচল করা।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-salesman" style="background-color: #D1FAE5; color: #065F46;">GET</span></td>
+                    <td><code>/app/api/products</code></td>
+                    <td><code>canViewStock</code></td>
+                    <td>দোকানের নিজস্ব ইনভেন্টরির পণ্যের তালিকা ও স্টকের বিবরণ প্রদান করে।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">POST</span></td>
+                    <td><code>/app/api/purchases</code></td>
+                    <td>মালিক বা সেলসম্যান</td>
+                    <td>নতুন পণ্য ক্রয়ের রিকোয়েস্ট তৈরি। সেলসম্যানের ক্ষেত্রে এটি পেন্ডিং থাকে।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">PUT</span></td>
+                    <td><code>/app/api/purchases/:id/approve</code></td>
+                    <td>দোকানের মালিক (Admin)</td>
+                    <td>সেলসম্যানের সাবমিট করা পেন্ডিং ক্রয় অনুমোদন করে স্টক বাড়ায়।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-salesman" style="background-color: #D1FAE5; color: #065F46;">POST</span></td>
+                    <td><code>/app/api/sales/checkout</code></td>
+                    <td><code>canSell</code></td>
+                    <td>POS কার্ট চেকআউট করা, মানি বক্স আপডেট ও স্টক কমানো।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-salesman" style="background-color: #D1FAE5; color: #065F46;">POST</span></td>
+                    <td><code>/app/api/customers/:id/collect-due</code></td>
+                    <td><code>canCollectDue</code></td>
+                    <td>কাস্টমারের থেকে বকেয়া সংগ্রহ এন্ট্রি এবং কাস্টমার লেজার আপডেট।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">POST</span></td>
+                    <td><code>/app/api/staff</code></td>
+                    <td>দোকানের মালিক (Admin)</td>
+                    <td>নতুন সেলসম্যান স্টাফ যুক্ত করা এবং লগইন পিন ডিফল্ট সেট করা।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-owner" style="background-color: #DBEAFE; color: #1E40AF;">PATCH</span></td>
+                    <td><code>/app/api/staff/:id/permissions</code></td>
+                    <td>দোকানের মালিক (Admin)</td>
+                    <td>স্টাফদের পারমিশন সুইচ পরিবর্তন করা (যেমন: canSell, canViewStock)।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-salesman" style="background-color: #D1FAE5; color: #065F46;">GET</span></td>
+                    <td><code>/app/api/reports/profit-loss</code></td>
+                    <td><code>canViewReports</code></td>
+                    <td>দোকানের নির্দিষ্ট ফিল্টারের ভিত্তিতে লাভ-ক্ষতি ও বিক্রয়ের সামারি প্রদান।</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-salesman" style="background-color: #D1FAE5; color: #065F46;">POST</span></td>
+                    <td><code>/app/api/reports/daily-closing</code></td>
+                    <td>মালিক বা সেলসম্যান</td>
+                    <td>দিনের কাজ শেষে মানি বক্সের ব্যালেন্স মিলিয়ে ক্লোজিং সাবমিট করা।</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Section 7: Flutter Modules -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+            ৭. ফ্লটার (Flutter) পেজ ডিরেক্টরি ও স্ক্রিনসমূহ
+        </h2>
+        <p>
+            মোবাইল অ্যাপ্লিকেশনের পেজ ও স্ক্রিনসমূহ মডিউল অনুযায়ী সাজানো হয়েছে। নিচে কোন মডিউলে কী কাজ হয় তার বিবরণ দেওয়া হলো:
+        </p>
+
+        <div class="info-card">
+            <h3>১. Auth Module (অথেনটিকেশন মডিউল)</h3>
+            <ul>
+                <li><strong>Login Screen:</strong> ইউজার তার রেজিস্টার্ড মোবাইল নম্বর দিয়ে প্রথমবার লগইন করেন।</li>
+                <li><strong>Pin Lock Screen:</strong> প্রাইভেসির জন্য প্রতিবার অ্যাপ ওপেন করার সময় বা নিষ্ক্রিয় থাকার পর ৬ ডিজিটের পিন চাওয়া হয়।</li>
+                <li><strong>Pin Reset Screen:</strong> পাসওয়ার্ড ভেরিফিকেশন সাপেক্ষে সেলসম্যানদের পিন সেটআপ ও রিসেট স্ক্রিন।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>২. Sales / POS Module (বিক্রয় মডিউল)</h3>
+            <ul>
+                <li><strong>Sales POS Screen:</strong> মূল পিওএস (POS) কাউন্টার স্ক্রিন। এখানে বারকোড রিডার বা ভয়েস সার্চ করে কার্টে আইটেম যোগ করা যায়।</li>
+                <li><strong>Cart details Page:</strong> কার্টে থাকা আইটেমের পরিমাণ পরিবর্তন ও পারমিশন সাপেক্ষে কাস্টম ডিসকাউন্ট দেওয়ার সুবিধা।</li>
+                <li><strong>Payment Checkout BottomSheet:</strong> কাস্টমার ও মানি বক্স সিলেক্ট করে ক্যাশ, বিকাশ বা কার্ড পেমেন্টের মাধ্যমে ইনভয়েস তৈরি করার জায়গা।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>৩. Products & Stock Module (পণ্য ও স্টক মডিউল)</h3>
+            <ul>
+                <li><strong>Product List Screen:</strong> দোকানের মোট প্রোডাক্ট এবং তাদের বর্তমান স্টক দেখানোর স্ক্রিন। স্টক রিঅর্ডার লেভেলের নিচে নেমে গেলে এখানে এলার্ট দেখায়।</li>
+                <li><strong>Add Local Product Screen:</strong> দোকানদার গ্লোবাল লিস্টে পণ্য না পেলে নিজে নাম, বারকোড এবং ক্যাটাগরি দিয়ে কাস্টম প্রোডাক্ট যোগ করার স্ক্রিন।</li>
+                <li><strong>Stock Adjustment Screen:</strong> নষ্ট হয়ে যাওয়া বা খোয়া যাওয়া মালামাল স্টক থেকে ম্যানুয়ালি বাদ দেওয়ার ফর্ম।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>৪. Customer & Supplier Module (বকেয়া ও লেজার মডিউল)</h3>
+            <ul>
+                <li><strong>Customer Profile & Ledger:</strong> নির্দিষ্ট কাস্টমারের খতিয়ান যেখানে তার সমস্ত বিক্রয় ও পেমেন্টের টাইমলাইন লিস্ট থাকে।</li>
+                <li><strong>Due Collection Modal:</strong> সরাসরি কাস্টমারের প্রোফাইল থেকে তার বকেয়া টাকা আদায়ের রিসিট এন্ট্রি।</li>
+                <li><strong>Supplier Ledger Screen:</strong> সাপ্লায়ারকে বকেয়া পরিশোধ করার ভাউচার এন্ট্রি ফরম।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>৫. Staff & Permission Module (স্টাফ ও পারমিশন মডিউল)</h3>
+            <ul>
+                <li><strong>Staff List Screen:</strong> দোকানের মালিকের জন্য তার সমস্ত কর্মচারীর পিন ও অ্যাক্টিভিটি ট্র্যাকার স্ক্রিন।</li>
+                <li><strong>Salesman Permission Switcher Screen:</strong> দোকানের মালিক এই স্ক্রিন থেকে নির্দিষ্ট সেলসম্যানের পারমিশন টগল (অন/অফ) করতে পারেন।</li>
+            </ul>
+        </div>
+
+        <div class="info-card">
+            <h3>৬. Reports & Closing Module (রিপোর্ট ও ক্লোজিং মডিউল)</h3>
+            <ul>
+                <li><strong>Dashboard Overview:</strong> বেস্ট সেলিং প্রোডাক্ট, দৈনিক বিক্রি, এবং নেট প্রফিট এর পাই-চার্ট ও বার-চার্ট ভিজ্যুয়ালাইজেশন।</li>
+                <li><strong>Daily Closing Summary Screen:</strong> দিনের শেষে ক্যাশ ড্রয়ার গুনে হিসাব বুক ক্লোজ করার স্ক্রিন।</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Section 8: Developer Setup -->
+    <div class="doc-section page-break">
+        <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+            ৮. ডেভেলপার লোকাল সেটআপ নির্দেশিকা (Developer Setup Guide)
+        </h2>
+        <p>
+            নতুন কোনো ডেভেলপার প্রজেক্টটিতে কাজ শুরু করতে চাইলে নিম্নলিখিত পদক্ষেপগুলো অনুসরণ করবেন:
+        </p>
+
+        <h3>ক. ব্যাকএন্ড এপিআই সেটআপ (Backend API Setup)</h3>
+        <ol>
+            <li>প্রজেক্ট রুট ডিরেক্টরিতে যান: <code>cd backend</code></li>
+            <li>ডিপেন্ডেন্সি ইনস্টল করুন: <code>npm install</code></li>
+            <li>এনভায়রনমেন্ট ভ্যারিয়েবল সেটআপ করুন: <code>cp .env.example .env</code> এবং ডেটাবেজ কানেকশন স্ট্রিং (DATABASE_URL) আপডেট করুন।</li>
+            <li>ডেটাবেজ মাইগ্রেশন এবং সীড রান করুন:
+                <pre>npx prisma migrate dev --name init
+npx prisma db seed</pre>
+            </li>
+            <li>ডেভেলপমেন্ট মোডে সার্ভার চালু করুন: <code>npm run dev</code></li>
+        </ol>
+
+        <h3>খ. ফ্লটার মোবাইল অ্যাপ্লিকেশন সেটআপ (Flutter App Setup)</h3>
+        <ol>
+            <li>ফ্লটার প্রজেক্ট ডিরেক্টরিতে যান: <code>cd Dokan-ERP-Flutter-App</code></li>
+            <li>প্যাকেজসমূহ ডাউনলোড করুন: <code>flutter pub get</code></li>
+            <li>কনফিগারেশন চেক করুন: <code>lib/core/network/</code> ডিরেক্টরির কনফিগারেশন ফাইলে লোকাল এপিআই আইপি (Base URL) বসান।</li>
+            <li>অ্যাপ্লিকেশন রান করুন: <code>flutter run</code></li>
+        </ol>
+    </div>
+
+    <div class="alert-box success" style="margin-top: 40px; text-align: center; justify-content: center;">
+        <div>
+            <strong>ডকুমেন্ট সমাপ্ত:</strong> এই গাইড অনুসরণ করে যেকোনো অভিজ্ঞ ওয়েব/মোবাইল ডেভেলপার প্রজেক্টের আর্কিটেকচার, ডিরেক্টরি এবং ডেটা ফ্লো সহজে বুঝে কাজ শুরু করতে পারবেন।
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

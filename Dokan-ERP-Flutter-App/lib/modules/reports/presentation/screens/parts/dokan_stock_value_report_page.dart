@@ -1217,45 +1217,50 @@ class _ExpenseReportDashboardBody extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: _TimeTabRow(
-                selectedIndex: _filterIndex(selectedFilter),
-                labels: const ['আজ', 'এই সপ্তাহ', 'এই মাস', 'এই বছর', 'সব'],
-                onChanged: (index) => ref
-                    .read(expenseTimeFilterProvider.notifier)
-                    .setFilter(_filterFromIndex(index)),
+              child: ScrollReveal(
+                delay: const Duration(milliseconds: 40),
+                child: _TimeTabRow(
+                  selectedIndex: _filterIndex(selectedFilter),
+                  labels: const ['আজ', 'এই সপ্তাহ', 'এই মাস', 'এই বছর', 'সব'],
+                  onChanged: (index) => ref
+                      .read(expenseTimeFilterProvider.notifier)
+                      .setFilter(_filterFromIndex(index)),
+                ),
               ),
             ),
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverToBoxAdapter(
-              child: _SectionCard(
-                title: 'আজকের সারসংক্ষেপ',
-                child: GridView.builder(
-                  itemCount: kpis.length,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.25,
+              child: DokanFadeSlideIn(
+                child: _SectionCard(
+                  title: 'আজকের সারসংক্ষেপ',
+                  child: GridView.builder(
+                    itemCount: kpis.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1.25,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = kpis[index];
+                      return _ExpenseKpiCard(
+                        item: item,
+                        onTap: () => _handleKpiTap(
+                          context,
+                          item.label,
+                          summary,
+                          categoryStats,
+                          paymentMethods,
+                          detailExpenses,
+                        ),
+                      );
+                    },
                   ),
-                  itemBuilder: (context, index) {
-                    final item = kpis[index];
-                    return _ExpenseKpiCard(
-                      item: item,
-                      onTap: () => _handleKpiTap(
-                        context,
-                        item.label,
-                        summary,
-                        categoryStats,
-                        paymentMethods,
-                        detailExpenses,
-                      ),
-                    );
-                  },
                 ),
               ),
             ),
@@ -1264,34 +1269,37 @@ class _ExpenseReportDashboardBody extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverToBoxAdapter(
-              child: _SectionCard(
-                title: 'ট্রেন্ড অ্যানালিটিক্স',
-                child: Column(
-                  children: [
-                    _ExpenseTrendChart(points: trendPoints),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        switch (selectedFilter) {
-                          DokanExpenseTimeFilter.today => 'আজকের খরচের ট্রেন্ড',
-                          DokanExpenseTimeFilter.thisWeek =>
-                            'সাপ্তাহিক খরচের ট্রেন্ড',
-                          DokanExpenseTimeFilter.thisMonth =>
-                            'মাসভিত্তিক খরচের ট্রেন্ড',
-                          DokanExpenseTimeFilter.thisYear =>
-                            'বার্ষিক খরচের ট্রেন্ড',
-                          DokanExpenseTimeFilter.all =>
-                            'সব সময়ের খরচের ট্রেন্ড',
-                        },
-                        style: const TextStyle(
-                          color: Color(0xFF111111),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
+              child: ScrollReveal(
+                delay: const Duration(milliseconds: 80),
+                child: _SectionCard(
+                  title: 'ট্রেন্ড অ্যানালিটিক্স',
+                  child: Column(
+                    children: [
+                      _ExpenseTrendChart(points: trendPoints),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          switch (selectedFilter) {
+                            DokanExpenseTimeFilter.today => 'আজকের খরচের ট্রেন্ড',
+                            DokanExpenseTimeFilter.thisWeek =>
+                              'সাপ্তাহিক খরচের ট্রেন্ড',
+                            DokanExpenseTimeFilter.thisMonth =>
+                              'মাসভিত্তিক খরচের ট্রেন্ড',
+                            DokanExpenseTimeFilter.thisYear =>
+                              'বার্ষিক খরচের ট্রেন্ড',
+                            DokanExpenseTimeFilter.all =>
+                              'সব সময়ের খরচের ট্রেন্ড',
+                          },
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1300,9 +1308,12 @@ class _ExpenseReportDashboardBody extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverToBoxAdapter(
-              child: _SectionCard(
-                title: 'খরচের বিবরণ তালিকা',
-                child: detailExpenses.isEmpty
+              child: ScrollReveal(
+                key: ValueKey('expense-list-section-${selectedFilter.name}'),
+                delay: const Duration(milliseconds: 120),
+                child: _SectionCard(
+                  title: 'খরচের বিবরণ তালিকা',
+                  child: detailExpenses.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         child: Center(
@@ -1419,7 +1430,7 @@ class _ExpenseReportDashboardBody extends ConsumerWidget {
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
+                                    AnimatedNumberString(
                                       '৳${_bnDigits(expense.amount.round().toString())}',
                                       style: const TextStyle(
                                         color: Color(0xFF0C8C67),
@@ -1447,6 +1458,7 @@ class _ExpenseReportDashboardBody extends ConsumerWidget {
                         },
                       ),
               ),
+            ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 14)),

@@ -1271,6 +1271,7 @@ final activityLogProvider = Provider<List<_ActivityEntry>>((ref) {
 
 final reportDashboardRemoteProvider =
     FutureProvider<_RemoteReportDashboardData?>((ref) async {
+  ref.keepAlive();
   if (!ref.watch(reportConfiguredProvider)) {
     return null;
   }

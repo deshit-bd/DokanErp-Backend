@@ -5,11 +5,13 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.value,
     required this.color,
+    required this.isActive,
   });
 
   final String title;
   final String value;
   final Color color;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +58,10 @@ class _MetricCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                AnimatedNumberString(
                   value,
+                  key: ValueKey(isActive),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -76,9 +78,10 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _LedgerBoard extends StatelessWidget {
-  const _LedgerBoard({required this.accent});
+  const _LedgerBoard({required this.accent, required this.isActive});
 
   final Color accent;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -123,35 +126,33 @@ class _LedgerBoard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _ledgerLine(0.94, accent),
+          _ledgerLine(0.94, accent, const Duration(milliseconds: 300)),
           const SizedBox(height: 8),
-          _ledgerLine(0.78, const Color(0xFFC9D8D2)),
+          _ledgerLine(0.78, const Color(0xFFC9D8D2), const Duration(milliseconds: 400)),
           const SizedBox(height: 8),
-          _ledgerLine(0.66, const Color(0xFFC9D8D2)),
+          _ledgerLine(0.66, const Color(0xFFC9D8D2), const Duration(milliseconds: 500)),
           const SizedBox(height: 8),
-          _ledgerLine(0.42, accent.withOpacity(0.6)),
+          _ledgerLine(0.42, accent.withOpacity(0.6), const Duration(milliseconds: 600)),
           const Spacer(),
-          Container(
-            height: 12,
-            decoration: BoxDecoration(
-              color: accent.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
+          _ledgerLine(1.0, accent.withOpacity(0.18), const Duration(milliseconds: 700)),
         ],
       ),
     );
   }
 
-  Widget _ledgerLine(double widthFactor, Color color) {
+  Widget _ledgerLine(double widthFactor, Color color, Duration delay) {
     return FractionallySizedBox(
       widthFactor: widthFactor,
       alignment: Alignment.centerLeft,
-      child: Container(
-        height: 8,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(999),
+      child: _AnimatedWidthFactor(
+        delay: delay,
+        isActive: isActive,
+        child: Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(999),
+          ),
         ),
       ),
     );

@@ -620,8 +620,9 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                               dokanPosProvider.select(
                                   (state) => state.isSelected(product.id)),
                             );
-                            return DokanFadeSlideIn(
-                              delay: Duration(milliseconds: math.min(index * 40, 300)),
+                            return ScrollReveal(
+                              key: ValueKey('pos-prod-$_selectedCategoryIndex-${product.id}-${product.name}'),
+                              delay: Duration(milliseconds: (index % (isWide ? 4 : 2)) * 80),
                               child: _ProductCard(
                                 product: product,
                                 quantity: quantity,

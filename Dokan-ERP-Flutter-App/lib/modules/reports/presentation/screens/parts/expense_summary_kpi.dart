@@ -63,7 +63,7 @@ class _ExpenseKpiCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: item.accent.withOpacity(0.08),
             borderRadius: BorderRadius.circular(18),
@@ -74,23 +74,27 @@ class _ExpenseKpiCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
                       color: item.accent.withOpacity(0.16),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(item.icon, color: item.accent, size: 18),
+                    child: Icon(item.icon, color: item.accent, size: 16),
                   ),
-                  const Spacer(),
-                  Text(
-                    item.trend,
-                    style: TextStyle(
-                      color: item.accent,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
+                  Flexible(
+                    child: Text(
+                      item.trend,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: item.accent,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ],
@@ -108,11 +112,11 @@ class _ExpenseKpiCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
+                  const SizedBox(height: 4),
+                  AnimatedNumberString(
                     item.value,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: TextStyle(
                       color: item.accent,
                       fontSize: 18,

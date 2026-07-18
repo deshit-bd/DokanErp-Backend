@@ -71,7 +71,7 @@ class _HeroMetric extends StatelessWidget {
         const SizedBox(height: 4),
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
+          child: AnimatedNumberString(
             value,
             style: const TextStyle(
               color: Colors.white,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../domain/repositories/inventory_catalog_snapshot_repository.dart';
 
 class InventoryCatalogOfflineFirstRepository
@@ -12,15 +13,33 @@ class InventoryCatalogOfflineFirstRepository
 
   @override
   Future<String?> readSnapshot() async {
+    final localSnapshot = await _local.readSnapshot();
+    if (localSnapshot != null && localSnapshot.isNotEmpty) {
+      runZoned(
+        () {
+          Future.microtask(() async {
+            try {
+              final remoteSnapshot = await _remote.readSnapshot();
+              if (remoteSnapshot != null && remoteSnapshot.isNotEmpty) {
+                await _local.writeSnapshot(remoteSnapshot);
+              }
+            } catch (_) {}
+          });
+        },
+        zoneValues: {#untracked_api_request: true},
+      );
+      return localSnapshot;
+    }
+
     try {
       final remoteSnapshot = await _remote.readSnapshot();
       if (remoteSnapshot != null && remoteSnapshot.isNotEmpty) {
         await _local.writeSnapshot(remoteSnapshot);
         return remoteSnapshot;
       }
-      return remoteSnapshot ?? await _local.readSnapshot();
+      return remoteSnapshot;
     } catch (_) {
-      return _local.readSnapshot();
+      return null;
     }
   }
 

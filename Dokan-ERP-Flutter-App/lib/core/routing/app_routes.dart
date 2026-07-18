@@ -86,134 +86,20 @@ abstract final class AppRoutes {
       BuildContext context, WidgetRef ref, DokanAppFlowState flow) {
     final flowController = ref.read(dokanAppFlowProvider.notifier);
 
-    return switch (flow.stage) {
-      DokanStartupStage.splash => DokanPhoneShell(
-          child: DokanSplashScreen(progress: flow.progress),
-        ),
-      DokanStartupStage.onboarding => DokanPhoneShell(
-          child: OnboardingFlow(onFinished: flowController.finishOnboarding),
-        ),
-      DokanStartupStage.login => DokanPhoneShell(
-          child: DokanLoginScreen(
-            onBack: flowController.goToOnboarding,
-            onLogin: flowController.goToHome,
-            onOtpLogin: flowController.goToOtpLogin,
-            onAccountOpen: flowController.goToRegister,
-            initialRole: flow.loginRole,
-            onRoleChanged: flowController.setLoginRole,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: switch (flow.stage) {
+        DokanStartupStage.splash => DokanPhoneShell(
+            key: const ValueKey('splash'),
+            child: DokanSplashScreen(progress: flow.progress),
           ),
-        ),
-      DokanStartupStage.otpLogin => DokanPhoneShell(
-          child: DokanOtpLoginScreen(
-            onBack: flowController.goToLogin,
-            onSendOtp: flowController.sendLoginOtp,
+        DokanStartupStage.onboarding => DokanPhoneShell(
+            key: const ValueKey('onboarding'),
+            child: OnboardingFlow(onFinished: flowController.finishOnboarding),
           ),
-        ),
-      DokanStartupStage.otpVerify => DokanPhoneShell(
-          child: DokanOtpVerificationScreen(
-            onBack: flowController.goToOtpLogin,
-            onVerified: flowController.verifyOtp,
-          ),
-        ),
-      DokanStartupStage.pinSetup => DokanPhoneShell(
-          child: DokanPinSetupScreen(
-            onBack: flowController.goToOtpVerify,
-            onContinue: flowController.goToPinLogin,
-          ),
-        ),
-      DokanStartupStage.pinLogin => DokanPhoneShell(
-          child: DokanPinLoginScreen(
-            onBack: flowController.goToPinSetup,
-            onLogin: flowController.completePinLogin,
-          ),
-        ),
-      DokanStartupStage.register => DokanPhoneShell(
-          child: DokanRegisterScreen(
-            onBack: flowController.goToLogin,
-            onContinue: (name, phone, password) {
-              return flowController.registerAccount(
-                name: name,
-                phone: phone,
-                password: password,
-              );
-            },
-          ),
-        ),
-      DokanStartupStage.shopSetup => DokanPhoneShell(
-          child: DokanShopSetupScreen(
-            onBack: flowController.goToRegister,
-            onContinue: flowController.completeShopSetup,
-          ),
-        ),
-      DokanStartupStage.inventoryModeSetup => DokanPhoneShell(
-          child: DokanInventoryModeSelectionScreen(
-            showBackButton: false,
-            oneTimeSetup: true,
-            onCompleted: flowController.goToWelcome,
-          ),
-        ),
-      DokanStartupStage.welcome => DokanPhoneShell(
-          child: Builder(
-            builder: (context) {
-              Future<void> openInventoryModeThen(VoidCallback nextStep) async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (routeContext) =>
-                        DokanInventoryModeSelectionScreen(
-                      showBackButton: true,
-                      oneTimeSetup: false,
-                      onCompleted: () {
-                        Navigator.of(routeContext).pop();
-                        nextStep();
-                      },
-                    ),
-                  ),
-                );
-              }
-
-              return DokanWelcomeScreen(
-                accountName: flow.registeredName,
-                onPopularProducts: () {
-                  openInventoryModeThen(flowController.goToPopularProducts);
-                },
-                onManualAddProduct: () {
-                  openInventoryModeThen(() {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DokanAddProductMasterDbScreen(),
-                      ),
-                    );
-                  });
-                },
-                onStartSelling: () {
-                  openInventoryModeThen(flowController.goToHome);
-                },
-              );
-            },
-          ),
-        ),
-      DokanStartupStage.popularProducts => DokanPhoneShell(
-          child: DokanPopularProductsScreen(
-            shopName: flow.shopName,
-            ownerName: flow.registeredName,
-            onBack: flowController.goToWelcome,
-            onContinue: () async {
-              await ref
-                  .read(dokanInventoryCatalogProvider.notifier)
-                  .refreshFromRepository();
-              flowController.goToHome();
-            },
-          ),
-        ),
-      DokanStartupStage.home => flow.hasSession
-          ? (flow.isSubscriptionBlocked
-              ? (flow.isSalesman
-                  ? const SalesmanBlockedScreen()
-                  : const DokanNotificationSubscriptionSettingsScreen(lockedMode: true))
-              : (flow.isSalesman
-                  ? const DokanSalesmanDashboardScreen()
-                  : const OwnerSubscriptionGate()))
-          : DokanLoginScreen(
+        DokanStartupStage.login => DokanPhoneShell(
+            key: const ValueKey('login'),
+            child: DokanLoginScreen(
               onBack: flowController.goToOnboarding,
               onLogin: flowController.goToHome,
               onOtpLogin: flowController.goToOtpLogin,
@@ -221,7 +107,149 @@ abstract final class AppRoutes {
               initialRole: flow.loginRole,
               onRoleChanged: flowController.setLoginRole,
             ),
-    };
+          ),
+        DokanStartupStage.otpLogin => DokanPhoneShell(
+            key: const ValueKey('otpLogin'),
+            child: DokanOtpLoginScreen(
+              onBack: flowController.goToLogin,
+              onSendOtp: flowController.sendLoginOtp,
+            ),
+          ),
+        DokanStartupStage.otpVerify => DokanPhoneShell(
+            key: const ValueKey('otpVerify'),
+            child: DokanOtpVerificationScreen(
+              onBack: flowController.goToOtpLogin,
+              onVerified: flowController.verifyOtp,
+            ),
+          ),
+        DokanStartupStage.pinSetup => DokanPhoneShell(
+            key: const ValueKey('pinSetup'),
+            child: DokanPinSetupScreen(
+              onBack: flowController.goToOtpVerify,
+              onContinue: flowController.goToPinLogin,
+            ),
+          ),
+        DokanStartupStage.pinLogin => DokanPhoneShell(
+            key: const ValueKey('pinLogin'),
+            child: DokanPinLoginScreen(
+              onBack: flowController.goToPinSetup,
+              onLogin: flowController.completePinLogin,
+            ),
+          ),
+        DokanStartupStage.register => DokanPhoneShell(
+            key: const ValueKey('register'),
+            child: DokanRegisterScreen(
+              onBack: flowController.goToLogin,
+              onContinue: (name, phone, password) {
+                return flowController.registerAccount(
+                  name: name,
+                  phone: phone,
+                  password: password,
+                );
+              },
+            ),
+          ),
+        DokanStartupStage.shopSetup => DokanPhoneShell(
+            key: const ValueKey('shopSetup'),
+            child: DokanShopSetupScreen(
+              onBack: flowController.goToRegister,
+              onContinue: flowController.completeShopSetup,
+            ),
+          ),
+        DokanStartupStage.inventoryModeSetup => DokanPhoneShell(
+            key: const ValueKey('inventoryModeSetup'),
+            child: DokanInventoryModeSelectionScreen(
+              showBackButton: false,
+              oneTimeSetup: true,
+              onCompleted: flowController.goToWelcome,
+            ),
+          ),
+        DokanStartupStage.welcome => DokanPhoneShell(
+            key: const ValueKey('welcome'),
+            child: Builder(
+              builder: (context) {
+                Future<void> openInventoryModeThen(VoidCallback nextStep) async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (routeContext) =>
+                          DokanInventoryModeSelectionScreen(
+                        showBackButton: true,
+                        oneTimeSetup: false,
+                        onCompleted: () {
+                          Navigator.of(routeContext).pop();
+                          nextStep();
+                        },
+                      ),
+                    ),
+                  );
+                }
+
+                return DokanWelcomeScreen(
+                  accountName: flow.registeredName,
+                  onPopularProducts: () {
+                    openInventoryModeThen(flowController.goToPopularProducts);
+                  },
+                  onManualAddProduct: () {
+                    openInventoryModeThen(() {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DokanAddProductMasterDbScreen(),
+                        ),
+                      );
+                    });
+                  },
+                  onStartSelling: () {
+                    openInventoryModeThen(flowController.goToHome);
+                  },
+                );
+              },
+            ),
+          ),
+        DokanStartupStage.popularProducts => DokanPhoneShell(
+            key: const ValueKey('popularProducts'),
+            child: DokanPopularProductsScreen(
+              shopName: flow.shopName,
+              ownerName: flow.registeredName,
+              onBack: flowController.goToWelcome,
+              onContinue: () async {
+                await ref
+                    .read(dokanInventoryCatalogProvider.notifier)
+                    .refreshFromRepository();
+                flowController.goToHome();
+              },
+            ),
+          ),
+        DokanStartupStage.home => flow.hasSession
+            ? (flow.isSubscriptionBlocked
+                ? (flow.isSalesman
+                    ? const KeyedSubtree(
+                        key: ValueKey('blockedSalesman'),
+                        child: SalesmanBlockedScreen(),
+                      )
+                    : const KeyedSubtree(
+                        key: ValueKey('subscriptionBlocked'),
+                        child: DokanNotificationSubscriptionSettingsScreen(lockedMode: true),
+                      ))
+                : (flow.isSalesman
+                    ? const KeyedSubtree(
+                        key: ValueKey('dashboardSalesman'),
+                        child: DokanSalesmanDashboardScreen(),
+                      )
+                    : const KeyedSubtree(
+                        key: ValueKey('dashboardOwner'),
+                        child: OwnerSubscriptionGate(),
+                      )))
+            : DokanLoginScreen(
+                key: const ValueKey('loginNoSession'),
+                onBack: flowController.goToOnboarding,
+                onLogin: flowController.goToHome,
+                onOtpLogin: flowController.goToOtpLogin,
+                onAccountOpen: flowController.goToRegister,
+                initialRole: flow.loginRole,
+                onRoleChanged: flowController.setLoginRole,
+              ),
+      },
+    );
   }
 }
 

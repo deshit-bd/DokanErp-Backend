@@ -148,6 +148,7 @@ class _DokanPurchaseListScreenState
                   itemBuilder: (context, index) {
                     final order = filtered[index];
                     return DokanFadeSlideIn(
+                      key: ValueKey('purchase-order-$_selectedStatus-${order.id}'),
                       delay: Duration(milliseconds: 45 * (index.clamp(0, 9))),
                       child: _orderCard(order),
                     );
@@ -186,80 +187,87 @@ class _DokanPurchaseListScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0D6B55), Color(0xFF124C41)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          DokanFadeSlideIn(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0D6B55), Color(0xFF124C41)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
               ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.receipt_long_rounded,
+                        color: Colors.white),
                   ),
-                  child: const Icon(Icons.receipt_long_rounded,
-                      color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ক্রয় ও রিসিভ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ক্রয় ও রিসিভ',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'অর্ডার ট্র্যাক করুন, রিসিভ করুন, বা প্রত্যাখ্যান করুন',
-                        style: TextStyle(
-                          color: Color(0xFFD8EFE6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                        SizedBox(height: 3),
+                        Text(
+                          'অর্ডার ট্র্যাক করুন, রিসিভ করুন, বা প্রত্যাখ্যান করুন',
+                          style: TextStyle(
+                            color: Color(0xFFD8EFE6),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 14),
-          DokanSearchField(
-            controller: _searchController,
-            hintText: 'সরবরাহকারী বা অর্ডার আইডি দিয়ে খুঁজুন...',
-            onChanged: (val) => setState(() => _searchQuery = val.trim()),
-            showClear: _searchQuery.isNotEmpty,
-            onClear: () {
-              _searchController.clear();
-              setState(() => _searchQuery = '');
-            },
+          ScrollReveal(
+            child: DokanSearchField(
+              controller: _searchController,
+              hintText: 'সরবরাহকারী বা অর্ডার আইডি দিয়ে খুঁজুন...',
+              onChanged: (val) => setState(() => _searchQuery = val.trim()),
+              showClear: _searchQuery.isNotEmpty,
+              onClear: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+              },
+            ),
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _statusFilterChip('সব', 'ALL'),
-                const SizedBox(width: 10),
-                _statusFilterChip('অপেক্ষায়', 'submitted'),
-                const SizedBox(width: 10),
-                _statusFilterChip('রিসিভড', 'received'),
-                const SizedBox(width: 10),
-                _statusFilterChip('প্রত্যাখ্যাত', 'cancelled'),
-              ],
+          ScrollReveal(
+            delay: const Duration(milliseconds: 80),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _statusFilterChip('সব', 'ALL'),
+                  const SizedBox(width: 10),
+                  _statusFilterChip('অপেক্ষায়', 'submitted'),
+                  const SizedBox(width: 10),
+                  _statusFilterChip('রিসিভড', 'received'),
+                  const SizedBox(width: 10),
+                  _statusFilterChip('প্রত্যাখ্যাত', 'cancelled'),
+                ],
+              ),
             ),
           ),
         ],
@@ -452,7 +460,7 @@ class _DokanPurchaseListScreenState
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
+                              AnimatedNumberString(
                                 '৳ ${_bn(order.totalAmount)}',
                                 style: const TextStyle(
                                   color: Color(0xFF0D6B55),

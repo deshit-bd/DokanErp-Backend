@@ -211,6 +211,382 @@ class _DokanLoginScreenState extends ConsumerState<DokanLoginScreen> {
     }
   }
 
+  Widget _buildMerchantForm() {
+    return Column(
+      key: const ValueKey('merchant_form'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const DokanFadeSlideIn(
+          delay: Duration.zero,
+          duration: Duration(milliseconds: 700),
+          slideOffset: Offset(0, -30),
+          child: _LoginFormHeader(
+            isSalesman: false,
+          ),
+        ),
+        const SizedBox(height: 24),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(-100, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LoginInputField(
+                label: 'মোবাইল নম্বর',
+                hintText: '01XXXXXXXXX',
+                helperText: '১১ ডিজিটের মোবাইল নম্বর',
+                keyboardType: TextInputType.phone,
+                prefix: const _CountryPrefix(),
+                controller: _mobileController,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
+                ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _phoneError != null
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _phoneError!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(100, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LoginInputField(
+                label: 'পাসওয়ার্ড',
+                hintText: 'পাসওয়ার্ড লিখুন',
+                helperText: 'কমপক্ষে ৪ ডিজিট',
+                prefix: const _FieldIcon(icon: Icons.lock_outline_rounded),
+                obscureText: _obscurePassword,
+                onToggleObscure: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+                controller: _passwordController,
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _passwordError != null
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _passwordError!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 450),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(-50, 0),
+          child: _RememberForgotRow(
+            rememberMe: _rememberMe,
+            onRememberChanged: (value) {
+              setState(() => _rememberMe = value ?? false);
+            },
+            onForgotPressed: widget.onOtpLogin,
+          ),
+        ),
+        const SizedBox(height: 20),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 600),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(50, 0),
+          child: _PrimaryActionButton(
+            label: 'লগইন করুন',
+            onPressed: _submitting ? null : _submitLogin,
+          ),
+        ),
+        const SizedBox(height: 20),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 750),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(0, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _DividerWithLabel(label: 'অথবা'),
+              const SizedBox(height: 20),
+              _OutlineActionButton(
+                label: 'OTP Login',
+                icon: Icons.sms_outlined,
+                onPressed: widget.onOtpLogin,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 900),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(0, 30),
+          child: _RegistrationLink(
+            label: 'অ্যাকাউন্ট খুলুন',
+            onPressed: widget.onAccountOpen,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSalesmanForm() {
+    return Column(
+      key: const ValueKey('salesman_form'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const DokanFadeSlideIn(
+          delay: Duration.zero,
+          duration: Duration(milliseconds: 700),
+          slideOffset: Offset(0, -30),
+          child: _LoginFormHeader(
+            isSalesman: true,
+          ),
+        ),
+        const SizedBox(height: 24),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(-100, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LoginInputField(
+                label: 'দোকান নম্বর (Dokan ID)',
+                hintText: 'Dokan ID',
+                helperText: 'যে দোকানে কাজ করেন সেই Dokan ID লিখুন',
+                keyboardType: TextInputType.text,
+                prefix: const _FieldIcon(icon: Icons.storefront_rounded),
+                controller: _shopIdController,
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _shopIdError != null
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _shopIdError!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(100, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LoginInputField(
+                label: 'সেলসম্যান মোবাইল নম্বর',
+                hintText: '01XXXXXXXXX',
+                helperText: '১১ ডিজিটের মোবাইল নম্বর',
+                keyboardType: TextInputType.phone,
+                prefix: const _CountryPrefix(),
+                controller: _mobileController,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
+                ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _phoneError != null
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _phoneError!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 450),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(-100, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LoginInputField(
+                label: 'PIN',
+                hintText: 'সেলসম্যান PIN লিখুন',
+                helperText: 'সেলসম্যান PIN',
+                prefix: const _FieldIcon(icon: Icons.lock_outline_rounded),
+                obscureText: _obscurePassword,
+                onToggleObscure: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+                controller: _passwordController,
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _passwordError != null
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _passwordError!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 600),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(50, 0),
+          child: _RememberForgotRow(
+            rememberMe: _rememberMe,
+            onRememberChanged: (value) {
+              setState(() => _rememberMe = value ?? false);
+            },
+            onForgotPressed: widget.onOtpLogin,
+          ),
+        ),
+        const SizedBox(height: 20),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 750),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(-50, 0),
+          child: _PrimaryActionButton(
+            label: 'লগইন করুন',
+            onPressed: _submitting ? null : _submitLogin,
+          ),
+        ),
+        const SizedBox(height: 20),
+        DokanFadeSlideIn(
+          delay: const Duration(milliseconds: 900),
+          duration: const Duration(milliseconds: 800),
+          slideOffset: const Offset(0, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _DividerWithLabel(label: 'অথবা'),
+              const SizedBox(height: 20),
+              _OutlineActionButton(
+                label: 'OTP Login',
+                icon: Icons.sms_outlined,
+                onPressed: widget.onOtpLogin,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const DokanFadeSlideIn(
+          delay: Duration(milliseconds: 1000),
+          duration: Duration(milliseconds: 800),
+          slideOffset: Offset(0, 30),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 2),
+            child: Text(
+              'সেলসম্যান অ্যাকাউন্ট তৈরি করতে পারবেন না।',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6D7A73),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,8 +594,12 @@ class _DokanLoginScreenState extends ConsumerState<DokanLoginScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _LoginHeader(
-                onBack: widget.onBack ?? () => Navigator.maybePop(context)),
+            DokanFadeSlideIn(
+              delay: Duration.zero,
+              duration: const Duration(milliseconds: 600),
+              child: _LoginHeader(
+                  onBack: widget.onBack ?? () => Navigator.maybePop(context)),
+            ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -249,154 +629,51 @@ class _DokanLoginScreenState extends ConsumerState<DokanLoginScreen> {
                               Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _RoleToggle(
-                                    selectedIndex: _selectedRole,
-                                    onChanged: (index) {
-                                      setState(() => _selectedRole = index);
-                                      widget.onRoleChanged?.call(index);
-                                    },
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _LoginFormHeader(
-                                    isSalesman: _selectedRole == 1,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  if (_selectedRole == 1) ...[
-                                    _LoginInputField(
-                                      label: 'দোকান নম্বর (Dokan ID)',
-                                      hintText: 'Dokan ID',
-                                      helperText:
-                                          'যে দোকানে কাজ করেন সেই Dokan ID লিখুন',
-                                      keyboardType: TextInputType.text,
-                                      prefix: const _FieldIcon(
-                                          icon: Icons.storefront_rounded),
-                                      controller: _shopIdController,
+                                  DokanFadeSlideIn(
+                                    delay: const Duration(milliseconds: 100),
+                                    duration: const Duration(milliseconds: 600),
+                                    child: _RoleToggle(
+                                      selectedIndex: _selectedRole,
+                                      onChanged: (index) {
+                                        setState(() => _selectedRole = index);
+                                        widget.onRoleChanged?.call(index);
+                                      },
                                     ),
-                                    if (_shopIdError != null) ...[
-                                      const SizedBox(height: 4),
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          _shopIdError!,
-                                          style: const TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  DokanFadeSlideIn(
+                                    delay: const Duration(milliseconds: 200),
+                                    duration: const Duration(milliseconds: 600),
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 300),
+                                      transitionBuilder: (Widget child, Animation<double> animation) {
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: SlideTransition(
+                                            position: Tween<Offset>(
+                                              begin: const Offset(0.0, 0.08),
+                                              end: Offset.zero,
+                                            ).animate(CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.easeOutCubic,
+                                            )),
+                                            child: child,
                                           ),
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 24),
-                                  ],
-                                  _LoginInputField(
-                                    label: _selectedRole == 1
-                                        ? 'সেলসম্যান মোবাইল নম্বর'
-                                        : 'মোবাইল নম্বর',
-                                    hintText: '01XXXXXXXXX',
-                                    helperText: '১১ ডিজিটের মোবাইল নম্বর',
-                                    keyboardType: TextInputType.phone,
-                                    prefix: const _CountryPrefix(),
-                                    controller: _mobileController,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                      LengthLimitingTextInputFormatter(11),
-                                    ],
-                                  ),
-                                  if (_phoneError != null) ...[
-                                    const SizedBox(height: 4),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        _phoneError!,
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                        );
+                                      },
+                                      child: _selectedRole == 1
+                                          ? _buildSalesmanForm()
+                                          : _buildMerchantForm(),
                                     ),
-                                  ],
-                                  const SizedBox(height: 24),
-                                  _LoginInputField(
-                                    label: _selectedRole == 1
-                                        ? 'PIN'
-                                        : 'পাসওয়ার্ড',
-                                    hintText: _selectedRole == 1
-                                        ? 'সেলসম্যান PIN লিখুন'
-                                        : 'পাসওয়ার্ড লিখুন',
-                                    helperText: _selectedRole == 1
-                                        ? 'সেলসম্যান PIN'
-                                        : 'কমপক্ষে ৪ ডিজিট',
-                                    prefix: const _FieldIcon(
-                                        icon: Icons.lock_outline_rounded),
-                                    obscureText: _obscurePassword,
-                                    onToggleObscure: () {
-                                      setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword,
-                                      );
-                                    },
-                                    controller: _passwordController,
                                   ),
-                                  if (_passwordError != null) ...[
-                                    const SizedBox(height: 4),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        _passwordError!,
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 20),
-                                  _RememberForgotRow(
-                                    rememberMe: _rememberMe,
-                                    onRememberChanged: (value) {
-                                      setState(
-                                          () => _rememberMe = value ?? false);
-                                    },
-                                    onForgotPressed: widget.onOtpLogin,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _PrimaryActionButton(
-                                    label: 'লগইন করুন',
-                                    onPressed:
-                                        _submitting ? null : _submitLogin,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  const _DividerWithLabel(label: 'অথবা'),
-                                  const SizedBox(height: 20),
-                                  _OutlineActionButton(
-                                    label: 'OTP Login',
-                                    icon: Icons.sms_outlined,
-                                    onPressed: widget.onOtpLogin,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  if (_selectedRole == 0)
-                                    _RegistrationLink(
-                                        label: 'অ্যাকাউন্ট খুলুন',
-                                        onPressed: widget.onAccountOpen)
-                                  else
-                                    const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 2),
-                                      child: Text(
-                                        'সেলসম্যান অ্যাকাউন্ট তৈরি করতে পারবেন না।',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF6D7A73),
-                                        ),
-                                      ),
-                                    ),
                                 ],
                               ),
                               const SizedBox(height: 24),
-                              const _SecurityFooter(),
+                              const DokanFadeSlideIn(
+                                delay: Duration(milliseconds: 300),
+                                duration: Duration(milliseconds: 600),
+                                child: _SecurityFooter(),
+                              ),
                             ],
                           ),
                         ),

@@ -539,86 +539,96 @@ class _DokanSupplierListScreenState
               padding:
                   EdgeInsets.fromLTRB(16, 12, 16, _selectionMode ? 144 : 96),
               children: [
-                Row(
-                  children: [
-                    _HeaderButton(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.of(context).maybePop(),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'সরবরাহকারী তালিকা',
-                            style: TextStyle(
-                              color: Color(0xFF163732),
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'সরবরাহকারী, বাকি ও ক্রয় তথ্য',
-                            style: TextStyle(
-                              color: Color(0xFF6B7B79),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                DokanFadeSlideIn(
+                  child: Row(
+                    children: [
+                      _HeaderButton(
+                        icon: Icons.arrow_back_rounded,
+                        onTap: () => Navigator.of(context).maybePop(),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'সরবরাহকারী তালিকা',
+                              style: TextStyle(
+                                color: Color(0xFF163732),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'সরবরাহকারী, বাকি ও ক্রয় তথ্য',
+                              style: TextStyle(
+                                color: Color(0xFF6B7B79),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 14),
-                _SearchField(
-                  controller: _searchController,
-                  query: _query,
-                  onChanged: (value) => setState(() => _query = value),
-                  onClear: () {
-                    _searchController.clear();
-                    setState(() => _query = '');
-                  },
+                ScrollReveal(
+                  child: _SearchField(
+                    controller: _searchController,
+                    query: _query,
+                    onChanged: (value) => setState(() => _query = value),
+                    onClear: () {
+                      _searchController.clear();
+                      setState(() => _query = '');
+                    },
+                  ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SummaryCard(
-                        icon: Icons.local_shipping_rounded,
-                        iconColor: const Color(0xFF0E855D),
-                        iconBackground: const Color(0xFFE7F5EF),
-                        title: 'মোট সরবরাহকারী',
-                        value: _banglaDigits(totalSuppliers.toString()),
-                        subtitle: totalSuppliers > 0
-                            ? 'সক্রিয় তালিকা'
-                            : 'এখনও সরবরাহকারী নেই',
+                ScrollReveal(
+                  delay: const Duration(milliseconds: 80),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _SummaryCard(
+                          icon: Icons.local_shipping_rounded,
+                          iconColor: const Color(0xFF0E855D),
+                          iconBackground: const Color(0xFFE7F5EF),
+                          title: 'মোট সরবরাহকারী',
+                          value: _banglaDigits(totalSuppliers.toString()),
+                          subtitle: totalSuppliers > 0
+                              ? 'সক্রিয় তালিকা'
+                              : 'এখনও সরবরাহকারী নেই',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _SummaryCard(
-                        icon: Icons.account_balance_wallet_rounded,
-                        iconColor: const Color(0xFFB14A12),
-                        iconBackground: const Color(0xFFFFF0E2),
-                        title: 'মোট বকেয়া',
-                        value: _formatCurrency(totalDue),
-                        subtitle: 'সব সরবরাহকারীর বকেয়া',
-                        valueColor: const Color(0xFFB3261E),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _SummaryCard(
+                          icon: Icons.account_balance_wallet_rounded,
+                          iconColor: const Color(0xFFB14A12),
+                          iconBackground: const Color(0xFFFFF0E2),
+                          title: 'মোট বকেয়া',
+                          value: _formatCurrency(totalDue),
+                          subtitle: 'সব সরবরাহকারীর বকেয়া',
+                          valueColor: const Color(0xFFB3261E),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-                _SummaryCard(
-                  icon: Icons.shopping_cart_checkout_rounded,
-                  iconColor: const Color(0xFF2564D7),
-                  iconBackground: const Color(0xFFEAF2FF),
-                  title: 'এই মাসের ক্রয়',
-                  value: _formatCurrency(currentMonthPurchase),
-                  subtitle: 'বর্তমান মাসের মোট ক্রয় যোগফল',
+                ScrollReveal(
+                  delay: const Duration(milliseconds: 160),
+                  child: _SummaryCard(
+                    icon: Icons.shopping_cart_checkout_rounded,
+                    iconColor: const Color(0xFF2564D7),
+                    iconBackground: const Color(0xFFEAF2FF),
+                    title: 'এই মাসের ক্রয়',
+                    value: _formatCurrency(currentMonthPurchase),
+                    subtitle: 'বর্তমান মাসের মোট ক্রয় যোগফল',
+                  ),
                 ),
                 const SizedBox(height: 14),
                 if (query.isNotEmpty)
@@ -636,34 +646,41 @@ class _DokanSupplierListScreenState
                 if (filteredSuppliers.isEmpty)
                   const _SupplierEmptyState()
                 else
-                  ...filteredSuppliers.map(
-                    (supplier) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _SupplierListTile(
-                        supplier: supplier,
-                        selected: _selectedSupplierKeys.contains(supplier.key),
-                        selectionMode: _selectionMode,
-                        onTap: () {
-                          if (_selectionMode) {
-                            _toggleSupplierSelection(supplier);
-                          } else {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => DokanSupplierDetailScreen(
-                                    supplierKey: supplier.key),
-                              ),
-                            );
-                          }
-                        },
-                        onLongPress: () {
-                          if (_selectionMode) {
-                            _toggleSupplierSelection(supplier);
-                          } else {
-                            _enterSelectionMode(supplier);
-                          }
-                        },
-                      ),
-                    ),
+                  ...filteredSuppliers.asMap().entries.map(
+                    (entry) {
+                      final index = entry.key;
+                      final supplier = entry.value;
+                      return ScrollReveal(
+                        delay: Duration(milliseconds: (index % 5) * 60),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _SupplierListTile(
+                            supplier: supplier,
+                            selected: _selectedSupplierKeys.contains(supplier.key),
+                            selectionMode: _selectionMode,
+                            onTap: () {
+                              if (_selectionMode) {
+                                _toggleSupplierSelection(supplier);
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => DokanSupplierDetailScreen(
+                                        supplierKey: supplier.key),
+                                  ),
+                                );
+                              }
+                            },
+                            onLongPress: () {
+                              if (_selectionMode) {
+                                _toggleSupplierSelection(supplier);
+                              } else {
+                                _enterSelectionMode(supplier);
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   ),
               ],
             ),

@@ -172,118 +172,123 @@ class _DokanLowStockAlertScreenState
                     ],
                   ),
                 ),
-              _InventoryPageCard(
-                title: 'সারসংক্ষেপ',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SummaryPill(
-                            label: 'কম স্টক',
-                            value:
-                                '${_bnDigits(lowStockProducts.length.toString())}টি',
-                            color: const Color(0xFFF49B1A),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _SummaryPill(
-                            label: 'স্টক নেই',
-                            value:
-                                '${_bnDigits(outOfStockProducts.length.toString())}টি',
-                            color: const Color(0xFFD43B3B),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF7F0),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFD9E6E2)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              DokanFadeSlideIn(
+                child: _InventoryPageCard(
+                  title: 'সারসংক্ষেপ',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            'সতর্কতা সীমা: ${_bnDigits(alertThreshold.toString())}টি',
-                            style: const TextStyle(
-                              color: Color(0xFF111111),
-                              fontWeight: FontWeight.w800,
+                          Expanded(
+                            child: _SummaryPill(
+                              label: 'কম স্টক',
+                              value:
+                                  '${_bnDigits(lowStockProducts.length.toString())}টি',
+                              color: const Color(0xFFF49B1A),
                             ),
                           ),
-                          const Text(
-                            'এই সীমার নিচে নতুন সতর্কতা ধরা হবে',
-                            style: TextStyle(
-                              color: Color(0xFF3D4943),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: canManageStock
-                                  ? () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              DokanThresholdSettingScreen(
-                                            initialThreshold: alertThreshold,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0C8C67),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              icon: const Icon(Icons.tune_rounded),
-                              label: const Text(
-                                'সীমা নির্ধারণ করুন',
-                                style: TextStyle(fontWeight: FontWeight.w900),
-                              ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _SummaryPill(
+                              label: 'স্টক নেই',
+                              value:
+                                  '${_bnDigits(outOfStockProducts.length.toString())}টি',
+                              color: const Color(0xFFD43B3B),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF7F0),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFD9E6E2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'সতর্কতা সীমা: ${_bnDigits(alertThreshold.toString())}টি',
+                              style: const TextStyle(
+                                color: Color(0xFF111111),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const Text(
+                              'এই সীমার নিচে নতুন সতর্কতা ধরা হবে',
+                              style: TextStyle(
+                                color: Color(0xFF3D4943),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                onPressed: canManageStock
+                                    ? () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                DokanThresholdSettingScreen(
+                                              initialThreshold: alertThreshold,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0C8C67),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.tune_rounded),
+                                label: const Text(
+                                  'সীমা নির্ধারণ করুন',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _AlertFilterChip(
-                      label: 'সব',
-                      selected: filter == _LowStockAlertFilter.all,
-                      onTap: () => _setFilter(_LowStockAlertFilter.all),
-                    ),
-                    const SizedBox(width: 10),
-                    _AlertFilterChip(
-                      label: 'কম স্টক',
-                      selected: filter == _LowStockAlertFilter.lowStock,
-                      onTap: () => _setFilter(_LowStockAlertFilter.lowStock),
-                    ),
-                    const SizedBox(width: 10),
-                    _AlertFilterChip(
-                      label: 'স্টক নেই',
-                      selected: filter == _LowStockAlertFilter.outOfStock,
-                      onTap: () => _setFilter(_LowStockAlertFilter.outOfStock),
-                    ),
-                  ],
+              ScrollReveal(
+                delay: const Duration(milliseconds: 80),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _AlertFilterChip(
+                        label: 'সব',
+                        selected: filter == _LowStockAlertFilter.all,
+                        onTap: () => _setFilter(_LowStockAlertFilter.all),
+                      ),
+                      const SizedBox(width: 10),
+                      _AlertFilterChip(
+                        label: 'কম স্টক',
+                        selected: filter == _LowStockAlertFilter.lowStock,
+                        onTap: () => _setFilter(_LowStockAlertFilter.lowStock),
+                      ),
+                      const SizedBox(width: 10),
+                      _AlertFilterChip(
+                        label: 'স্টক নেই',
+                        selected: filter == _LowStockAlertFilter.outOfStock,
+                        onTap: () => _setFilter(_LowStockAlertFilter.outOfStock),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -321,9 +326,14 @@ class _DokanLowStockAlertScreenState
                 )
               else
                 Column(
-                  children: alertItems
-                      .map(
-                        (product) => Padding(
+                  children: alertItems.asMap().entries.map(
+                    (entry) {
+                      final index = entry.key;
+                      final product = entry.value;
+                      return ScrollReveal(
+                        key: ValueKey('low-stock-prod-${filter.name}-${product.masterProductId}-${product.barcode}-${product.name}'),
+                        delay: Duration(milliseconds: (index % 5) * 60),
+                        child: Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _LowStockProductCard(
                             product: product,
@@ -361,8 +371,9 @@ class _DokanLowStockAlertScreenState
                                 : null,
                           ),
                         ),
-                      )
-                      .toList(),
+                      );
+                    },
+                  ).toList(),
                 ),
             ],
           ),
