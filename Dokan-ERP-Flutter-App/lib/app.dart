@@ -76,10 +76,8 @@ class _AppBootstrapState extends ConsumerState<_AppBootstrap> {
       builder: (context, child) {
         return Consumer(
           builder: (context, ref, _) {
-            final activeRequests =
-                ref.watch(apiActivityCountProvider).valueOrNull ?? 0;
             return DokanApiLoaderOverlay(
-              loading: activeRequests > 0,
+              loading: false, // Disable global UI blocking on active API requests
               child: DokanResponsiveShell(
                 child: child ?? const SizedBox.shrink(),
               ),
