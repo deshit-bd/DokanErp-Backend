@@ -14,8 +14,8 @@ abstract final class AppConfig {
     if (fromEnv.isNotEmpty) {
       return fromEnv;
     }
-    // Public tunnel URL for global backend access
-    return 'http://192.168.0.127:4000';
+    // Live Render backend access
+    return 'https://dokanerp-backend.onrender.com';
   }
   static const syncRemoteDeletions = bool.fromEnvironment(
     'DOKAN_API_SYNC_DELETIONS',
