@@ -77,7 +77,8 @@ class _AppBootstrapState extends ConsumerState<_AppBootstrap> {
         return Consumer(
           builder: (context, ref, _) {
             return DokanApiLoaderOverlay(
-              loading: false, // Disable global UI blocking on active API requests
+              loading:
+                  false, // Disable global UI blocking on active API requests
               child: DokanResponsiveShell(
                 child: child ?? const SizedBox.shrink(),
               ),
@@ -254,11 +255,13 @@ class _AppRootState extends ConsumerState<_AppRoot>
                       PageRouteBuilder(
                         pageBuilder: (context, animation, secondaryAnimation) =>
                             const DokanNotificationCenterScreen(),
-                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
                           const begin = Offset(0.0, 1.0);
                           const end = Offset.zero;
                           const curve = Curves.easeInOut;
-                          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                          var tween = Tween(begin: begin, end: end)
+                              .chain(CurveTween(curve: curve));
                           return SlideTransition(
                             position: animation.drive(tween),
                             child: child,

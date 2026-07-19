@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,21 +96,35 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
     super.dispose();
   }
 
+  List<String> get _dynamicCategories {
+    final catalog = ref.watch(dokanInventoryCatalogProvider);
+    final list = <String>['সব'];
+    for (final p in catalog) {
+      final cat = p.category.trim();
+      if (cat.isNotEmpty && !list.contains(cat)) {
+        list.add(cat);
+      }
+    }
+    return list;
+  }
+
   List<_SalesmanPosItem> get _visibleItems {
     final catalog = ref.watch(dokanInventoryCatalogProvider);
     final query = _query.trim().toLowerCase();
     return catalog.map(_salesItemFromProduct).where((item) {
       final categoryMatch =
-          _selectedCategory == 'সব' || item.category == _selectedCategory;
+          _selectedCategory == 'সব' ||
+          item.category.trim() == _selectedCategory.trim();
       final searchMatch = query.isEmpty ||
           item.name.toLowerCase().contains(query) ||
-          item.sku.contains(query) ||
-          item.id.contains(query);
+          item.sku.toLowerCase().contains(query) ||
+          item.id.toLowerCase().contains(query);
       return categoryMatch && searchMatch;
     }).toList(growable: false);
   }
 
   _SalesmanPosItem _salesItemFromProduct(DokanCatalogProduct product) {
+    final img = product.imageLabel.trim();
     return _SalesmanPosItem(
       id: product.barcode,
       name: product.name,
@@ -116,6 +133,80 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
       stock: product.stock,
       category: product.category,
       icon: _iconForCategory(product.category),
+      imageUrl: img.isNotEmpty ? img : '',
+      emoji: product.emoji,
+    );
+  }
+
+  Widget _buildItemThumbnail(_SalesmanPosItem item) {
+    final url = item.imageUrl.trim();
+    final isNetworkUrl = url.startsWith('http://') || url.startsWith('https://');
+    final isAssetUrl = url.startsWith('assets/');
+    final isFileUrl = url.startsWith('/Users/') || url.startsWith('file://') || url.startsWith('/data/');
+
+    if (url.isNotEmpty && url != 'ছবি যোগ করা হয়নি') {
+      Widget? imageWidget;
+      if (isNetworkUrl) {
+        imageWidget = Image.network(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildItemFallbackIcon(item),
+        );
+      } else if (isAssetUrl) {
+        imageWidget = Image.asset(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildItemFallbackIcon(item),
+        );
+      } else if (isFileUrl) {
+        final filePath = url.replaceFirst('file://', '');
+        imageWidget = Image.file(
+          File(filePath),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildItemFallbackIcon(item),
+        );
+      } else if (url.length > 200 || url.startsWith('data:image')) {
+        try {
+          final cleanBase64 = url.contains(',') ? url.split(',').last : url;
+          final bytes = base64Decode(cleanBase64);
+          imageWidget = Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildItemFallbackIcon(item),
+          );
+        } catch (_) {
+          imageWidget = null;
+        }
+      }
+
+      if (imageWidget != null) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 44,
+            height: 44,
+            color: const Color(0xFFEFF4FF),
+            child: imageWidget,
+          ),
+        );
+      }
+    }
+
+    return _buildItemFallbackIcon(item);
+  }
+
+  Widget _buildItemFallbackIcon(_SalesmanPosItem item) {
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF4FF),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: item.emoji.trim().isNotEmpty
+          ? Text(item.emoji, style: const TextStyle(fontSize: 22))
+          : Icon(item.icon, color: const Color(0xFF1D4ED8), size: 22),
     );
   }
 
@@ -381,12 +472,12 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
                 final state = ref.watch(dokanPosProvider);
 
                 final stateCashStr = state.cashReceived == 0 ? '' : state.cashReceived.toString();
-                if (_cashReceivedController.text != stateCashStr && !_cashReceivedFocusNode.hasFocus) {
+                if (_cashReceivedController.text != stateCashStr) {
                   _cashReceivedController.text = stateCashStr;
                 }
 
                 final stateDueStr = state.creditDueAmount == 0 ? '' : state.creditDueAmount.toString();
-                if (_creditDueAmountController.text != stateDueStr && !_creditDueAmountFocusNode.hasFocus) {
+                if (_creditDueAmountController.text != stateDueStr) {
                   _creditDueAmountController.text = stateDueStr;
                 }
 
@@ -677,7 +768,7 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
                               inputFormatters:
                                   NumericInputFormatters.wholeNumber,
                               errorText: _fieldErrors['creditDueAmount'],
-                              readOnly: !ref.watch(dokanAppFlowProvider).can(DokanPermission.salesManage),
+                              readOnly: true,
                               onChanged: (value) => ref
                                   .read(dokanPosProvider.notifier)
                                   .setCreditDueAmount(value),
@@ -692,7 +783,7 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
                               inputFormatters:
                                   NumericInputFormatters.wholeNumber,
                               errorText: _fieldErrors['cashReceived'],
-                              readOnly: !ref.watch(dokanAppFlowProvider).can(DokanPermission.salesManage),
+                              readOnly: true,
                               onChanged: (value) => ref
                                   .read(dokanPosProvider.notifier)
                                   .setCashReceived(value),
@@ -1121,7 +1212,7 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _categories.map((label) {
+                      children: _dynamicCategories.map((label) {
                         final selected = _selectedCategory == label;
                         return Padding(
                           padding: const EdgeInsets.only(right: 10),
@@ -1167,7 +1258,66 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
               ),
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverGrid(
+                sliver: products.isEmpty
+                    ? SliverToBoxAdapter(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 20, bottom: 40),
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: const Color(0xFFD8E2F2)),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.inventory_2_outlined,
+                                  color: Color(0xFF0F766E), size: 52),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'কোনো পণ্য পাওয়া যায়নি',
+                                style: TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'ফিল্টার বা সার্চ পরিষ্কার করে পুনরায় চেষ্টা করুন',
+                                style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _query = '';
+                                    _searchController.clear();
+                                    _selectedCategory = 'সব';
+                                  });
+                                  ref
+                                      .read(dokanInventoryCatalogProvider.notifier)
+                                      .refreshFromRepository();
+                                },
+                                icon: const Icon(Icons.refresh_rounded, size: 18),
+                                label: const Text('পণ্য রিফ্রেশ করুন'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0F766E),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final item = products[index];
@@ -1192,59 +1342,63 @@ class _SalesmanSalesScreenState extends ConsumerState<SalesmanSalesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF4FF),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Icon(item.icon,
-                                        color: const Color(0xFF1D4ED8)),
-                                  ),
-                                  const Spacer(),
+                                  _buildItemThumbnail(item),
                                   if (selected)
-                                    GestureDetector(
-                                      onTap: () {
-                                        ref.read(dokanPosProvider.notifier).setItemQuantity(item.id, 0);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('${item.name} কার্ট থেকে সরানো হয়েছে'),
-                                            duration: const Duration(seconds: 1),
+                                    Flexible(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          ref
+                                              .read(dokanPosProvider.notifier)
+                                              .setItemQuantity(item.id, 0);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  '${item.name} কার্ট থেকে সরানো হয়েছে'),
+                                              duration:
+                                                  const Duration(seconds: 1),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 4,
                                           ),
-                                        );
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFEE2E2),
-                                          borderRadius: BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color: const Color(0xFFEF4444),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEE2E2),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                            border: Border.all(
+                                              color: const Color(0xFFEF4444),
+                                            ),
                                           ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              'নির্বাচিত x$qty',
-                                              style: const TextStyle(
-                                                color: Color(0xFFB91C1C),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w900,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  'নির্বাচিত x$qty',
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    color: Color(0xFFB91C1C),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            const Icon(
-                                              Icons.cancel,
-                                              size: 14,
-                                              color: Color(0xFFEF4444),
-                                            ),
-                                          ],
+                                              const SizedBox(width: 3),
+                                              const Icon(
+                                                Icons.cancel,
+                                                size: 13,
+                                                color: Color(0xFFEF4444),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1390,6 +1544,8 @@ class _SalesmanPosItem {
     required this.stock,
     required this.category,
     required this.icon,
+    this.imageUrl = '',
+    this.emoji = '',
   });
 
   final String id;
@@ -1399,6 +1555,8 @@ class _SalesmanPosItem {
   final int stock;
   final String category;
   final IconData icon;
+  final String imageUrl;
+  final String emoji;
 }
 
 class _StepperButton extends StatelessWidget {

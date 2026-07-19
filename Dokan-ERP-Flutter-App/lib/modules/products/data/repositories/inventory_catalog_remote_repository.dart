@@ -6,6 +6,7 @@ import '../../domain/entities/dokan_catalog_product.dart';
 import '../../domain/repositories/inventory_catalog_snapshot_repository.dart';
 import '../datasources/product_remote_data_source.dart';
 import '../mappers/product_api_mapper.dart';
+import '../../products.dart';
 
 class InventoryCatalogRemoteRepository
     implements InventoryCatalogSnapshotRepository {
@@ -112,7 +113,9 @@ class InventoryCatalogRemoteRepository
                 'stock': product.stock,
                 'purchasePrice': product.purchasePrice,
                 'salePrice': product.salePrice,
-                'historyEntries': const [],
+                'historyEntries': dokanLocalHistoryFor(product)
+                    .map(dokanHistoryEntryToJson)
+                    .toList(),
               },
             },
           )

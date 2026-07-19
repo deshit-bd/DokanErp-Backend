@@ -501,6 +501,38 @@ class _DokanPurchaseListScreenState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      if (order.status == PurchaseOrderStatus.submitted ||
+                          order.status == PurchaseOrderStatus.partiallyReceived) ...[
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => DokanPurchaseDetailScreen(
+                                  order: order,
+                                  autoOpenReceive: true,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0E8F5F),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.call_received_rounded, size: 14),
+                          label: const Text(
+                            'রিসিভ',
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.of(context).push(
@@ -515,16 +547,47 @@ class _DokanPurchaseListScreenState
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                              horizontal: 10, vertical: 8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: const Icon(Icons.repeat_rounded, size: 16),
+                        icon: const Icon(Icons.repeat_rounded, size: 14),
                         label: const Text(
                           'পুনরায় ক্রয়',
                           style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w800),
+                              fontSize: 11, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  DokanPurchaseDetailScreen(order: order),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEAF5F1),
+                          foregroundColor: const Color(0xFF0D6B55),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(
+                              color: Color(0xFFD9E6E2),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.info_outline_rounded, size: 14),
+                        label: const Text(
+                          'বিস্তারিত',
+                          style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],

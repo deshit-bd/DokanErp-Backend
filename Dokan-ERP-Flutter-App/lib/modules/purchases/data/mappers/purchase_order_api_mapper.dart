@@ -54,8 +54,11 @@ abstract final class PurchaseOrderApiMapper {
       'note': order.note,
       'status': order.status.name,
       'paid_amount': order.paidAmount,
+      'paidAmount': order.paidAmount,
       'payment_method': order.paymentMethod,
+      'paymentMethod': order.paymentMethod,
       'payment_details': order.paymentDetails,
+      'paymentDetails': order.paymentDetails,
       'lines': order.lines
           .map(
             (line) => {

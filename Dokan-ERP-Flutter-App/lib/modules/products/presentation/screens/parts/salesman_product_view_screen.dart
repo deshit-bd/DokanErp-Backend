@@ -386,20 +386,7 @@ class _DokanSalesmanProductViewScreenState
                           children: [
                             Row(
                               children: [
-                                Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF4FF),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      product.emoji,
-                                      style: const TextStyle(fontSize: 24),
-                                    ),
-                                  ),
-                                ),
+                                _buildProductThumbnail(product, size: 52),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
@@ -657,4 +644,77 @@ class _DokanSalesmanProductViewScreenState
       ),
     );
   }
+}
+
+Widget _buildProductThumbnail(DokanCatalogProduct product, {double size = 52}) {
+  final url = product.imageLabel.trim();
+  final isNetworkUrl = url.startsWith('http://') || url.startsWith('https://');
+  final isAssetUrl = url.startsWith('assets/');
+  final isFileUrl = url.startsWith('/Users/') || url.startsWith('file://') || url.startsWith('/data/');
+
+  if (url.isNotEmpty && url != 'ছবি যোগ করা হয়নি') {
+    Widget? imageWidget;
+    if (isNetworkUrl) {
+      imageWidget = Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackEmojiOrIcon(product, size: size),
+      );
+    } else if (isAssetUrl) {
+      imageWidget = Image.asset(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackEmojiOrIcon(product, size: size),
+      );
+    } else if (isFileUrl) {
+      final filePath = url.replaceFirst('file://', '');
+      imageWidget = Image.file(
+        File(filePath),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackEmojiOrIcon(product, size: size),
+      );
+    } else if (url.length > 200 || url.startsWith('data:image')) {
+      try {
+        final cleanBase64 = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(cleanBase64);
+        imageWidget = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildFallbackEmojiOrIcon(product, size: size),
+        );
+      } catch (_) {
+        imageWidget = null;
+      }
+    }
+
+    if (imageWidget != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: size,
+          height: size,
+          color: const Color(0xFFEFF4FF),
+          child: imageWidget,
+        ),
+      );
+    }
+  }
+
+  return _buildFallbackEmojiOrIcon(product, size: size);
+}
+
+Widget _buildFallbackEmojiOrIcon(DokanCatalogProduct product, {double size = 52}) {
+  final emoji = product.emoji.trim();
+  return Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: const Color(0xFFEFF4FF),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: emoji.isNotEmpty && emoji != '📦'
+        ? Text(emoji, style: TextStyle(fontSize: size * 0.46))
+        : Icon(Icons.inventory_2_outlined, color: const Color(0xFF1D4ED8), size: size * 0.46),
+  );
 }

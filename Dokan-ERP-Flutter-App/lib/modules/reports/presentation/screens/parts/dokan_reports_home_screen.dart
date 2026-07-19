@@ -286,6 +286,29 @@ class _DokanReportsDashboardScreenState
   Widget _buildBreakdownTabs(int index, WidgetRef ref) {
     final summary = ref.watch(reportSummaryProvider);
     final filter = ref.watch(reportFilterProvider);
+    final catalogProducts = ref.watch(dokanInventoryCatalogProvider);
+
+    int totalDamagedCount = 0;
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          totalDamagedCount += val;
+        }
+      }
+    }
 
     final filterLabel = switch (filter) {
       DokanReportTimeFilter.today => tr('আজকে', 'Today'),
@@ -346,6 +369,13 @@ class _DokanReportsDashboardScreenState
         icon: Icons.inventory_2_outlined,
         color: const Color(0xFF18A999),
       ),
+      (
+        label: tr('ড্যামেজ রিপোর্ট', 'Damage Report'),
+        amount: _bnDigits(totalDamagedCount.toString()) + tr('টি পণ্য', ' items'),
+        subtitle: tr('ক্ষতিগ্রস্ত পণ্য তালিকা', 'Total damaged products'),
+        icon: Icons.report_problem_outlined,
+        color: const Color(0xFFDC2626),
+      ),
     ];
     return GridView.builder(
       itemCount: items.length,
@@ -402,6 +432,12 @@ class _DokanReportsDashboardScreenState
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const DokanStockReportScreen(),
+                ),
+              );
+            } else if (i == 6) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DokanDamageReportScreen(),
                 ),
               );
             }
@@ -1125,4 +1161,634 @@ void _showReportSnackBar(BuildContext context, String message) {
       behavior: SnackBarBehavior.floating,
     ),
   );
+}
+
+class DokanDamageReportScreen extends ConsumerWidget {
+  const DokanDamageReportScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final catalogProducts = ref.watch(dokanInventoryCatalogProvider);
+
+    // 1. Damaged products list
+    final damagedProducts = <({DokanCatalogProduct product, int damageQty, List<DokanProductHistoryEntry> damageEntries})>[];
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      final damageEntries = <DokanProductHistoryEntry>[];
+      int prodDamage = 0;
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          damageEntries.add(entry);
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          prodDamage += val;
+        }
+      }
+      if (prodDamage > 0) {
+        damagedProducts.add((
+          product: product,
+          damageQty: prodDamage,
+          damageEntries: damageEntries,
+        ));
+      }
+    }
+    damagedProducts.sort((a, b) => b.damageQty.compareTo(a.damageQty));
+
+    // 2. Expiry warning alerts (Already expired or within 15 days)
+    final today = DateTime.now();
+    final expiryAlerts = <({DokanCatalogProduct product, DokanProductBatch batch, int daysLeft})>[];
+    for (final product in catalogProducts) {
+      for (final batch in product.batches) {
+        if (batch.expiryDate != null) {
+          final diff = batch.expiryDate!.difference(today).inDays;
+          if (diff <= 15) {
+            expiryAlerts.add((
+              product: product,
+              batch: batch,
+              daysLeft: diff,
+            ));
+          }
+        }
+      }
+    }
+    expiryAlerts.sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
+
+    // 3. Loss Analytics Breakdown
+    final categoryLossMap = <String, int>{};
+    final reasonLossMap = <String, int>{};
+    int totalLossAmount = 0;
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          final cost = product.purchasePrice * val;
+          if (cost > 0) {
+            totalLossAmount += cost;
+            final cat = product.category.isEmpty ? 'অন্যান্য' : product.category;
+            categoryLossMap[cat] = (categoryLossMap[cat] ?? 0) + cost;
+            final reason = entry.label.trim().isEmpty ? 'ক্ষতিগ্রস্ত' : entry.label.trim();
+            reasonLossMap[reason] = (reasonLossMap[reason] ?? 0) + cost;
+          }
+        }
+      }
+    }
+
+    final sortedCategoryLoss = categoryLossMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sortedReasonLoss = reasonLossMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF3F8F7),
+        appBar: AppBar(
+          title: const Text(
+            'ড্যামেজ ও মেয়াদোত্তীর্ণ',
+            style: TextStyle(
+              color: Color(0xFF00694C),
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          backgroundColor: const Color(0xFFF3FAFB),
+          elevation: 0,
+          centerTitle: true,
+          iconTheme: const IconThemeData(color: Color(0xFF3D4943)),
+          bottom: const TabBar(
+            labelColor: Color(0xFF00694C),
+            unselectedLabelColor: Color(0xFF7C8A84),
+            indicatorColor: Color(0xFF00694C),
+            indicatorWeight: 3,
+            labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            tabs: [
+              Tab(text: 'ড্যামেজ তালিকা'),
+              Tab(text: 'মেয়াদোত্তীর্ণ এলার্ট'),
+              Tab(text: 'লোকসান এনালাইটিক্স'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // Tab 1: Damage List
+            Builder(
+              builder: (context) {
+                int grandTotalDamageQty = 0;
+                int grandTotalDamageLossTaka = 0;
+
+                for (final item in damagedProducts) {
+                  grandTotalDamageQty += item.damageQty;
+                  grandTotalDamageLossTaka +=
+                      (item.damageQty * item.product.purchasePrice);
+                }
+
+                if (damagedProducts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.report_problem_outlined,
+                            color: Color(0xFFC2D3CE), size: 64),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'কোনো ড্যামেজ বা নষ্ট পণ্য পাওয়া যায়নি',
+                          style: TextStyle(
+                            color: Color(0xFF5A7572),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Summary Total Header Card
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFDC2626).withValues(alpha: 0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(Icons.analytics_rounded,
+                                color: Color(0xFFDC2626), size: 28),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'মোট ক্ষতিগ্রস্ত পণ্য',
+                                  style: TextStyle(
+                                    color: Color(0xFF5A7572),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${_bnDigits(grandTotalDamageQty.toString())}টি',
+                                  style: const TextStyle(
+                                    color: Color(0xFF141F22),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            height: 36,
+                            width: 1,
+                            color: const Color(0xFFE8EFEF),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'মোট আর্থিক ক্ষতি',
+                                  style: TextStyle(
+                                    color: Color(0xFF991B1B),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '৳${_bnDigits(grandTotalDamageLossTaka.toString())}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...damagedProducts.map((item) {
+                      final itemLossTaka =
+                          item.damageQty * item.product.purchasePrice;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFD9E6E2)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFB9C8C3).withValues(alpha: 0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.product.name,
+                                        style: const TextStyle(
+                                          color: Color(0xFF141F22),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'বারকোড: ${item.product.barcode} | ক্ষতি: ৳${_bnDigits(itemLossTaka.toString())}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C8A84),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEE2E2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'মোট ক্ষতি: ${_bnDigits(item.damageQty.toString())}টি',
+                                    style: const TextStyle(
+                                      color: Color(0xFFDC2626),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(color: Color(0xFFE8EFEF)),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'ক্ষতির বিবরণী:',
+                              style: TextStyle(
+                                color: Color(0xFF5A7572),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...item.damageEntries.map((entry) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '• ${entry.timeLabel}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF141F22),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      entry.amount,
+                                      style: const TextStyle(
+                                        color: Color(0xFFDC2626),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+
+            // Tab 2: Expiry Alerts List
+            expiryAlerts.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.verified_outlined,
+                            color: Color(0xFFC2D3CE), size: 64),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'কোনো পণ্য মেয়াদোত্তীর্ণের ঝুঁকিতে নেই',
+                          style: TextStyle(
+                            color: Color(0xFF5A7572),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: expiryAlerts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final item = expiryAlerts[index];
+                      final isExpired = item.daysLeft <= 0;
+                      final alertColor = isExpired ? const Color(0xFFDC2626) : const Color(0xFFF49B1A);
+                      final alertBg = isExpired ? const Color(0xFFFEE2E2) : const Color(0xFFFFF4E4);
+                      final alertText = isExpired
+                          ? 'মেয়াদ উত্তীর্ণ!'
+                          : '${_bnDigits(item.daysLeft.toString())} দিন বাকি';
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFD9E6E2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.product.name,
+                                    style: const TextStyle(
+                                      color: Color(0xFF141F22),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'ব্যাচ নম্বর: ${item.batch.batchNo.isEmpty ? 'N/A' : item.batch.batchNo}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF7C8A84),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'মেয়াদ তারিখ: ${item.batch.expiryDate != null ? "${item.batch.expiryDate!.day}/${item.batch.expiryDate!.month}/${item.batch.expiryDate!.year}" : ""}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF7C8A84),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: alertBg,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                alertText,
+                                style: TextStyle(
+                                  color: alertColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+            // Tab 3: Loss Analytics Breakdown
+            totalLossAmount == 0
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.analytics_outlined,
+                            color: Color(0xFFC2D3CE), size: 64),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'বিশ্লেষণ করার মতো লোকসান ডাটা পাওয়া যায়নি',
+                          style: TextStyle(
+                            color: Color(0xFF5A7572),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFECEA),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: const Color(0xFFFCA5A5)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'মোট ড্যামেজ লোকসান',
+                                style: TextStyle(
+                                  color: Color(0xFF991B1B),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '৳${_bnDigits(totalLossAmount.toString())}',
+                                style: const TextStyle(
+                                  color: Color(0xFFDC2626),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'ক্যাটাগরি ভিত্তিক লোকসান',
+                          style: TextStyle(
+                            color: Color(0xFF00694C),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...sortedCategoryLoss.map((entry) {
+                          final pct = entry.value / totalLossAmount;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      entry.key,
+                                      style: const TextStyle(
+                                        color: Color(0xFF141F22),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    Text(
+                                      '৳${_bnDigits(entry.value.toString())} (${(pct * 100).toStringAsFixed(1)}%)',
+                                      style: const TextStyle(
+                                        color: Color(0xFF00694C),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 8,
+                                    backgroundColor: const Color(0xFFE8EFEF),
+                                    color: const Color(0xFF00694C),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'কারণ ভিত্তিক লোকসান',
+                          style: TextStyle(
+                            color: Color(0xFF00694C),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...sortedReasonLoss.map((entry) {
+                          final pct = entry.value / totalLossAmount;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      entry.key,
+                                      style: const TextStyle(
+                                        color: Color(0xFF141F22),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    Text(
+                                      '৳${_bnDigits(entry.value.toString())} (${(pct * 100).toStringAsFixed(1)}%)',
+                                      style: const TextStyle(
+                                        color: Color(0xFFE15241),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 8,
+                                    backgroundColor: const Color(0xFFE8EFEF),
+                                    color: const Color(0xFFE15241),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
 }

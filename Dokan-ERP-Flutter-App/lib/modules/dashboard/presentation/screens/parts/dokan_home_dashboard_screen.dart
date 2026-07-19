@@ -133,6 +133,27 @@ class _DokanHomeDashboardScreenState
     final dashboardExpenses = dashboardSummary?.todayExpenses ?? 0;
     final salesComparisonLabel = dashboardSummary?.salesComparisonLabel ??
         'গত ৭ দিনের তুলনায় ১৫% বৃদ্ধি';
+    int totalDamagedCount = 0;
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          totalDamagedCount += val;
+        }
+      }
+    }
 
     final isWide = MediaQuery.of(context).size.width >= 720;
 
@@ -393,7 +414,7 @@ class _DokanHomeDashboardScreenState
                                                 Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) =>
-                                                    const DokanProfitLossReportScreen(),
+                                                    const DokanCustomerListScreen(),
                                               ),
                                             ),
                                           ),
@@ -448,7 +469,7 @@ class _DokanHomeDashboardScreenState
                                                 Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) =>
-                                                    const DokanNewSupplierAddScreen(),
+                                                    const DokanSupplierListScreen(),
                                               ),
                                             ),
                                           ),
@@ -501,10 +522,26 @@ class _DokanHomeDashboardScreenState
                                             value:
                                                 '${_bengaliNumber(supplierState.customerProfiles.length)} ${tr('জন', 'people')}',
                                             onTap: () =>
-                                                Navigator.of(context).push(
+                                              Navigator.of(context).push(
                                               MaterialPageRoute(
                                                 builder: (_) =>
                                                     const DokanCustomerListScreen(),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        ScrollReveal(
+                                          child: _StatCard(
+                                            background: const Color(0xFFFFF2F2),
+                                            tint: const Color(0xFFDC2626),
+                                            icon: Icons.report_problem_outlined,
+                                            label: tr('ড্যামেজ পণ্য', 'Damaged Products'),
+                                            value: '${_bengaliNumber(totalDamagedCount)} ${tr('টি', 'items')}',
+                                            onTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanDamageReportScreen(),
                                               ),
                                             ),
                                           ),

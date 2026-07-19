@@ -279,12 +279,14 @@ class _DokanProductStockReduceScreenState
     extends State<DokanProductStockReduceScreen> {
   final TextEditingController _amountController =
       TextEditingController(text: '1');
+  final TextEditingController _notesController = TextEditingController();
   String _reason = 'ক্ষতিগ্রস্ত';
   String? _errorText;
 
   @override
   void dispose() {
     _amountController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -299,8 +301,12 @@ class _DokanProductStockReduceScreenState
       return;
     }
 
+    final finalReason = (_reason == 'অন্যান্য' && _notesController.text.trim().isNotEmpty)
+        ? _notesController.text.trim()
+        : _reason;
+
     Navigator.of(context).pop(
-      _StockReduceResult(amount: amount, reason: _reason),
+      _StockReduceResult(amount: amount, reason: finalReason),
     );
   }
 
@@ -473,6 +479,12 @@ class _DokanProductStockReduceScreenState
                     DropdownButtonFormField<String>(
                       value: _reason,
                       dropdownColor: Colors.white,
+                      isExpanded: true,
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xFF00694C),
+                        size: 28,
+                      ),
                       items: const [
                         DropdownMenuItem(
                             value: 'ক্ষতিগ্রস্ত', child: Text('ক্ষতিগ্রস্ত')),
@@ -493,7 +505,7 @@ class _DokanProductStockReduceScreenState
                       },
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: const Color(0xFFF4F8F7),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 14),
                         border: OutlineInputBorder(
@@ -515,8 +527,46 @@ class _DokanProductStockReduceScreenState
                       style: const TextStyle(
                         color: Color(0xFF141F22),
                         fontWeight: FontWeight.w700,
+                        fontSize: 15,
                       ),
                     ),
+                    if (_reason == 'অন্যান্য') ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _notesController,
+                        style: const TextStyle(
+                          color: Color(0xFF141F22),
+                          fontWeight: FontWeight.w700,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'অন্যান্য কারণের বিবরণ লিখুন (ঐচ্ছিক)',
+                          hintStyle: const TextStyle(
+                            color: Color(0xFF6F7D78),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF4F8F7),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD9E6E2)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFD9E6E2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF00694C), width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

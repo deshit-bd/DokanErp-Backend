@@ -961,10 +961,51 @@ List<_ReportRecord> _reportRecordsForAnalytics(Ref ref) {
       color: expense.categoryColor,
     ),
   );
+
+  final catalogProducts = ref.watch(dokanInventoryCatalogProvider);
+  final damageRecords = <_ReportRecord>[];
+  for (final product in catalogProducts) {
+    final history = dokanLocalHistoryFor(product);
+    for (final entry in history) {
+      if (entry.kind == DokanStockMovementType.loss) {
+        final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+        int qty = 0;
+        for (var i = 0; i < cleanAmount.length; i++) {
+          final char = cleanAmount[i];
+          const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+          final index = digits.indexOf(char);
+          if (index != -1) {
+            qty = qty * 10 + index;
+          } else {
+            qty = qty * 10 + (int.tryParse(char) ?? 0);
+          }
+        }
+        
+        final cost = product.purchasePrice * qty;
+        damageRecords.add(_ReportRecord(
+          timestamp: entry.timestamp ?? DateTime.now(),
+          kind: _ReportRecordKind.expense,
+          title: '${product.name} (ড্যামেজ)',
+          category: 'ড্যামেজ পণ্য',
+          paymentMethod: 'সমন্বয়',
+          quantity: qty,
+          salesAmount: 0,
+          profitAmount: -cost,
+          purchaseAmount: 0,
+          expenseAmount: cost,
+          note: entry.label,
+          icon: Icons.report_problem_outlined,
+          color: const Color(0xFFDC2626),
+        ));
+      }
+    }
+  }
+
   return <_ReportRecord>[
     ...liveSales,
     ...purchaseRecords,
     ...expenseRecords,
+    ...damageRecords,
   ];
 }
 

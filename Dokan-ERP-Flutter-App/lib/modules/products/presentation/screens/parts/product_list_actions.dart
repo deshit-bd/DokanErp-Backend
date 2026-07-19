@@ -338,36 +338,40 @@ extension _DokanProductListActions on _DokanProductListScreenState {
     );
   }
 
-  Widget _statChip(String title, String value, {Color? accent}) {
+  Widget _statChip(String title, String value, {Color? accent, VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFD9E6E2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFF5F6A66),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFD9E6E2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF5F6A66),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                color: accent ?? const Color(0xFF141F22),
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: TextStyle(
+                  color: accent ?? const Color(0xFF141F22),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -433,89 +437,108 @@ extension _DokanProductListActions on _DokanProductListScreenState {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _productThumbnail(product),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: const TextStyle(
-                        color: Color(0xFF141F22),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      product.brand.isNotEmpty
-                          ? '${product.category} • ${product.brand}'
-                          : product.category,
-                      style: const TextStyle(
-                        color: Color(0xFF5F6A66),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      tr('বারকোড: ${product.barcode}',
-                          'Barcode: ${product.barcode}'),
-                      style: const TextStyle(
-                        color: Color(0xFF7C8A84),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _currency(product.salePrice),
-                    style: const TextStyle(
-                      color: Color(0xFF00694C),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
+                  _productThumbnail(product),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            color: Color(0xFF141F22),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          product.brand.isNotEmpty
+                              ? '${product.category} • ${product.brand}'
+                              : product.category,
+                          style: const TextStyle(
+                            color: Color(0xFF5F6A66),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tr('বারকোড: ${product.barcode}',
+                              'Barcode: ${product.barcode}'),
+                          style: const TextStyle(
+                            color: Color(0xFF7C8A84),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Builder(
-                    builder: (context) {
-                      final activeThreshold = product.lowStockThreshold > 0
-                          ? product.lowStockThreshold
-                          : threshold;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _stockStatusBackground(
-                              product.stock, activeThreshold),
-                          borderRadius: BorderRadius.circular(999),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        _currency(product.salePrice),
+                        style: const TextStyle(
+                          color: Color(0xFF00694C),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
                         ),
-                        child: Text(
-                          product.stock <= 0
-                              ? tr('স্টক নেই', 'Out of Stock')
-                              : tr(
-                                  'স্টক ${_bnDigits(product.stock.toString())}টি',
-                                  'Stock: ${_bnDigits(product.stock.toString())} items'),
-                          style: TextStyle(
-                            color: _stockStatusColor(
-                                product.stock, activeThreshold),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 6),
+                      Builder(
+                        builder: (context) {
+                          final activeThreshold = product.lowStockThreshold > 0
+                              ? product.lowStockThreshold
+                              : threshold;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _stockStatusBackground(
+                                  product.stock, activeThreshold),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              product.stock <= 0
+                                  ? tr('স্টক নেই', 'Out of Stock')
+                                  : tr(
+                                      'স্টক ${_bnDigits(product.stock.toString())}টি',
+                                      'Stock: ${_bnDigits(product.stock.toString())} items'),
+                              style: TextStyle(
+                                color: _stockStatusColor(
+                                    product.stock, activeThreshold),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: Color(0xFFF0F4F3)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
                   InkWell(
                     onTap: () {
                       Navigator.of(context).push(
@@ -540,7 +563,7 @@ extension _DokanProductListActions on _DokanProductListScreenState {
                         mainAxisSize: MainAxisSize.min,
                         children: const [
                           Icon(Icons.add_shopping_cart_rounded,
-                              size: 12, color: Color(0xFF00694C)),
+                              size: 13, color: Color(0xFF00694C)),
                           SizedBox(width: 4),
                           Text(
                             'ক্রয় করুন',
@@ -564,27 +587,75 @@ extension _DokanProductListActions on _DokanProductListScreenState {
   }
 
   Widget _productThumbnail(DokanCatalogProduct product) {
-    final imageUrl = product.imageLabel.trim();
-    if (imageUrl.isNotEmpty && !_failedProductImageUrls.contains(imageUrl)) {
-      return ClipOval(
-        child: Container(
-          width: 62,
-          height: 62,
-          color: const Color(0xFFEAF2F0),
-          child: Image.network(
-            imageUrl,
+    final url = product.imageLabel.trim();
+    final isNetworkUrl = url.startsWith('http://') || url.startsWith('https://');
+    final isAssetUrl = url.startsWith('assets/');
+    final isFileUrl = url.startsWith('/Users/') || url.startsWith('file://') || url.startsWith('/data/');
+
+    if (url.isNotEmpty && url != 'ছবি যোগ করা হয়নি' && !_failedProductImageUrls.contains(url)) {
+      Widget? imageWidget;
+      if (isNetworkUrl) {
+        imageWidget = Image.network(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            _failedProductImageUrls.add(url);
+            return _productFallbackCircle(product);
+          },
+        );
+      } else if (isAssetUrl) {
+        imageWidget = Image.asset(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            _failedProductImageUrls.add(url);
+            return _productFallbackCircle(product);
+          },
+        );
+      } else if (isFileUrl) {
+        final filePath = url.replaceFirst('file://', '');
+        imageWidget = Image.file(
+          File(filePath),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            _failedProductImageUrls.add(url);
+            return _productFallbackCircle(product);
+          },
+        );
+      } else if (url.length > 200 || url.startsWith('data:image')) {
+        try {
+          final cleanBase64 = url.contains(',') ? url.split(',').last : url;
+          final bytes = base64Decode(cleanBase64);
+          imageWidget = Image.memory(
+            bytes,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) {
-              _failedProductImageUrls.add(imageUrl);
-              return Center(
-                child: Text(product.emoji, style: const TextStyle(fontSize: 30)),
-              );
+              _failedProductImageUrls.add(url);
+              return _productFallbackCircle(product);
             },
+          );
+        } catch (_) {
+          imageWidget = null;
+        }
+      }
+
+      if (imageWidget != null) {
+        return ClipOval(
+          child: Container(
+            width: 62,
+            height: 62,
+            color: const Color(0xFFEAF2F0),
+            child: imageWidget,
           ),
-        ),
-      );
+        );
+      }
     }
 
+    return _productFallbackCircle(product);
+  }
+
+  Widget _productFallbackCircle(DokanCatalogProduct product) {
+    final emoji = product.emoji.trim();
     return Container(
       width: 62,
       height: 62,
@@ -593,7 +664,9 @@ extension _DokanProductListActions on _DokanProductListScreenState {
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: Text(product.emoji, style: const TextStyle(fontSize: 30)),
+      child: emoji.isNotEmpty && emoji != '📦'
+          ? Text(emoji, style: const TextStyle(fontSize: 30))
+          : const Icon(Icons.inventory_2_outlined, color: Color(0xFF0F766E), size: 28),
     );
   }
 }

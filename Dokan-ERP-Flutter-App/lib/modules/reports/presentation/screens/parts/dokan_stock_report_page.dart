@@ -602,6 +602,29 @@ class _DokanStockReportPageState extends ConsumerState<_DokanStockReportPage> {
     final alerts =
         remote?.alerts.isNotEmpty == true ? remote!.alerts : localAlerts;
 
+    final catalogProducts = ref.watch(dokanInventoryCatalogProvider);
+    int totalDamagedCount = 0;
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          totalDamagedCount += val;
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF3F8F7),
       appBar: AppBar(
@@ -800,13 +823,28 @@ class _DokanStockReportPageState extends ConsumerState<_DokanStockReportPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _CompactSummaryCard(
-                    title: 'স্টক নেই',
-                    value: _bnDigits(outOfStockCount.toString()),
-                    subtitle: 'তাৎক্ষণিক রিস্টক দরকার',
-                    background: const Color(0xFFFFECEA),
-                    foreground: const Color(0xFFD43B3B),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CompactSummaryCard(
+                          title: 'স্টক নেই',
+                          value: _bnDigits(outOfStockCount.toString()),
+                          subtitle: 'তাৎক্ষণিক রিস্টক দরকার',
+                          background: const Color(0xFFFFECEA),
+                          foreground: const Color(0xFFD43B3B),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _CompactSummaryCard(
+                          title: 'ড্যামেজ পণ্য',
+                          value: _bnDigits(totalDamagedCount.toString()),
+                          subtitle: 'নষ্ট/ক্ষতিগ্রস্ত পণ্য',
+                          background: const Color(0xFFFFF0F0),
+                          foreground: const Color(0xFFE15241),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   _SectionCard(

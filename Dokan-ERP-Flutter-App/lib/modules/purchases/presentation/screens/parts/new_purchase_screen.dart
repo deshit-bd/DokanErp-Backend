@@ -19,6 +19,7 @@ class _DokanNewPurchaseScreenState
   final List<TextEditingController> _unitCostControllers = [];
   final List<TextEditingController> _quantityControllers = [];
   final TextEditingController _noteController = TextEditingController();
+  String _paymentMethod = 'CASH';
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _DokanNewPurchaseScreenState
 
           setState(() {
             _selectedSupplier = matchedSupplier;
+            _paymentMethod = widget.initialOrder!.paymentMethod;
             for (final line in widget.initialOrder!.lines) {
               final product = catalog.firstWhere(
                 (p) =>
@@ -218,6 +220,8 @@ class _DokanNewPurchaseScreenState
             supplierName: _selectedSupplier!.name,
             lines: lines,
             note: _noteController.text.trim(),
+            paymentMethod: _paymentMethod,
+            paidAmount: _paymentMethod == 'DUE' ? 0 : _totalAmount,
           );
 
       try {
@@ -233,7 +237,15 @@ class _DokanNewPurchaseScreenState
             backgroundColor: Color(0xFF0D6B55),
           ),
         );
-        Navigator.of(context).pop();
+        if (widget.initialOrder != null) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const DokanPurchaseListScreen(),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -385,6 +397,11 @@ class _DokanNewPurchaseScreenState
                       ScrollReveal(
                         delay: const Duration(milliseconds: 160),
                         child: _buildNotesCard(),
+                      ),
+                      const SizedBox(height: 16),
+                      ScrollReveal(
+                        delay: const Duration(milliseconds: 180),
+                        child: _buildPaymentMethodCard(),
                       ),
                     ],
                   ),
@@ -855,6 +872,83 @@ class _DokanNewPurchaseScreenState
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaymentMethodCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2EBE8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'পেমেন্ট পদ্ধতি',
+            style: TextStyle(
+              color: Color(0xFF16302E),
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildPaymentChip(label: 'ক্যাশ (নগদ)', method: 'CASH', icon: Icons.money_rounded),
+              _buildPaymentChip(label: 'বিকাশ (bKash)', method: 'BKASH', icon: Icons.mobile_friendly_rounded),
+              _buildPaymentChip(label: 'নগদ (Nagad)', method: 'NAGAD', icon: Icons.mobile_screen_share_rounded),
+              _buildPaymentChip(label: 'রকেট (Rocket)', method: 'ROCKET', icon: Icons.phonelink_ring_rounded),
+              _buildPaymentChip(label: 'বাকি (Due)', method: 'DUE', icon: Icons.hourglass_empty_rounded),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentChip({
+    required String label,
+    required String method,
+    required IconData icon,
+  }) {
+    final isSelected = _paymentMethod == method;
+    return ChoiceChip(
+      avatar: Icon(
+        icon,
+        color: isSelected ? Colors.white : const Color(0xFF0D6B55),
+        size: 18,
+      ),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : const Color(0xFF16302E),
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: const Color(0xFF0D6B55),
+      backgroundColor: const Color(0xFFF0FDF4),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _paymentMethod = method;
+          });
+        }
+      },
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF0D6B55) : const Color(0xFFD9E6E2),
+          width: 1,
+        ),
+      ),
+      showCheckmark: false,
     );
   }
 

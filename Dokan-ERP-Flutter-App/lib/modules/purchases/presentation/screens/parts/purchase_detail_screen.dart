@@ -1,9 +1,14 @@
 part of '../purchase_screens.dart';
 
 class DokanPurchaseDetailScreen extends ConsumerStatefulWidget {
-  const DokanPurchaseDetailScreen({super.key, required this.order});
+  const DokanPurchaseDetailScreen({
+    super.key,
+    required this.order,
+    this.autoOpenReceive = false,
+  });
 
   final PurchaseOrder order;
+  final bool autoOpenReceive;
 
   @override
   ConsumerState<DokanPurchaseDetailScreen> createState() =>
@@ -28,6 +33,13 @@ class _DokanPurchaseDetailScreenState
   void initState() {
     super.initState();
     Future.microtask(_loadInventoryContext);
+    if (widget.autoOpenReceive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _receiveOrder();
+        }
+      });
+    }
   }
 
   Future<void> _receiveOrder() async {
@@ -93,6 +105,7 @@ class _DokanPurchaseDetailScreenState
 
     String refundMethod = 'ADJUST_WITH_DUE';
     final notesController = TextEditingController();
+    String selectedReason = 'ক্ষতিগ্রস্ত';
 
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -322,33 +335,108 @@ class _DokanPurchaseDetailScreenState
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
-                        controller: notesController,
-                        maxLines: 2,
-                        decoration: InputDecoration(
-                          hintText: 'ফেরত দেওয়ার কারণ লিখুন (ঐচ্ছিক)',
-                          hintStyle: const TextStyle(
-                              color: Color(0xFF94A8A6), fontSize: 13),
-                          fillColor: const Color(0xFFF8FAFA),
-                          filled: true,
-                          contentPadding: const EdgeInsets.all(16),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFE8EFEF)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFE8EFEF)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFA),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE8EFEF)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedReason,
+                            isExpanded: true,
+                            dropdownColor: Colors.white,
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'ক্ষতিগ্রস্ত',
+                                child: Text('ক্ষতিগ্রস্ত (Damaged)',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'মেয়াদোত্তীর্ণ',
+                                child: Text('মেয়াদোত্তীর্ণ (Expired)',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'হারিয়ে গেছে',
+                                child: Text('হারিয়ে গেছে (Lost)',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'নমুনা ব্যবহার',
+                                child: Text('নমুনা ব্যবহার (Sample Usage)',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'অন্যান্য',
+                                child: Text('অন্যান্য (Other)',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setSheetState(() {
+                                  selectedReason = val;
+                                });
+                              }
+                            },
                           ),
                         ),
                       ),
+                      if (selectedReason == 'অন্যান্য') ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'অন্যান্য বিবরণী',
+                          style: TextStyle(
+                            color: Color(0xFF16302E),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: notesController,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            hintText: 'ফেরত দেওয়ার কারণ লিখুন (ঐচ্ছিক)',
+                            hintStyle: const TextStyle(
+                                color: Color(0xFF94A8A6), fontSize: 13),
+                            fillColor: const Color(0xFFF8FAFA),
+                            filled: true,
+                            contentPadding: const EdgeInsets.all(16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFE8EFEF)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide:
+                                  const BorderSide(color: Color(0xFFE8EFEF)),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
+                            if (selectedReason != 'অন্যান্য') {
+                              notesController.text = selectedReason;
+                            }
                             Navigator.of(ctx).pop(true);
                           },
                           style: ElevatedButton.styleFrom(
@@ -417,11 +505,242 @@ class _DokanPurchaseDetailScreenState
           .refreshFromRepository();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ক্রয় ফেরত সফলভাবে সম্পন্ন হয়েছে।'),
-            backgroundColor: Color(0xFF0E8F5F),
-          ),
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) {
+            Widget debitNoteMetaRow(String label, String val) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Color(0xFF7C8A84),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      val,
+                      style: const TextStyle(
+                        color: Color(0xFF16302E),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 50,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9E6E2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'সাপ্লায়ার ডেবিট নোট',
+                        style: TextStyle(
+                          color: Color(0xFF00694C),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Color(0xFFE8EFEF)),
+                  const SizedBox(height: 16),
+                  
+                  debitNoteMetaRow('মেমো নম্বর:', '#DN-${order.reference.replaceAll(RegExp(r'[^0-9]'), '')}'),
+                  debitNoteMetaRow('তারিখ:', '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}'),
+                  debitNoteMetaRow('সাপ্লায়ার:', order.supplierName.isEmpty ? 'অজানা সাপ্লায়ার' : order.supplierName),
+                  debitNoteMetaRow('ফেরতের ধরন:', notesController.text.isNotEmpty ? notesController.text : 'ক্ষতিগ্রস্ত'),
+                  debitNoteMetaRow('ফেরত পদ্ধতি:', refundMethod == 'ADJUST_WITH_DUE' ? 'বাকি সমন্বয়' : 'নগদ রিফান্ড'),
+                  
+                  const SizedBox(height: 24),
+                  const Text(
+                    'ফেরতকৃত পণ্যের তালিকা:',
+                    style: TextStyle(
+                      color: Color(0xFF16302E),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        for (final item in returnItems) () {
+                          final line = order.lines.firstWhere(
+                            (l) => l.productId == item['purchaseItemId'] || l.purchaseItemId == item['purchaseItemId'],
+                            orElse: () => order.lines.first,
+                          );
+                          final name = line.productName;
+                          final qty = item['quantity'] as int;
+                          final price = line.unitCost;
+                          final total = qty * price;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          color: Color(0xFF141F22),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${_bn(qty)}টি x ৳${_bn(price)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C8A84),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '৳${_bn(total)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF16302E),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }(),
+                      ],
+                    ),
+                  ),
+                  
+                  const Divider(color: Color(0xFFE8EFEF)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'মোট সমন্বয়কৃত মূল্য',
+                          style: TextStyle(
+                            color: Color(0xFF16302E),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          '৳${_bn(returnItems.fold<int>(0, (sum, item) {
+                            final line = order.lines.firstWhere(
+                              (l) => l.productId == item['purchaseItemId'] || l.purchaseItemId == item['purchaseItemId'],
+                              orElse: () => order.lines.first,
+                            );
+                            return sum + (item['quantity'] as int) * line.unitCost;
+                          }))}',
+                          style: const TextStyle(
+                            color: Color(0xFF00694C),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('ডেবিট নোটটি সফলভাবে শেয়ার করা হয়েছে।'),
+                                backgroundColor: Color(0xFF00694C),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.share_rounded),
+                          label: const Text('শেয়ার করুন'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF00694C),
+                            side: const BorderSide(color: Color(0xFF00694C)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('ডেবিট নোটটি প্রিন্ট করা হচ্ছে...'),
+                                backgroundColor: Color(0xFF00694C),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.print_rounded),
+                          label: const Text('প্রিন্ট'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00694C),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
         );
         Navigator.of(context).pop();
       }
@@ -493,7 +812,7 @@ class _DokanPurchaseDetailScreenState
           text: line.purchaseItemId.isNotEmpty ? '1' : '1'));
     }
 
-    String paymentMethod = 'CASH';
+    String paymentMethod = widget.order.paymentMethod.toUpperCase();
     final paidAmountController = TextEditingController();
     final senderNumberController = TextEditingController();
     final transactionIdController = TextEditingController();
@@ -510,7 +829,13 @@ class _DokanPurchaseDetailScreenState
       return sum;
     }
 
-    paidAmountController.text = calculateTotalReceiveAmount().toString();
+    if (paymentMethod == 'DUE') {
+      paidAmountController.text = '0';
+      hasCustomPaidAmount = true;
+    } else {
+      paidAmountController.text = calculateTotalReceiveAmount().toString();
+      hasCustomPaidAmount = false;
+    }
 
     _InventoryZoneOption? zoneById(String? zoneId) {
       for (final zone in _inventoryZones) {

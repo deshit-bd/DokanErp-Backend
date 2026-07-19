@@ -546,7 +546,7 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
       subtotalSnapshot: newSubtotal,
     );
     state = state.copyWith(
-      cashReceived: state.paymentMethod == DokanPosPaymentMethod.cash ? state.total : 0,
+      cashReceived: state.paymentMethod == DokanPosPaymentMethod.due ? 0 : state.total,
       creditDueAmount: state.paymentMethod == DokanPosPaymentMethod.due ? state.total : 0,
     );
     unawaited(_saveCartToPrefs(state.cartQuantities));
@@ -1899,6 +1899,11 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
                 reason:
                     'checkout sale ${DateTime.now().microsecondsSinceEpoch}',
               );
+          ref.read(dokanInventoryCatalogProvider.notifier).applyStockReduce(
+                deduction.key,
+                amount: deduction.value,
+                reason: 'বিক্রয়',
+              );
         }
       }
 
@@ -1978,8 +1983,6 @@ class DokanPosNotifier extends Notifier<DokanPosState> {
       ref.invalidate(dailyPurchaseReportRemoteProvider);
       ref.invalidate(remoteExpenseReportProvider);
       ref.invalidate(profitLossReportRemoteProvider);
-      DokanDebug.log('[CHECKOUT] Invalidating dokanInventoryCatalogProvider');
-      ref.invalidate(dokanInventoryCatalogProvider);
       unawaited(fetchCustomers());
       return 'চেকআউট সম্পন্ন হয়েছে';
     } catch (error, stackTrace) {

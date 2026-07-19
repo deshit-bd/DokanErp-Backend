@@ -61,6 +61,28 @@ class _DokanProductListScreenState
     final outOfStockCount =
         visibleProducts.where((item) => item.stock <= 0).length;
 
+    int totalDamagedCount = 0;
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          totalDamagedCount += val;
+        }
+      }
+    }
+
     return DokanResponsivePage(
       selectedIndex: 2,
       child: Scaffold(
@@ -180,14 +202,27 @@ class _DokanProductListScreenState
                 children: [
                   _statChip(tr('মোট পণ্য', 'Total Products'),
                       _bnDigits(visibleProducts.length.toString())),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   _statChip(tr('কম স্টক', 'Low Stock'),
                       _bnDigits(lowStockCount.toString()),
                       accent: const Color(0xFFF49B1A)),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   _statChip(tr('স্টক নেই', 'Out of Stock'),
                       _bnDigits(outOfStockCount.toString()),
                       accent: const Color(0xFFD43B3B)),
+                  const SizedBox(width: 8),
+                  _statChip(
+                    tr('ড্যামেজ', 'Damage'),
+                    _bnDigits(totalDamagedCount.toString()),
+                    accent: const Color(0xFFDC2626),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DokanDamageReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -214,7 +249,43 @@ class _DokanProductListScreenState
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DokanAddDamageScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFECEA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.add_circle_outline_rounded,
+                              size: 15, color: Color(0xFFDC2626)),
+                          SizedBox(width: 4),
+                          Text(
+                            '+ ড্যামেজ এন্ট্রি',
+                            style: TextStyle(
+                              color: Color(0xFFDC2626),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Theme(
                       data: Theme.of(context).copyWith(

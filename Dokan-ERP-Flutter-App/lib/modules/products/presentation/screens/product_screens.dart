@@ -26,7 +26,8 @@ import 'package:dokan_erp/modules/products/application/services/qr_action_resolv
 import 'package:dokan_erp/modules/products/presentation/providers/product_dependencies.dart';
 import 'package:dokan_erp/modules/products/presentation/providers/popular_products_provider.dart';
 import 'package:dokan_erp/modules/products/presentation/providers/product_provider.dart';
-import 'package:dokan_erp/core/core.dart';
+import 'package:dokan_erp/data/network/api_providers.dart';
+import 'package:dokan_erp/data/network/remote_data_source_providers.dart';
 
 part 'parts/product_sort_mode.dart';
 part 'parts/low_stock_filter_notifier.dart';
@@ -49,6 +50,7 @@ part 'parts/top_header.dart';
 part 'parts/bottom_action_bar.dart';
 part 'parts/product_list_history.dart';
 part 'parts/product_list_actions.dart';
+part 'parts/dokan_add_damage_screen.dart';
 
 class _RiverpodProductCatalogRepository implements ProductCatalogRepository {
   const _RiverpodProductCatalogRepository(this.ref);
@@ -200,3 +202,6 @@ DokanProductHistoryEntry dokanHistoryEntryFromRemoteJson(
 List<DokanProductHistoryEntry> dokanLocalHistoryFor(
         DokanCatalogProduct product) =>
     _inventoryFor(product).historyEntries;
+
+Map<String, dynamic> dokanHistoryEntryToJson(DokanProductHistoryEntry entry) =>
+    _historyEntryToJson(entry);

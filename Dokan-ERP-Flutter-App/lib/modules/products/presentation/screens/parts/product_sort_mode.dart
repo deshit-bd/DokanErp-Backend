@@ -574,12 +574,12 @@ class DokanInventoryCatalogNotifier
         stock: (product.stock - amount).clamp(0, product.stock));
     final history = <_ProductHistoryEntry>[
       _ProductHistoryEntry(
-        label: 'বিক্রয়',
+        label: reason.isNotEmpty ? reason : 'ক্ষতিগ্রস্ত',
         amount: '-${_bnDigits(amount.toString())}টি',
-        timeLabel: 'আজ • বিক্রয় সম্পন্ন',
+        timeLabel: 'আজ • ${reason.isNotEmpty ? reason : 'ড্যামেজ/ক্ষতি'}',
         color: const Color(0xFFD43B3B),
         timestamp: DateTime.now(),
-        kind: DokanStockMovementType.sale,
+        kind: DokanStockMovementType.loss,
       ),
       ...current.historyEntries,
     ];
