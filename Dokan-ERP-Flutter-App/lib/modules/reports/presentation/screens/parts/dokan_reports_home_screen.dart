@@ -1309,9 +1309,7 @@ class DokanDamageReportScreen extends ConsumerWidget {
     expiryAlerts.sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
 
     // 3. Time-Period Damage Breakdown (Today, Week, Month, Year)
-    final todayStart = DateTime(today.year, today.month, today.day);
-    final weekAgo = todayStart.subtract(const Duration(days: 7));
-
+    
     int todayDamageQty = 0;
     int todayDamageLoss = 0;
     int weekDamageQty = 0;
