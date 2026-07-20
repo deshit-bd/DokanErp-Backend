@@ -7,10 +7,14 @@ export class GetStockMovementHistoryUseCase {
 
   async execute(shopId: string, rawProductId: unknown, rawLimit: unknown) {
     const productId = typeof rawProductId === "string" ? rawProductId.trim() : "";
-    const limit = Math.max(1, Math.min(Number(rawLimit ?? 50) || 50, 200));
+    const limit = Math.max(1, Math.min(Number(rawLimit ?? 1000) || 1000, 1000));
 
     if (!productId) {
-      throw new ProductIdRequiredError();
+      const history = await this.inventoryRepository.reconcileAndListStockMovements(shopId, "", limit);
+      return {
+        product: null,
+        history,
+      };
     }
 
     const shopProduct = await this.inventoryRepository.resolveShopProductByIdentifier(shopId, productId);

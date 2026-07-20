@@ -342,12 +342,19 @@ export class PrismaInventoryRepository implements InventoryRepository {
   }
 
   async reconcileAndListStockMovements(shopId: string, shopProductId: string, limit: number) {
-    await (prisma as any).$transaction(async (tx: any) => {
-      await reconcileProductStockAndBins(tx, shopId, shopProductId);
-    });
+    if (shopProductId) {
+      await (prisma as any).$transaction(async (tx: any) => {
+        await reconcileProductStockAndBins(tx, shopId, shopProductId);
+      });
+    }
+
+    const whereCondition: any = { shopId };
+    if (shopProductId) {
+      whereCondition.shopProductId = shopProductId;
+    }
 
     return (prisma as any).stockMovement.findMany({
-      where: { shopId, shopProductId },
+      where: whereCondition,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit,
     });
