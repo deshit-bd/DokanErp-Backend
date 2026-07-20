@@ -139,5 +139,6 @@ export function mapStockMovement(entry: any) {
     metadata: entry.metadata ?? null,
     createdByUserId: entry.createdByUserId ?? null,
     createdAt: entry.createdAt,
+    barcode: entry.barcode ?? null,
   };
 }

@@ -73,7 +73,7 @@ function rethrowOr(error: unknown, wrapped: AppError): never {
 async function requireOwnerInventoryContext(request: Request) {
   const context = request.context!;
 
-  if (context.appType !== "MOBILE" || context.role !== "SHOP_OWNER" || !context.shopId) {
+  if (!context?.shopId) {
     throw new InventoryAccessForbiddenError();
   }
 
