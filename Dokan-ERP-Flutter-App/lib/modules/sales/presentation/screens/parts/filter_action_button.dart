@@ -208,67 +208,67 @@ class _ProductCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildProductPreview(),
-                if (selected)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE9F2F0),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      'x$quantity',
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w900,
+            // Center the product preview
+            Center(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _buildProductPreview(),
+                  if (selected)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF006B53),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 10,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             SizedBox(
-              height: 30,
+              height: 32,
               child: Align(
-                alignment: Alignment.centerLeft,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _banglaText(product.name),
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.visible,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
+                alignment: Alignment.center,
+                child: Text(
+                  _banglaText(product.name),
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '৳${product.price}',
+                  '৳${trNum(product.price)}',
                   style: const TextStyle(
-                    color: Colors.black,
+                    color: Color(0xFF006B53),
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 Text(
-                  tr('স্টক আছে: ${trNum(product.stock - quantity)}',
+                  tr('স্টক: ${trNum(product.stock - quantity)}',
                       'Stock: ${trNum(product.stock - quantity)}'),
                   style: const TextStyle(
                     color: Color(0xFF6B7280),
@@ -278,44 +278,82 @@ class _ProductCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 38,
-                    child: OutlinedButton(
+            const SizedBox(height: 10),
+            // Standard selector / add button
+            SizedBox(
+              height: 38,
+              child: !selected
+                  ? OutlinedButton(
                       onPressed: onAdd,
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF006B53)),
+                        side: const BorderSide(color: Color(0xFF006B53), width: 1.4),
+                        backgroundColor: const Color(0xFFF3FAF8),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        foregroundColor: Colors.black,
                         padding: EdgeInsets.zero,
                       ),
-                      child: Text(
-                        tr('যোগ', 'Add'),
-                        style: const TextStyle(color: Colors.black),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.add, size: 16, color: Color(0xFF006B53)),
+                          const SizedBox(width: 4),
+                          Text(
+                            tr('যোগ করুন', 'Add'),
+                            style: const TextStyle(
+                              color: Color(0xFF006B53),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
+                    )
+                  : Row(
+                      children: [
+                        // Minus
+                        Material(
+                          color: const Color(0xFFE6EFEB),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            onTap: onRemove,
+                            borderRadius: BorderRadius.circular(10),
+                            child: const SizedBox(
+                              width: 34,
+                              height: 34,
+                              child: Icon(Icons.remove, size: 16, color: Color(0xFF006B53)),
+                            ),
+                          ),
+                        ),
+                        // Count
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              trNum(quantity),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF006B53),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Plus
+                        Material(
+                          color: const Color(0xFF006B53),
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            onTap: onAdd,
+                            borderRadius: BorderRadius.circular(10),
+                            child: const SizedBox(
+                              width: 34,
+                              height: 34,
+                              child: Icon(Icons.add, size: 16, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                InkWell(
-                  onTap: selected ? onRemove : null,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F8F7),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.remove, color: Colors.black),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -329,8 +367,8 @@ class _ProductCard extends StatelessWidget {
       return ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          width: 36,
-          height: 36,
+          width: 52,
+          height: 52,
           color: const Color(0xFFF4F8F7),
           child: Image.network(
             imageUrl,
@@ -346,13 +384,13 @@ class _ProductCard extends StatelessWidget {
 
   Widget _buildFallbackPreview() {
     return Container(
-      width: 36,
-      height: 36,
+      width: 52,
+      height: 52,
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8F7),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(product.icon, color: const Color(0xFF006B53)),
+      child: Icon(product.icon, color: const Color(0xFF006B53), size: 24),
     );
   }
 }

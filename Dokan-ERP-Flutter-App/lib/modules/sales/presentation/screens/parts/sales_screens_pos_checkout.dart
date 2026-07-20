@@ -101,6 +101,7 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                 return SafeArea(
                   top: false,
                   child: Container(
+                    height: MediaQuery.of(context).size.height * 0.85,
                     decoration: const BoxDecoration(
                       color: Color(0xFFF3F8F7),
                       borderRadius:
@@ -112,49 +113,52 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                       top: 14,
                       bottom: MediaQuery.of(context).viewInsets.bottom + 16,
                     ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Center(
-                            child: Container(
-                              width: 54,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: Colors.black12,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 54,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.black12,
+                              borderRadius: BorderRadius.circular(999),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Color(0xFF006B53),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'সেলস কার্ট',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black,
-                                  ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.shopping_cart_outlined,
+                              color: Color(0xFF006B53),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'সেলস কার্ট',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black,
                                 ),
                               ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text(
-                                  'বন্ধ',
-                                  style: TextStyle(color: Colors.black),
-                                ),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text(
+                                'বন্ধ',
+                                style: TextStyle(color: Colors.black),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                           DokanFadeSlideIn(
                             delay: const Duration(milliseconds: 30),
                             duration: const Duration(milliseconds: 350),
@@ -740,8 +744,18 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          DokanFadeSlideIn(
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.only(top: 12),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFDCE9E5), width: 1),
+                      ),
+                    ),
+                    child: DokanFadeSlideIn(
                             delay: const Duration(milliseconds: 240),
                             duration: const Duration(milliseconds: 400),
                             slideOffset: const Offset(0, 15),
@@ -1060,14 +1074,14 @@ extension _DokanPosCheckoutActions on _DokanPosMainScreenState {
                                   ),
                                 ),
                               ),
-                                                        ],
+                            ],
                           ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                );
+                ),
+              );
               },
             );
           },

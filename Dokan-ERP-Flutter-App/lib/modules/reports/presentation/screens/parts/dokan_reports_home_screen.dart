@@ -318,6 +318,30 @@ class _DokanReportsDashboardScreenState
       DokanReportTimeFilter.all => tr('সর্বমোট', 'Total'),
     };
 
+    final salesHistory = ref.watch(salesHistoryOrdersProvider).valueOrNull ??
+        const <DokanPosOrderRecord>[];
+    final flow = ref.watch(dokanAppFlowProvider);
+
+    // Calculate total employee sales matching the selected filter
+    final today = DateTime.now();
+    final salesmanSales = salesHistory.where((order) {
+      if (order.status == DokanPosOrderStatus.cancelled) return false;
+      if (order.salesmanPhone == null || order.salesmanPhone!.isEmpty) return false;
+      if (order.salesmanPhone == flow.ownerPhone) return false;
+
+      final orderDate = DateTime(order.createdAt.year, order.createdAt.month, order.createdAt.day);
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final difference = todayDate.difference(orderDate).inDays;
+
+      return switch (filter) {
+        DokanReportTimeFilter.today => difference == 0,
+        DokanReportTimeFilter.thisWeek => difference < 7,
+        DokanReportTimeFilter.thisMonth => difference < 30,
+        DokanReportTimeFilter.thisYear => difference < 365,
+        DokanReportTimeFilter.all => true,
+      };
+    }).fold<int>(0, (sum, order) => sum + order.totalAmount);
+
     final items = <({
       String label,
       String amount,
@@ -375,6 +399,13 @@ class _DokanReportsDashboardScreenState
         subtitle: tr('ক্ষতিগ্রস্ত পণ্য তালিকা', 'Total damaged products'),
         icon: Icons.report_problem_outlined,
         color: const Color(0xFFDC2626),
+      ),
+      (
+        label: tr('কর্মচারী বিক্রয়', 'Employee Sales'),
+        amount: _currency(salesmanSales),
+        subtitle: tr('কর্মচারীদের মোট বিক্রয়', 'Total employee sales'),
+        icon: Icons.people_outline,
+        color: const Color(0xFF006B53),
       ),
     ];
     return GridView.builder(
@@ -438,6 +469,12 @@ class _DokanReportsDashboardScreenState
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const DokanDamageReportScreen(),
+                ),
+              );
+            } else if (i == 7) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DokanSalesmanTransactionsScreen(),
                 ),
               );
             }
@@ -1184,7 +1221,7 @@ class DokanDamageReportScreen extends ConsumerWidget {
       int prodDamage = 0;
       for (final entry in history) {
         if (entry.kind == DokanStockMovementType.loss) {
-          final entryDate = entry.timestamp ?? today;
+          final entryDate = (entry.timestamp ?? today).toLocal();
           bool matches = false;
           if (selectedPeriod == 'today') {
             matches = entryDate.year == today.year &&
@@ -1225,6 +1262,7 @@ class DokanDamageReportScreen extends ConsumerWidget {
       }
     }
     damagedProducts.sort((a, b) => b.damageQty.compareTo(a.damageQty));
+
 
     // 2. Expiry warning alerts (Already expired or within 15 days)
     final expiryAlerts = <({DokanCatalogProduct product, DokanProductBatch batch, int daysLeft})>[];
@@ -1336,7 +1374,7 @@ class DokanDamageReportScreen extends ConsumerWidget {
             }
           }
           final cost = product.purchasePrice * val;
-          final entryDate = entry.timestamp ?? today;
+          final entryDate = (entry.timestamp ?? today).toLocal();
 
           if (entryDate.year == today.year &&
               entryDate.month == today.month &&
@@ -1621,7 +1659,7 @@ class DokanDamageReportScreen extends ConsumerWidget {
                         ),
                         const Spacer(),
                         Text(
-                          '${_bnDigits(damagedProducts.length.toString())}টি আইটেম',
+                          '${_bnDigits(grandTotalDamageQty.toString())}টি আইটেম',
                           style: const TextStyle(
                             color: Color(0xFF5A7572),
                             fontSize: 12,

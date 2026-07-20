@@ -137,9 +137,9 @@ void main() {
     await _verify(client, () => settings.saveInventorySettings({}), 'PATCH',
         '${ApiEndpoints.settings}/inventory');
     await _verify(
-        client, settings.storeDetails, 'GET', '${ApiEndpoints.settings}/store');
-    await _verify(client, () => settings.saveStoreDetails({}), 'PUT',
-        '${ApiEndpoints.settings}/store');
+        client, settings.storeDetails, 'GET', '${ApiEndpoints.apiVersion}/shops/me/settings');
+    await _verify(client, () => settings.saveStoreDetails({}), 'PATCH',
+        '${ApiEndpoints.apiVersion}/shops/me/settings');
 
     final subscription = SubscriptionRemoteDataSource(client);
     await _verify(client, subscription.loadSubscriptionInfo, 'GET',

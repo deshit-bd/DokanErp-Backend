@@ -4,6 +4,21 @@ import 'package:dokan_erp/core/core.dart';
 import 'package:dokan_erp/modules/auth/auth.dart';
 import 'package:dokan_erp/modules/sales/sales.dart';
 
+class _SalesmanPerformance {
+  _SalesmanPerformance({
+    required this.phone,
+    required this.name,
+    this.totalSales = 0,
+    this.orderCount = 0,
+    this.totalProfit = 0,
+  });
+  final String phone;
+  final String name;
+  int totalSales;
+  int orderCount;
+  int totalProfit;
+}
+
 class DokanSalesmanTransactionsScreen extends ConsumerStatefulWidget {
   const DokanSalesmanTransactionsScreen({super.key});
 
@@ -15,22 +30,35 @@ class DokanSalesmanTransactionsScreen extends ConsumerStatefulWidget {
 class _DokanSalesmanTransactionsScreenState
     extends ConsumerState<DokanSalesmanTransactionsScreen> {
   String? _selectedSalesmanPhone;
+  int _selectedPeriod = 0; // 0 = Today, 1 = This Week, 2 = This Month, 3 = All Time
 
-  String _bengaliNumber(int number) {
+  String _bengaliDigits(String input) {
     const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-    var input = number.toString();
+    var result = input;
     for (var i = 0; i < english.length; i++) {
-      input = input.replaceAll(english[i], bengali[i]);
+      result = result.replaceAll(english[i], bengali[i]);
     }
-    return input;
+    return result;
+  }
+
+  String _bengaliNumber(int number) => _bengaliDigits(number.toString());
+
+  String _translateName(String? name) {
+    if (name == null || name.isEmpty) return 'সেলসকর্মী';
+    final lower = name.toLowerCase().trim();
+    if (lower == 'sakib') return 'সাকিব';
+    if (lower == 'shamim') return 'শামীম';
+    if (lower == 'owner') return 'মালিক';
+    // Capitalize first letter if it's still English
+    return name[0].toUpperCase() + name.substring(1);
   }
 
   String _formatTime(DateTime dt) {
     final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '${_bengaliNumber(hour)}:$minute $period';
+    final period = dt.hour >= 12 ? 'পিএম' : 'এএম';
+    final minuteStr = dt.minute.toString().padLeft(2, '0');
+    return '${_bengaliDigits(hour.toString())}:${_bengaliDigits(minuteStr)} $period';
   }
 
   @override
@@ -39,134 +67,259 @@ class _DokanSalesmanTransactionsScreenState
     final salesHistory = ref.watch(salesHistoryOrdersProvider).valueOrNull ??
         const <DokanPosOrderRecord>[];
 
-    // Filter today's sales made by salesmen (not the owner)
     final today = DateTime.now();
-    final todaySalesOrders = salesHistory
-        .where((order) =>
-            order.createdAt.year == today.year &&
-            order.createdAt.month == today.month &&
-            order.createdAt.day == today.day &&
-            order.status != DokanPosOrderStatus.cancelled &&
-            order.salesmanPhone != null &&
-            order.salesmanPhone!.isNotEmpty &&
-            order.salesmanPhone != flow.ownerPhone)
-        .toList();
 
-    // Get unique salesmen list from today's orders
-    final salesmenMap = <String, String>{};
-    for (final order in todaySalesOrders) {
-      if (order.salesmanPhone != null) {
-        salesmenMap[order.salesmanPhone!] = order.salesmanName ?? order.salesmanPhone!;
+    // Filter sales made by salesmen (not the owner) based on selected period
+    final periodSalesOrders = salesHistory.where((order) {
+      if (order.status == DokanPosOrderStatus.cancelled) return false;
+      if (order.salesmanPhone == null || order.salesmanPhone!.isEmpty) return false;
+      if (order.salesmanPhone == flow.ownerPhone) return false;
+
+      final orderDate = DateTime(order.createdAt.year, order.createdAt.month, order.createdAt.day);
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final difference = todayDate.difference(orderDate).inDays;
+
+      if (_selectedPeriod == 0) {
+        // Today
+        return difference == 0;
+      } else if (_selectedPeriod == 1) {
+        // This Week (last 7 days)
+        return difference < 7;
+      } else if (_selectedPeriod == 2) {
+        // This Month (last 30 days)
+        return difference < 30;
+      } else {
+        // All Time
+        return true;
       }
-    }
-
-    // Filter by selected salesman
-    final filteredOrders = todaySalesOrders.where((order) {
-      if (_selectedSalesmanPhone == null) return true;
-      return order.salesmanPhone == _selectedSalesmanPhone;
     }).toList();
 
+    // Calculate performance statistics for each salesman
+    final statsMap = <String, _SalesmanPerformance>{};
+    for (final order in periodSalesOrders) {
+      final phone = order.salesmanPhone!;
+      final name = order.salesmanName ?? phone;
+      final stats = statsMap.putIfAbsent(
+        phone,
+        () => _SalesmanPerformance(phone: phone, name: name),
+      );
+      stats.totalSales += order.totalAmount;
+      stats.orderCount += 1;
+      stats.totalProfit += order.grossProfit;
+    }
+
+    final performanceList = statsMap.values.toList()
+      ..sort((a, b) => b.totalSales.compareTo(a.totalSales));
+
+    // Filter orders list by selected salesman
+    final filteredOrders = periodSalesOrders.where((order) {
+      if (_selectedSalesmanPhone == null) return true;
+      return order.salesmanPhone == _selectedSalesmanPhone;
+    }).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
     return Scaffold(
-      backgroundColor: const Color(0xFFEAF5FB),
+      backgroundColor: const Color(0xFFF2F7F6),
       appBar: AppBar(
         title: const Text(
           'কর্মচারী বিক্রয় সমূহ',
           style: TextStyle(
-            color: Color(0xFF0D6B55),
-            fontWeight: FontWeight.w800,
+            color: Color(0xFF006B53),
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
           ),
         ),
+        centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF0D6B55)),
+        iconTheme: const IconThemeData(color: Color(0xFF006B53)),
       ),
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Salesman Filter Horizontal Chips (Pills)
-            if (salesmenMap.isNotEmpty)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    // "সব" (All) Chip
-                    GestureDetector(
-                      onTap: () {
+            // Time Period Selector Tab
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildPeriodTab(0, 'আজ'),
+                  _buildPeriodTab(1, '৭ দিন'),
+                  _buildPeriodTab(2, '৩০ দিন'),
+                  _buildPeriodTab(3, 'সব সময়'),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+            // Salesman Performance Section
+            if (performanceList.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'কর্মচারীদের পারফরম্যান্স',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 110,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: performanceList.length,
+                  itemBuilder: (context, index) {
+                    final stats = performanceList[index];
+                    final isSelected = _selectedSalesmanPhone == stats.phone;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      child: Material(
+                        color: isSelected ? const Color(0xFF006B53) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        elevation: isSelected ? 4 : 1,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedSalesmanPhone = null;
+                              } else {
+                                _selectedSalesmanPhone = stats.phone;
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            width: 140,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFF006B53) : const Color(0xFFDCE7E4),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: isSelected ? Colors.white24 : const Color(0xFFE6F4F1),
+                                      child: Icon(
+                                        Icons.person_outline,
+                                        size: 14,
+                                        color: isSelected ? Colors.white : const Color(0xFF006B53),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        _translateName(stats.name),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13,
+                                          color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '৳ ${_bengaliNumber(stats.totalSales)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 15,
+                                        color: isSelected ? Colors.white : const Color(0xFF006B53),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${_bengaliNumber(stats.orderCount)} টি অর্ডার',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected ? Colors.white70 : const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+
+            // Sales list header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'বিক্রয় তালিকা',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  if (_selectedSalesmanPhone != null)
+                    TextButton.icon(
+                      onPressed: () {
                         setState(() {
                           _selectedSalesmanPhone = null;
                         });
                       },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _selectedSalesmanPhone == null
-                              ? const Color(0xFF0D6B55)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _selectedSalesmanPhone == null
-                                ? const Color(0xFF0D6B55)
-                                : const Color(0xFFD9E5E1),
-                          ),
-                        ),
-                        child: Text(
-                          'সব',
-                          style: TextStyle(
-                            color: _selectedSalesmanPhone == null
-                                ? Colors.white
-                                : const Color(0xFF1E293B),
-                            fontWeight: FontWeight.w600,
-                          ),
+                      icon: const Icon(Icons.clear, size: 14, color: Color(0xFF006B53)),
+                      label: const Text(
+                        'সব দেখুন',
+                        style: TextStyle(
+                          color: Color(0xFF006B53),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // Individual Salesman Chips
-                    ...salesmenMap.entries.map((entry) {
-                      final isSelected = _selectedSalesmanPhone == entry.key;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedSalesmanPhone = entry.key;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF0D6B55) : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? const Color(0xFF0D6B55) : const Color(0xFFD9E5E1),
-                              ),
-                            ),
-                            child: Text(
-                              entry.value,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+                ],
               ),
+            ),
 
             // Orders list
             Expanded(
               child: filteredOrders.isEmpty
                   ? Center(
-                      child: Text(
-                        'আজ কোনো কর্মচারীর বিক্রয় নেই',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 16,
-                        ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 10),
+                          Text(
+                            _selectedSalesmanPhone == null
+                                ? 'এই সময়ে কোনো কর্মচারীর বিক্রয় নেই'
+                                : 'এই কর্মচারীর কোনো বিক্রয় নেই',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
@@ -188,8 +341,9 @@ class _DokanSalesmanTransactionsScreenState
                           margin: const EdgeInsets.only(bottom: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(color: Color(0xFFDCE7E4), width: 1),
                           ),
-                          elevation: 1,
+                          elevation: 0,
                           color: Colors.white,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
@@ -208,14 +362,14 @@ class _DokanSalesmanTransactionsScreenState
                                           vertical: 4,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFE6FFFA),
+                                          color: const Color(0xFFE6F4F1),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          order.salesmanName ?? 'সেলসকর্মী',
+                                          _translateName(order.salesmanName),
                                           style: const TextStyle(
-                                            color: Color(0xFF0D9488),
-                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF006B53),
+                                            fontWeight: FontWeight.w900,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -225,6 +379,7 @@ class _DokanSalesmanTransactionsScreenState
                                         style: TextStyle(
                                           color: Colors.grey[500],
                                           fontSize: 12,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ],
@@ -235,7 +390,7 @@ class _DokanSalesmanTransactionsScreenState
                                       order.customerName,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w800,
-                                        fontSize: 16,
+                                        fontSize: 15,
                                         color: Color(0xFF1E293B),
                                       ),
                                     ),
@@ -249,7 +404,7 @@ class _DokanSalesmanTransactionsScreenState
                                         ),
                                       ),
                                     ],
-                                    const Divider(height: 24, color: Color(0xFFE2E8F0)),
+                                    const Divider(height: 20, color: Color(0xFFE2E8F0)),
                                   ] else ...[
                                     const SizedBox(height: 8),
                                   ],
@@ -261,13 +416,14 @@ class _DokanSalesmanTransactionsScreenState
                                         style: TextStyle(
                                           color: Colors.grey[700],
                                           fontWeight: FontWeight.w600,
+                                          fontSize: 13,
                                         ),
                                       ),
                                       Text(
                                         '৳ ${_bengaliNumber(order.totalAmount)}',
                                         style: const TextStyle(
-                                          color: Color(0xFF0D6B55),
-                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF006B53),
+                                          fontWeight: FontWeight.w900,
                                           fontSize: 16,
                                         ),
                                       ),
@@ -282,6 +438,33 @@ class _DokanSalesmanTransactionsScreenState
                     ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeriodTab(int periodIndex, String label) {
+    final isSelected = _selectedPeriod == periodIndex;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedPeriod = periodIndex;
+          _selectedSalesmanPhone = null; // Reset selection on period change
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF006B53) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+            fontSize: 14,
+          ),
         ),
       ),
     );

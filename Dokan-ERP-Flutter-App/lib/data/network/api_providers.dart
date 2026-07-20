@@ -102,8 +102,17 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   );
   const queue = PendingApiMutationStore();
   unawaited(queue.flush(transport));
+
+  // Auto-sync: Flush the queue every 10 seconds to push offline changes to DB when online
+  final timer = Timer.periodic(const Duration(seconds: 10), (_) {
+    unawaited(queue.flush(transport));
+  });
+
   final client = QueuedApiClient(transport, queue);
-  ref.onDispose(() => client.close(force: true));
+  ref.onDispose(() {
+    timer.cancel();
+    client.close(force: true);
+  });
   return client;
 });
 

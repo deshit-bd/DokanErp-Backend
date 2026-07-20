@@ -24,6 +24,9 @@ class _DokanVoiceAssistantButtonState
     extends ConsumerState<DokanVoiceAssistantButton> {
   final SpeechToText _speech = SpeechToText();
   bool _available = false;
+  double? _localX;
+  double? _localY;
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -314,11 +317,50 @@ class _DokanVoiceAssistantButtonState
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton(
-      heroTag: 'voice-assistant-fab',
-      onPressed: _listen,
-      backgroundColor: const Color(0xFF0C8C67),
-      child: const Icon(Icons.mic, color: Colors.white),
+    final position = ref.watch(voiceFabPositionProvider);
+
+    final size = MediaQuery.of(context).size;
+    final defaultX = size.width - 76.0;
+    final defaultY = size.height - 180.0;
+
+    final x = _isDragging ? (_localX ?? defaultX) : (position?.dx ?? defaultX);
+    final y = _isDragging ? (_localY ?? defaultY) : (position?.dy ?? defaultY);
+
+    final clampedX = x.clamp(16.0, size.width - 72.0);
+    final clampedY = y.clamp(60.0, size.height - 140.0);
+
+    return Positioned(
+      left: clampedX,
+      top: clampedY,
+      child: GestureDetector(
+        onPanStart: (details) {
+          setState(() {
+            _isDragging = true;
+            _localX = clampedX;
+            _localY = clampedY;
+          });
+        },
+        onPanUpdate: (details) {
+          setState(() {
+            _localX = (_localX ?? clampedX) + details.delta.dx * 1.25;
+            _localY = (_localY ?? clampedY) + details.delta.dy * 1.25;
+          });
+        },
+        onPanEnd: (details) {
+          ref.read(voiceFabPositionProvider.notifier).state = Offset(clampedX, clampedY);
+          setState(() {
+            _isDragging = false;
+          });
+        },
+        child: FloatingActionButton(
+          heroTag: 'voice-assistant-fab',
+          onPressed: _listen,
+          backgroundColor: const Color(0xFF0C8C67),
+          child: const Icon(Icons.mic, color: Colors.white),
+        ),
+      ),
     );
   }
 }
+
+final voiceFabPositionProvider = StateProvider<Offset?>((ref) => null);

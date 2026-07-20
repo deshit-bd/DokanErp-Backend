@@ -444,7 +444,7 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                   physics: const AlwaysScrollableScrollPhysics(
                     parent: BouncingScrollPhysics(),
                   ),
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
+                  padding: EdgeInsets.fromLTRB(16, 14, 16, isWide ? 110 : 185),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -659,7 +659,7 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
               Positioned(
                 left: 16,
                 right: 16,
-                bottom: 8,
+                bottom: isWide ? 8 : 84,
                 child: SafeArea(
                   top: false,
                   bottom: false,
