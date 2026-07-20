@@ -655,6 +655,7 @@ class _DokanPosMainScreenState extends ConsumerState<DokanPosMainScreen> {
                 ),
               ),
             ),
+            if (cartCount > 0)
               Positioned(
                 left: 16,
                 right: 16,
