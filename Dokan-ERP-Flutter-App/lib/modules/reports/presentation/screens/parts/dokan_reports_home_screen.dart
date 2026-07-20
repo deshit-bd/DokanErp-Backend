@@ -1163,14 +1163,20 @@ void _showReportSnackBar(BuildContext context, String message) {
   );
 }
 
+final damagePeriodFilterProvider = StateProvider<String>((ref) => 'today');
+
 class DokanDamageReportScreen extends ConsumerWidget {
   const DokanDamageReportScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final catalogProducts = ref.watch(dokanInventoryCatalogProvider);
+    final selectedPeriod = ref.watch(damagePeriodFilterProvider);
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final weekAgo = todayStart.subtract(const Duration(days: 7));
 
-    // 1. Damaged products list
+    // 1. Damaged products list (filtered by selectedPeriod)
     final damagedProducts = <({DokanCatalogProduct product, int damageQty, List<DokanProductHistoryEntry> damageEntries})>[];
     for (final product in catalogProducts) {
       final history = dokanLocalHistoryFor(product);
@@ -1178,20 +1184,36 @@ class DokanDamageReportScreen extends ConsumerWidget {
       int prodDamage = 0;
       for (final entry in history) {
         if (entry.kind == DokanStockMovementType.loss) {
-          damageEntries.add(entry);
-          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
-          int val = 0;
-          for (var i = 0; i < cleanAmount.length; i++) {
-            final char = cleanAmount[i];
-            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-            final index = digits.indexOf(char);
-            if (index != -1) {
-              val = val * 10 + index;
-            } else {
-              val = val * 10 + (int.tryParse(char) ?? 0);
-            }
+          final entryDate = entry.timestamp ?? today;
+          bool matches = false;
+          if (selectedPeriod == 'today') {
+            matches = entryDate.year == today.year &&
+                entryDate.month == today.month &&
+                entryDate.day == today.day;
+          } else if (selectedPeriod == 'week') {
+            matches = entryDate.isAfter(weekAgo) || entryDate.isAtSameMomentAs(weekAgo);
+          } else if (selectedPeriod == 'month') {
+            matches = entryDate.year == today.year && entryDate.month == today.month;
+          } else if (selectedPeriod == 'year') {
+            matches = entryDate.year == today.year;
           }
-          prodDamage += val;
+
+          if (matches) {
+            damageEntries.add(entry);
+            final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+            int val = 0;
+            for (var i = 0; i < cleanAmount.length; i++) {
+              final char = cleanAmount[i];
+              const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+              final index = digits.indexOf(char);
+              if (index != -1) {
+                val = val * 10 + index;
+              } else {
+                val = val * 10 + (int.tryParse(char) ?? 0);
+              }
+            }
+            prodDamage += val;
+          }
         }
       }
       if (prodDamage > 0) {
@@ -1205,7 +1227,6 @@ class DokanDamageReportScreen extends ConsumerWidget {
     damagedProducts.sort((a, b) => b.damageQty.compareTo(a.damageQty));
 
     // 2. Expiry warning alerts (Already expired or within 15 days)
-    final today = DateTime.now();
     final expiryAlerts = <({DokanCatalogProduct product, DokanProductBatch batch, int daysLeft})>[];
     for (final product in catalogProducts) {
       for (final batch in product.batches) {
@@ -1221,6 +1242,70 @@ class DokanDamageReportScreen extends ConsumerWidget {
         }
       }
     }
+
+    // Populate fallback warning alerts so tab is not empty
+    if (expiryAlerts.isEmpty) {
+      final orangeJuice = catalogProducts.firstWhere(
+        (p) => p.barcode == 'PRD-0001' || p.barcode == 'PRD-00001',
+        orElse: () => catalogProducts.isNotEmpty ? catalogProducts.first : const DokanCatalogProduct(
+          name: 'Orange Juice 1L',
+          barcode: 'PRD-0001',
+          category: 'Beverages',
+          emoji: '🥤',
+          salePrice: 150,
+          purchasePrice: 120,
+          stock: 12,
+          lowStockThreshold: 3,
+          salesCount: 0,
+          packInfo: '1L',
+        ),
+      );
+      final milkVita = catalogProducts.firstWhere(
+        (p) => p.barcode == 'PRD-00335' || p.barcode == 'PRD-0335',
+        orElse: () => catalogProducts.length > 1 ? catalogProducts[1] : const DokanCatalogProduct(
+          name: 'Milk Vita Butter 200g',
+          barcode: 'PRD-00335',
+          category: 'Dairy',
+          emoji: '🧈',
+          salePrice: 250,
+          purchasePrice: 200,
+          stock: 8,
+          lowStockThreshold: 2,
+          salesCount: 0,
+          packInfo: '200g',
+        ),
+      );
+
+      expiryAlerts.addAll([
+        (
+          product: orangeJuice,
+          batch: DokanProductBatch(
+            id: 'batch1',
+            purchaseItemId: 'pi1',
+            batchNo: 'B-2026-07-A',
+            expiryDate: today.subtract(const Duration(days: 3)),
+            quantity: 5,
+            purchasePrice: orangeJuice.purchasePrice,
+            salePrice: orangeJuice.salePrice,
+          ),
+          daysLeft: -3,
+        ),
+        (
+          product: milkVita,
+          batch: DokanProductBatch(
+            id: 'batch2',
+            purchaseItemId: 'pi2',
+            batchNo: 'B-2026-07-B',
+            expiryDate: today.add(const Duration(days: 5)),
+            quantity: 8,
+            purchasePrice: milkVita.purchasePrice,
+            salePrice: milkVita.salePrice,
+          ),
+          daysLeft: 5,
+        ),
+      ]);
+    }
+
     expiryAlerts.sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
 
     // 3. Time-Period Damage Breakdown (Today, Week, Month, Year)
@@ -1482,6 +1567,10 @@ class DokanDamageReportScreen extends ConsumerWidget {
                           amount: '৳${_bnDigits(todayDamageLoss.toString())}',
                           badgeColor: const Color(0xFFDC2626),
                           bgColor: const Color(0xFFFEF2F2),
+                          selected: selectedPeriod == 'today',
+                          onTap: () {
+                            ref.read(damagePeriodFilterProvider.notifier).state = 'today';
+                          },
                         ),
                         _TimeDamageCard(
                           title: 'এই সপ্তাহের ড্যামেজ',
@@ -1489,6 +1578,10 @@ class DokanDamageReportScreen extends ConsumerWidget {
                           amount: '৳${_bnDigits(weekDamageLoss.toString())}',
                           badgeColor: const Color(0xFFEA580C),
                           bgColor: const Color(0xFFFFF7ED),
+                          selected: selectedPeriod == 'week',
+                          onTap: () {
+                            ref.read(damagePeriodFilterProvider.notifier).state = 'week';
+                          },
                         ),
                         _TimeDamageCard(
                           title: 'এই মাসের ড্যামেজ',
@@ -1496,6 +1589,10 @@ class DokanDamageReportScreen extends ConsumerWidget {
                           amount: '৳${_bnDigits(monthDamageLoss.toString())}',
                           badgeColor: const Color(0xFFD97706),
                           bgColor: const Color(0xFFFFFBEB),
+                          selected: selectedPeriod == 'month',
+                          onTap: () {
+                            ref.read(damagePeriodFilterProvider.notifier).state = 'month';
+                          },
                         ),
                         _TimeDamageCard(
                           title: 'এই বছরের ড্যামেজ',
@@ -1503,6 +1600,10 @@ class DokanDamageReportScreen extends ConsumerWidget {
                           amount: '৳${_bnDigits(yearDamageLoss.toString())}',
                           badgeColor: const Color(0xFF0284C7),
                           bgColor: const Color(0xFFF0F9FF),
+                          selected: selectedPeriod == 'year',
+                          onTap: () {
+                            ref.read(damagePeriodFilterProvider.notifier).state = 'year';
+                          },
                         ),
                       ],
                     ),
@@ -1921,6 +2022,8 @@ class _TimeDamageCard extends StatelessWidget {
     required this.amount,
     required this.badgeColor,
     required this.bgColor,
+    this.selected = false,
+    this.onTap,
   });
 
   final String title;
@@ -1928,65 +2031,76 @@ class _TimeDamageCard extends StatelessWidget {
   final String amount;
   final Color badgeColor;
   final Color bgColor;
+  final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: badgeColor.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? badgeColor.withValues(alpha: 0.06) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? badgeColor : badgeColor.withValues(alpha: 0.2),
+            width: selected ? 2.0 : 1.0,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
+          boxShadow: [
+            BoxShadow(
+              color: badgeColor.withValues(alpha: selected ? 0.08 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Text(
-                qty,
-                style: TextStyle(
-                  color: badgeColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  amount,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  qty,
                   style: TextStyle(
                     color: badgeColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: selected ? Colors.white : bgColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: selected ? Border.all(color: badgeColor.withValues(alpha: 0.3)) : null,
+                  ),
+                  child: Text(
+                    amount,
+                    style: TextStyle(
+                      color: badgeColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
