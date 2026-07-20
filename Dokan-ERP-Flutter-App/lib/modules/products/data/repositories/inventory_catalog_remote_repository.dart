@@ -109,9 +109,7 @@ class InventoryCatalogRemoteRepository
           .map(
             (product) {
               final remoteHistory = remoteHistoryByBarcode?[product.barcode];
-              final history = (remoteHistory != null && remoteHistory.isNotEmpty)
-                  ? remoteHistory
-                  : dokanLocalHistoryFor(product);
+              final history = remoteHistory ?? const <DokanProductHistoryEntry>[];
 
               return {
                 'product': {
