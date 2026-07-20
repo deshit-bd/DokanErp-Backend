@@ -1,2 +1,10 @@
 # Dokan ERP Workspace Gitignore
 Dokan-ERP-Flutter-App/.git_backup/
+
+node_modules
+dist
+.env
+.DS_Store
+coverage
+uploads
+.snapshots
