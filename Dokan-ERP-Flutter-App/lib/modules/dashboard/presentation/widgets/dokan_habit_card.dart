@@ -139,7 +139,7 @@ class _DokanHabitCardState extends State<DokanHabitCard> {
     final hitTarget = widget.todaySales >= _target && _target > 0;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -147,7 +147,7 @@ class _DokanHabitCardState extends State<DokanHabitCard> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0C8C67).withValues(alpha: 0.25),
@@ -236,7 +236,7 @@ class _DokanHabitCardState extends State<DokanHabitCard> {
                   Text(
                     widget.growthPercent > 0
                         ? 'গতকালের চেয়ে ${widget.growthPercent}% বেশি বিক্রি 🚀'
-                        : 'আজ একটু কম — কাল আরও ভালো হবে 💪',
+                        : 'আজ একটু কম কাল আরও ভালো হবে 💪',
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,

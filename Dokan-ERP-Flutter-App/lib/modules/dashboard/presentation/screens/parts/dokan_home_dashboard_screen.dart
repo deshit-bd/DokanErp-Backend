@@ -130,7 +130,18 @@ class _DokanHomeDashboardScreenState
       math.max(catalogProducts.length, selectedCount),
     );
     final dashboardSupplierDue = dashboardSummary?.payable ?? supplierDueTotal;
-    final dashboardExpenses = dashboardSummary?.todayExpenses ?? 0;
+    final allExpenseRecords =
+        ref.watch(expenseReportControllerProvider).asData?.value ??
+            const <DokanExpenseRecord>[];
+    final thisMonthExpensesSum = allExpenseRecords
+        .where((e) => e.date.year == today.year && e.date.month == today.month)
+        .fold<int>(0, (sum, e) => sum + e.amount.round());
+    final monthExpenseTotal = thisMonthExpensesSum > 0
+        ? thisMonthExpensesSum
+        : (ref.watch(monthlyExpenseTotalProvider) > 0
+            ? ref.watch(monthlyExpenseTotalProvider)
+            : (dashboardSummary?.todayExpenses ?? 0));
+    final dashboardExpenses = monthExpenseTotal;
     final salesComparisonLabel = dashboardSummary?.salesComparisonLabel ??
         'গত ৭ দিনের তুলনায় ১৫% বৃদ্ধি';
     int totalDamagedCount = 0;
@@ -347,6 +358,7 @@ class _DokanHomeDashboardScreenState
                                                 0,
                                       ),
                                     ),
+                                    const SizedBox(height: 14),
                                     ScrollReveal(
                                       delay: const Duration(milliseconds: 100),
                                       child: _SalesSummaryCard(
@@ -481,9 +493,16 @@ class _DokanHomeDashboardScreenState
                                             tint: const Color(0xFFE11D48),
                                             icon: Icons.receipt_long_rounded,
                                             label: tr(
-                                                'আজকের খরচ', "Today's Expense"),
+                                                'এই মাসের খরচ', "This Month's Expense"),
                                             value:
                                                 '৳ ${_bengaliNumber(dashboardExpenses)}',
+                                            onAddTap: () =>
+                                                Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DokanExpenseEntryScreen(),
+                                              ),
+                                            ),
                                             onTap: () =>
                                                 Navigator.of(context).push(
                                               MaterialPageRoute(

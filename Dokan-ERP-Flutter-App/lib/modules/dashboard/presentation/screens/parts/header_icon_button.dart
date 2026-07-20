@@ -67,7 +67,7 @@ class _SalesSummaryCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
@@ -77,7 +77,7 @@ class _SalesSummaryCard extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [Color(0xFF0EAA74), Color(0xFF0B7A5E)],
             ),
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x26000000),
@@ -232,6 +232,7 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.onTap,
+    this.onAddTap,
   });
 
   final Color background;
@@ -240,6 +241,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback? onTap;
+  final VoidCallback? onAddTap;
 
   @override
   Widget build(BuildContext context) {
@@ -277,6 +279,23 @@ class _StatCard extends StatelessWidget {
                     child: Icon(icon, color: tint, size: 19),
                   ),
                   const Spacer(),
+                  if (onAddTap != null)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: onAddTap,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: tint.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.add_rounded, color: tint, size: 18),
+                        ),
+                      ),
+                    ),
+                  if (onAddTap != null) const SizedBox(width: 4),
                   const Icon(Icons.chevron_right_rounded,
                       color: Color(0xFFCBD5E1), size: 19),
                 ],

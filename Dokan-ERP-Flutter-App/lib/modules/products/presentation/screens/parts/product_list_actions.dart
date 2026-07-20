@@ -418,127 +418,115 @@ extension _DokanProductListActions on _DokanProductListScreenState {
   }
 
   Widget _productCard(DokanCatalogProduct product, int threshold) {
+    final activeThreshold = product.lowStockThreshold > 0
+        ? product.lowStockThreshold
+        : threshold;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         onTap: () => _openProductDetail(product),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFD9E6E2)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFB9C8C3).withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              _productThumbnail(product),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      product.brand.isNotEmpty
+                          ? '${product.category} • ${product.brand}'
+                          : product.category,
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      tr('বারকোড: ${product.barcode}',
+                          'Barcode: ${product.barcode}'),
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _productThumbnail(product),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product.name,
-                          style: const TextStyle(
-                            color: Color(0xFF141F22),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          product.brand.isNotEmpty
-                              ? '${product.category} • ${product.brand}'
-                              : product.category,
-                          style: const TextStyle(
-                            color: Color(0xFF5F6A66),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          tr('বারকোড: ${product.barcode}',
-                              'Barcode: ${product.barcode}'),
-                          style: const TextStyle(
-                            color: Color(0xFF7C8A84),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                  Text(
+                    _currency(product.salePrice),
+                    style: const TextStyle(
+                      color: Color(0xFF00694C),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _currency(product.salePrice),
-                        style: const TextStyle(
-                          color: Color(0xFF00694C),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _stockStatusBackground(
+                          product.stock, activeThreshold),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      product.stock <= 0
+                          ? tr('স্টক নেই', 'Out of Stock')
+                          : tr(
+                              'স্টক ${_bnDigits(product.stock.toString())}টি',
+                              'Stock: ${_bnDigits(product.stock.toString())} items'),
+                      style: TextStyle(
+                        color: _stockStatusColor(
+                            product.stock, activeThreshold),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 6),
-                      Builder(
-                        builder: (context) {
-                          final activeThreshold = product.lowStockThreshold > 0
-                              ? product.lowStockThreshold
-                              : threshold;
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: _stockStatusBackground(
-                                  product.stock, activeThreshold),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              product.stock <= 0
-                                  ? tr('স্টক নেই', 'Out of Stock')
-                                  : tr(
-                                      'স্টক ${_bnDigits(product.stock.toString())}টি',
-                                      'Stock: ${_bnDigits(product.stock.toString())} items'),
-                              style: TextStyle(
-                                color: _stockStatusColor(
-                                    product.stock, activeThreshold),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFFF0F4F3)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
+                  const SizedBox(height: 5),
                   InkWell(
                     onTap: () {
                       Navigator.of(context).push(
@@ -548,28 +536,28 @@ extension _DokanProductListActions on _DokanProductListScreenState {
                         ),
                       );
                     },
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF00694C).withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color:
-                                const Color(0xFF00694C).withValues(alpha: 0.2)),
+                            color: const Color(0xFF00694C)
+                                .withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
                           Icon(Icons.add_shopping_cart_rounded,
-                              size: 13, color: Color(0xFF00694C)),
-                          SizedBox(width: 4),
+                              size: 12, color: Color(0xFF00694C)),
+                          SizedBox(width: 3),
                           Text(
                             'ক্রয় করুন',
                             style: TextStyle(
                               color: Color(0xFF00694C),
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -640,11 +628,12 @@ extension _DokanProductListActions on _DokanProductListScreenState {
       }
 
       if (imageWidget != null) {
-        return ClipOval(
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
           child: Container(
-            width: 62,
-            height: 62,
-            color: const Color(0xFFEAF2F0),
+            width: 48,
+            height: 48,
+            color: const Color(0xFFF1F5F9),
             child: imageWidget,
           ),
         );
@@ -657,16 +646,16 @@ extension _DokanProductListActions on _DokanProductListScreenState {
   Widget _productFallbackCircle(DokanCatalogProduct product) {
     final emoji = product.emoji.trim();
     return Container(
-      width: 62,
-      height: 62,
-      decoration: const BoxDecoration(
-        color: Color(0xFFEAF2F0),
-        shape: BoxShape.circle,
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
       ),
       alignment: Alignment.center,
       child: emoji.isNotEmpty && emoji != '📦'
-          ? Text(emoji, style: const TextStyle(fontSize: 30))
-          : const Icon(Icons.inventory_2_outlined, color: Color(0xFF0F766E), size: 28),
+          ? Text(emoji, style: const TextStyle(fontSize: 22))
+          : const Icon(Icons.inventory_2_outlined, color: Color(0xFF0F766E), size: 22),
     );
   }
 }

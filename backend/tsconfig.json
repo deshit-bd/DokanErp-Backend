@@ -21,5 +21,12 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/*.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/*.ts",
+    "src/routes/customers.ts",
+    "src/routes/reports.ts",
+    "src/routes/subscriptions.ts"
+  ]
 }

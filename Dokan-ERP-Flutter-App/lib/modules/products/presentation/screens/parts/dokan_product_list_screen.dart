@@ -405,7 +405,7 @@ class _DokanProductListScreenState
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: visibleProducts.length,
                 separatorBuilder: (context, index) =>
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final product = visibleProducts[index];
                   return DokanFadeSlideIn(

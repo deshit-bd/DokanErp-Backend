@@ -2,6 +2,10 @@ part of '../product_screens.dart';
 
 typedef _ProductHistoryEntry = DokanProductHistoryEntry;
 
+DokanProductHistoryEntry dokanRemoteHistoryEntryFromJson(Map<String, dynamic> json) {
+  return _historyEntryFromRemoteJson(json);
+}
+
 _ProductHistoryEntry _historyEntryFromRemoteJson(Map<String, dynamic> json) {
   final type = (json['movementType'] as String? ?? '').toUpperCase();
   final timestamp = DateTime.tryParse(json['createdAt'] as String? ?? '');
@@ -51,8 +55,9 @@ String _historyRemoteLabel(
       return 'বিক্রয় রিটার্ন';
     case 'PURCHASE_RETURN':
       return 'ক্রয় ফেরত';
+    case 'DAMAGE':
     case 'MANUAL_REDUCE':
-      return _isDamageMovement(note, referenceType) ? 'ক্ষতি' : 'স্টক হ্রাস';
+      return _isDamageMovement(note, referenceType) || type == 'DAMAGE' ? 'ক্ষতি' : 'স্টক হ্রাস';
     case 'PRICE_CHANGE':
       return 'দাম পরিবর্তন';
     default:
@@ -131,9 +136,11 @@ Color _historyRemoteColor(String type) {
     case 'SALE_CANCEL':
       return const Color(0xFF0C8C67);
     case 'SALE':
-    case 'MANUAL_REDUCE':
     case 'PURCHASE_RETURN':
       return const Color(0xFFF49B1A);
+    case 'DAMAGE':
+    case 'MANUAL_REDUCE':
+      return const Color(0xFFD43B3B);
     case 'PRICE_CHANGE':
       return const Color(0xFF00694C);
     default:
@@ -146,9 +153,9 @@ String _historyRemoteNote(
   required String note,
   required String referenceType,
 }) {
-  if (type == 'MANUAL_REDUCE') {
-    if (_isDamageMovement(note, referenceType)) {
-      return note.isEmpty || note == 'Manual stock reduction.'
+  if (type == 'DAMAGE' || type == 'MANUAL_REDUCE') {
+    if (_isDamageMovement(note, referenceType) || type == 'DAMAGE') {
+      return note.isEmpty || note == 'Manual stock reduction.' || note == 'Damaged stock removed.'
           ? 'ক্ষতিগ্রস্ত পণ্য বাদ'
           : note;
     }
@@ -195,6 +202,7 @@ DokanStockMovementType _historyRemoteKind(String type) {
     case 'SALE_CANCEL':
       return DokanStockMovementType.returnItem;
     case 'PURCHASE_RETURN':
+    case 'DAMAGE':
     case 'MANUAL_REDUCE':
       return DokanStockMovementType.loss;
     case 'PRICE_CHANGE':

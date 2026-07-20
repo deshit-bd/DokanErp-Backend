@@ -33,7 +33,33 @@ class InventoryCatalogRemoteRepository
           ),
         ),
       );
-    return _snapshot(products);
+
+    List<Map<String, dynamic>> rawMovements = [];
+    try {
+      rawMovements = await _remote.stockHistory('', limit: 1000);
+    } catch (_) {}
+
+    final remoteHistoryByBarcode = <String, List<DokanProductHistoryEntry>>{};
+    for (final mov in rawMovements) {
+      final barcode = (mov['barcode'] as String? ??
+              mov['shopProduct']?['barcode'] as String? ??
+              '')
+          .trim();
+      final masterId = (mov['masterProductId'] as String? ?? '').trim();
+      final shopProductId = (mov['shopProductId'] as String? ?? '').trim();
+
+      final entry = dokanRemoteHistoryEntryFromJson(mov);
+
+      for (final p in products) {
+        if ((barcode.isNotEmpty && p.barcode == barcode) ||
+            (masterId.isNotEmpty && p.masterProductId == masterId) ||
+            (shopProductId.isNotEmpty && p.barcode == shopProductId)) {
+          remoteHistoryByBarcode.putIfAbsent(p.barcode, () => []).add(entry);
+        }
+      }
+    }
+
+    return _snapshot(products, remoteHistoryByBarcode);
   }
 
   @override
@@ -72,51 +98,61 @@ class InventoryCatalogRemoteRepository
       ..addAll(nextByBarcode);
   }
 
-  String _snapshot(List<DokanCatalogProduct> products) {
+  String _snapshot(
+    List<DokanCatalogProduct> products, [
+    Map<String, List<DokanProductHistoryEntry>>? remoteHistoryByBarcode,
+  ]) {
     return jsonEncode({
       'version': 1,
       'remote': true,
       'products': products
           .map(
-            (product) => {
-              'product': {
-                'masterProductId': product.masterProductId,
-                'name': product.name,
-                'barcode': product.barcode,
-                'category': product.category,
-                'emoji': product.emoji,
-                'brand': product.brand,
-                'unit': product.unit,
-                'imageLabel': product.imageLabel,
-                'salePrice': product.salePrice,
-                'purchasePrice': product.purchasePrice,
-                'stock': product.stock,
-                'lowStockThreshold': product.lowStockThreshold,
-                'salesCount': product.salesCount,
-                'packInfo': product.packInfo,
-                'batches': product.batches
-                    .map(
-                      (batch) => {
-                        'id': batch.id,
-                        'purchaseItemId': batch.purchaseItemId,
-                        'batchNo': batch.batchNo,
-                        'expiryDate': batch.expiryDate?.toIso8601String(),
-                        'quantity': batch.quantity,
-                        'purchasePrice': batch.purchasePrice,
-                        'salePrice': batch.salePrice,
-                        'createdAt': batch.createdAt?.toIso8601String(),
-                      },
-                    )
-                    .toList(growable: false),
-              },
-              'inventory': {
-                'stock': product.stock,
-                'purchasePrice': product.purchasePrice,
-                'salePrice': product.salePrice,
-                'historyEntries': dokanLocalHistoryFor(product)
-                    .map(dokanHistoryEntryToJson)
-                    .toList(),
-              },
+            (product) {
+              final remoteHistory = remoteHistoryByBarcode?[product.barcode];
+              final history = (remoteHistory != null && remoteHistory.isNotEmpty)
+                  ? remoteHistory
+                  : dokanLocalHistoryFor(product);
+
+              return {
+                'product': {
+                  'masterProductId': product.masterProductId,
+                  'name': product.name,
+                  'barcode': product.barcode,
+                  'category': product.category,
+                  'emoji': product.emoji,
+                  'brand': product.brand,
+                  'unit': product.unit,
+                  'imageLabel': product.imageLabel,
+                  'salePrice': product.salePrice,
+                  'purchasePrice': product.purchasePrice,
+                  'stock': product.stock,
+                  'lowStockThreshold': product.lowStockThreshold,
+                  'salesCount': product.salesCount,
+                  'packInfo': product.packInfo,
+                  'batches': product.batches
+                      .map(
+                        (batch) => {
+                          'id': batch.id,
+                          'purchaseItemId': batch.purchaseItemId,
+                          'batchNo': batch.batchNo,
+                          'expiryDate': batch.expiryDate?.toIso8601String(),
+                          'quantity': batch.quantity,
+                          'purchasePrice': batch.purchasePrice,
+                          'salePrice': batch.salePrice,
+                          'createdAt': batch.createdAt?.toIso8601String(),
+                        },
+                      )
+                      .toList(growable: false),
+                },
+                'inventory': {
+                  'stock': product.stock,
+                  'purchasePrice': product.purchasePrice,
+                  'salePrice': product.salePrice,
+                  'historyEntries': history
+                      .map(dokanHistoryEntryToJson)
+                      .toList(),
+                },
+              };
             },
           )
           .toList(growable: false),

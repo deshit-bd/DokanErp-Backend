@@ -85,22 +85,6 @@ List<_ProductHistoryEntry> _historyFor(DokanCatalogProduct product) {
             color: Color(0xFF0C8C67)),
       ];
     default:
-      return const [
-        _ProductHistoryEntry(
-            label: 'বিক্রয়',
-            amount: '-১টি',
-            timeLabel: 'আজ',
-            color: Color(0xFFD43B3B)),
-        _ProductHistoryEntry(
-            label: 'ক্রয়',
-            amount: '+১০টি',
-            timeLabel: 'গতকাল',
-            color: Color(0xFF0C8C67)),
-        _ProductHistoryEntry(
-            label: 'ক্ষতি',
-            amount: '-২টি',
-            timeLabel: 'গত সপ্তাহ',
-            color: Color(0xFFF49B1A)),
-      ];
+      return const [];
   }
 }

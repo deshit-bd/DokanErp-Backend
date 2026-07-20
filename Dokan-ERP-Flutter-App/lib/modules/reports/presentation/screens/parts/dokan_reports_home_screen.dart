@@ -1223,7 +1223,64 @@ class DokanDamageReportScreen extends ConsumerWidget {
     }
     expiryAlerts.sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
 
-    // 3. Loss Analytics Breakdown
+    // 3. Time-Period Damage Breakdown (Today, Week, Month, Year)
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final weekAgo = todayStart.subtract(const Duration(days: 7));
+
+    int todayDamageQty = 0;
+    int todayDamageLoss = 0;
+    int weekDamageQty = 0;
+    int weekDamageLoss = 0;
+    int monthDamageQty = 0;
+    int monthDamageLoss = 0;
+    int yearDamageQty = 0;
+    int yearDamageLoss = 0;
+
+    for (final product in catalogProducts) {
+      final history = dokanLocalHistoryFor(product);
+      for (final entry in history) {
+        if (entry.kind == DokanStockMovementType.loss) {
+          final cleanAmount = entry.amount.replaceAll(RegExp(r'[^0-9০-৯]'), '');
+          int val = 0;
+          for (var i = 0; i < cleanAmount.length; i++) {
+            final char = cleanAmount[i];
+            const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            final index = digits.indexOf(char);
+            if (index != -1) {
+              val = val * 10 + index;
+            } else {
+              val = val * 10 + (int.tryParse(char) ?? 0);
+            }
+          }
+          final cost = product.purchasePrice * val;
+          final entryDate = entry.timestamp ?? today;
+
+          if (entryDate.year == today.year &&
+              entryDate.month == today.month &&
+              entryDate.day == today.day) {
+            todayDamageQty += val;
+            todayDamageLoss += cost;
+          }
+
+          if (entryDate.isAfter(weekAgo) || entryDate.isAtSameMomentAs(weekAgo)) {
+            weekDamageQty += val;
+            weekDamageLoss += cost;
+          }
+
+          if (entryDate.year == today.year && entryDate.month == today.month) {
+            monthDamageQty += val;
+            monthDamageLoss += cost;
+          }
+
+          if (entryDate.year == today.year) {
+            yearDamageQty += val;
+            yearDamageLoss += cost;
+          }
+        }
+      }
+    }
+
+    // 4. Loss Analytics Breakdown
     final categoryLossMap = <String, int>{};
     final reasonLossMap = <String, int>{};
     int totalLossAmount = 0;
@@ -1410,7 +1467,71 @@ class DokanDamageReportScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 1.65,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _TimeDamageCard(
+                          title: 'আজকের ড্যামেজ',
+                          qty: '${_bnDigits(todayDamageQty.toString())}টি',
+                          amount: '৳${_bnDigits(todayDamageLoss.toString())}',
+                          badgeColor: const Color(0xFFDC2626),
+                          bgColor: const Color(0xFFFEF2F2),
+                        ),
+                        _TimeDamageCard(
+                          title: 'এই সপ্তাহের ড্যামেজ',
+                          qty: '${_bnDigits(weekDamageQty.toString())}টি',
+                          amount: '৳${_bnDigits(weekDamageLoss.toString())}',
+                          badgeColor: const Color(0xFFEA580C),
+                          bgColor: const Color(0xFFFFF7ED),
+                        ),
+                        _TimeDamageCard(
+                          title: 'এই মাসের ড্যামেজ',
+                          qty: '${_bnDigits(monthDamageQty.toString())}টি',
+                          amount: '৳${_bnDigits(monthDamageLoss.toString())}',
+                          badgeColor: const Color(0xFFD97706),
+                          bgColor: const Color(0xFFFFFBEB),
+                        ),
+                        _TimeDamageCard(
+                          title: 'এই বছরের ড্যামেজ',
+                          qty: '${_bnDigits(yearDamageQty.toString())}টি',
+                          amount: '৳${_bnDigits(yearDamageLoss.toString())}',
+                          badgeColor: const Color(0xFF0284C7),
+                          bgColor: const Color(0xFFF0F9FF),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Icon(Icons.list_alt_rounded,
+                            color: Color(0xFF00694C), size: 20),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'ক্ষতিগ্রস্ত পণ্যের বিস্তারিত তালিকা',
+                          style: TextStyle(
+                            color: Color(0xFF141F22),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${_bnDigits(damagedProducts.length.toString())}টি আইটেম',
+                          style: const TextStyle(
+                            color: Color(0xFF5A7572),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     ...damagedProducts.map((item) {
                       final itemLossTaka =
                           item.damageQty * item.product.purchasePrice;
@@ -1788,6 +1909,84 @@ class DokanDamageReportScreen extends ConsumerWidget {
                   ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TimeDamageCard extends StatelessWidget {
+  const _TimeDamageCard({
+    required this.title,
+    required this.qty,
+    required this.amount,
+    required this.badgeColor,
+    required this.bgColor,
+  });
+
+  final String title;
+  final String qty;
+  final String amount;
+  final Color badgeColor;
+  final Color bgColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: badgeColor.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                qty,
+                style: TextStyle(
+                  color: badgeColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  amount,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
