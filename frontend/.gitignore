@@ -1,7 +1,0 @@
-node_modules
-.next
-.next-dev
-out
-.env
-.DS_Store
-coverage
