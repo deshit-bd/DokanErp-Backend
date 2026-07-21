@@ -11,65 +11,28 @@ import { prisma } from "../../../infrastructure/prisma/client";
 import { normalizeMoney as normalizeStockMoney, recordStockMovement } from "../../../utils/stock-movement";
 import { ensureGeneralInventoryBin } from "./inventory.repository";
 
-async function resolveShopProductTx(tx: any, shopId: string, identifier: string) {
-  if (!identifier) return null;
-
-  let shopProduct = await tx.shopProduct.findUnique({ where: { id: identifier }, include: { masterProduct: true } });
-  if (shopProduct && shopProduct.shopId === shopId) {
-    return shopProduct;
-  }
-
-  shopProduct = await tx.shopProduct.findFirst({ where: { shopId, localBarcode: identifier }, include: { masterProduct: true } });
-  if (shopProduct) return shopProduct;
-
-  shopProduct = await tx.shopProduct.findUnique({
-    where: { shopId_masterProductId: { shopId, masterProductId: identifier } },
-    include: { masterProduct: true },
-  });
-  if (shopProduct) return shopProduct;
-
-  const masterBarcode = await tx.masterProductBarcode.findUnique({
-    where: { barcode: identifier },
-    include: { masterProduct: { include: { shopProducts: { where: { shopId } } } } },
-  });
-  if (masterBarcode?.masterProduct?.shopProducts?.[0]) {
-    return { ...masterBarcode.masterProduct.shopProducts[0], masterProduct: masterBarcode.masterProduct };
-  }
-
-  const masterSku = await tx.masterProduct.findUnique({ where: { sku: identifier }, include: { shopProducts: { where: { shopId } } } });
-  if (masterSku?.shopProducts?.[0]) {
-    return { ...masterSku.shopProducts[0], masterProduct: masterSku };
-  }
-
-  return null;
-}
-
-function resolveCustomerLinkedWhere(customerIdentifier: string) {
-  let normalized = customerIdentifier.trim();
-  if (normalized.startsWith("num:")) {
-    normalized = normalized.substring(4).trim();
-  } else if (normalized.startsWith("name:")) {
-    normalized = normalized.substring(5).trim();
-  }
-  return { deletedAt: null, OR: [{ id: normalized }, { mobile: normalized }, { name: normalized }] };
-}
+import {
+  resolveShopProductTx,
+  resolveCustomerLinkedWhere,
+  resolveShopMoneyBoxHelper,
+  resolveDefaultMoneyBoxByTypeHelper,
+  resolveShopIdentifierHelper,
+  resolveCustomerIdentifierHelper,
+  buildCustomerFinanceSummaryHelper,
+  createUniqueCustomerCodeHelper,
+  findCustomerForLinkCheckHelper,
+  createShopCustomerLedgerEntryHelper,
+  createGlobalCustomerHelper,
+  findCustomerByIdHelper,
+} from "./customer-repository.helper";
 
 export class PrismaCustomerRepository implements CustomerRepository {
   async resolveShopIdentifier(identifier: string) {
-    const normalized = identifier?.trim();
-    if (!normalized) return null;
-
-    return prisma.shop.findFirst({
-      where: { OR: [{ id: normalized }, { shopCode: normalized }] },
-      select: { id: true, shopCode: true, shopName: true, phone: true, address: true, area: true, district: true, status: true },
-    });
+    return resolveShopIdentifierHelper(identifier);
   }
 
   async resolveCustomerIdentifier(identifier: string) {
-    const normalized = identifier?.trim();
-    if (!normalized) return null;
-
-    return (prisma as any).customer.findFirst({ where: { deletedAt: null, OR: [{ id: normalized }, { customerCode: normalized }] } });
+    return resolveCustomerIdentifierHelper(identifier);
   }
 
   async resolveCustomerLinkedToShop(customerIdentifier: string, shopId: string) {
@@ -77,21 +40,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
   }
 
   async buildCustomerFinanceSummary(customerId: string, shopId: string) {
-    const ledgerEntries = await (prisma as any).customerLedger.findMany({
-      where: { customerId, shopId },
-      select: { debit: true, credit: true, entryType: true },
-    });
-
-    const totalDebit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
-    const totalCredit = ledgerEntries.reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
-    const totalSales = ledgerEntries
-      .filter((entry: any) => entry.entryType === "SALE")
-      .reduce((sum: number, entry: any) => sum + Number(entry.debit ?? 0), 0);
-    const totalPaid = ledgerEntries
-      .filter((entry: any) => entry.entryType === "PAYMENT")
-      .reduce((sum: number, entry: any) => sum + Number(entry.credit ?? 0), 0);
-
-    return { totalSales, totalPaid, due: Math.max(0, totalDebit - totalCredit) };
+    return buildCustomerFinanceSummaryHelper(customerId, shopId);
   }
 
   async listCustomersForShopFinance(shopId: string, filters: { search: string; status: string }) {
@@ -149,49 +98,23 @@ export class PrismaCustomerRepository implements CustomerRepository {
   }
 
   async createUniqueCustomerCode(name: string) {
-    const base = buildCustomerCodeBase(name);
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const suffix = `${Date.now()}`.slice(-4) + `${Math.floor(Math.random() * 100)}`.padStart(2, "0");
-      const candidate = `${base}-${suffix}`;
-      const existing = await (prisma as any).customer.findFirst({ where: { customerCode: candidate }, select: { id: true } });
-      if (!existing) return candidate;
-    }
-
-    return `${base}-${Math.floor(Date.now() / 1000)}`;
+    return createUniqueCustomerCodeHelper(name);
   }
 
   async findCustomerForLinkCheck(params: { customerCode: string; mobile: string | null; name: string }) {
-    return (prisma as any).customer.findFirst({
-      where: {
-        deletedAt: null,
-        OR: [{ customerCode: params.customerCode }, ...(params.mobile ? [{ mobile: params.mobile }] : []), { name: params.name }],
-      },
-      select: { id: true, customerCode: true, name: true, mobile: true },
-    });
+    return findCustomerForLinkCheckHelper(params);
   }
 
   async createShopCustomerLedgerEntry(params: { shopId: string; customerId: string; referenceNo: string | null; debit: number; credit: number; notes: string | null }) {
-    return (prisma as any).customerLedger.create({
-      data: {
-        shopId: params.shopId,
-        customerId: params.customerId,
-        entryType: "OPENING_DUE",
-        referenceNo: params.referenceNo,
-        debit: params.debit,
-        credit: params.credit,
-        notes: params.notes,
-        entryDate: new Date(),
-      },
-    });
+    return createShopCustomerLedgerEntryHelper(params);
   }
 
   async createGlobalCustomer(data: any) {
-    return (prisma as any).customer.create({ data });
+    return createGlobalCustomerHelper(data);
   }
 
   async findCustomerById(id: string) {
-    return (prisma as any).customer.findUnique({ where: { id } });
+    return findCustomerByIdHelper(id);
   }
 
   async listShopSales(shopId: string, filters: { status: string; startDate: Date | null; endDate: Date | null }) {
@@ -378,31 +301,11 @@ export class PrismaCustomerRepository implements CustomerRepository {
   }
 
   async resolveShopMoneyBox(shopId: string, moneyBoxId?: string | null) {
-    const normalized = moneyBoxId?.trim();
-    if (!normalized) return null;
-
-    return (prisma as any).moneyBox.findFirst({ where: { id: normalized, shopId }, select: { id: true, boxName: true, code: true, type: true } });
+    return resolveShopMoneyBoxHelper(prisma, shopId, moneyBoxId);
   }
 
   async resolveDefaultMoneyBoxByType(shopId: string, type?: string | null) {
-    const normalizedType = (type ?? "").toString().trim().toUpperCase();
-    if (!normalizedType || !["CASH", "BKASH", "NAGAD"].includes(normalizedType)) return null;
-
-    const existing = await (prisma as any).moneyBox.findFirst({
-      where: { shopId, type: normalizedType, status: "ACTIVE" },
-      orderBy: [{ createdAt: "asc" }],
-      select: { id: true, boxName: true, code: true, type: true, currentBalance: true },
-    });
-
-    if (existing) return existing;
-
-    const boxName = normalizedType === "CASH" ? "Cash Box" : normalizedType === "BKASH" ? "bKash Wallet" : "Nagad Wallet";
-    const code = `${normalizedType.toLowerCase()}-${shopId.substring(0, 8)}-${Date.now()}`;
-
-    return (prisma as any).moneyBox.create({
-      data: { shopId, boxName, code, type: normalizedType, openingBalance: 0, currentBalance: 0, status: "ACTIVE" },
-      select: { id: true, boxName: true, code: true, type: true, currentBalance: true },
-    });
+    return resolveDefaultMoneyBoxByTypeHelper(prisma, shopId, type);
   }
 
   async createSale(params: Parameters<CustomerRepository["createSale"]>[0]) {

@@ -29,7 +29,7 @@ import unitRoutes from "../../adapters/http/routers/unit.router";
 import reportsRoutes from "../../adapters/http/routers/reports.router";
 import staffRoutes from "../../adapters/http/routers/staff.router";
 import notificationRoutes from "../../adapters/http/routers/notification.router";
-import settingsRoutes from "../../routes/settings";
+import settingsRoutes from "../../adapters/http/routers/settings.router";
 import { evaluateSalesmanTrialAccess, evaluateShopSubscriptionAccess } from "../../subscription/access";
 
 const app = express();

@@ -8,3 +8,4 @@ dist
 coverage
 uploads
 .snapshots
+scratch/
